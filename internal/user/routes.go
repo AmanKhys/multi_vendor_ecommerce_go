@@ -4,13 +4,14 @@ import (
 	"net/http"
 )
 
-func RegisterUserHandlers(mux *http.ServeMux) {
-	mux.HandleFunc("post /user/sign_up/", user.SignUpHandler)
-	mux.HandleFunc("post /user/sign_up_otp", user.SignUpOTPHandler)
-	mux.HandleFunc("post /user/login/", user.LoginHandler)
-	mux.HandleFunc("post /user/sign_on_google/", user.SignOnGoogleHandler)
+var u = User{}
 
-	mux.HandleFunc("get /user/products/", user.ProductsHandler)
-	mux.HandleFunc("get /user/product/{productID}/", user.ProductHandler)
-	mux.HandleFunc("get /user/product/{productID}/reviews/", user.ProductReviewHandler)
+func RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("post /user/sign_up/", u.SignUpHandler)
+	mux.HandleFunc("post /user/sign_up_otp", u.SignUpOTPHandler)
+	mux.HandleFunc("post /user/login/", u.LoginHandler)
+	mux.HandleFunc("post /user/sign_on_google/", u.SignOnGoogleHandler)
+
+	mux.HandleFunc("get /user/products/", u.ProductsHandler)
+	mux.HandleFunc("get /user/product/{productID}/", u.ProductHandler)
 }
