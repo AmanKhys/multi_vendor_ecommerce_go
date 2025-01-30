@@ -6,14 +6,15 @@ import (
 )
 
 type Product struct {
-	id          uuid.UUID
-	name        string
-	description string
-	price       float64
-	stock       int
-	seller_id   uuid.UUID
-	category_id uuid.UUID
-	is_deleted  bool
-	created_at  time.Time
-	updated_at  time.Time
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       float64   `json:"price"`
+	Stock       int       `json:"stock"`
+	SellerID    uuid.UUID `json:"seller_id"`
+	CategoryID  uuid.UUID `json:"category_id"`
+	IsDeleted   bool      `json:"is_deleted"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
+

@@ -6,43 +6,44 @@ import (
 )
 
 type User struct {
-	id         uuid.UUID
-	name       string
-	email      string
-	phone      int
-	password   string
-	is_blocked bool
-	created_at time.Time
-	updated_at time.Time
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Phone     int       `json:"phone"`
+	Password  string    `json:"password"`
+	IsBlocked bool      `json:"is_blocked"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type UserSignUpParams struct {
-	name     string
-	email    string
-	phone    int
-	password string
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Phone    int    `json:"phone"`
+	Password string `json:"password"`
 }
 
 type UserLoginParams struct {
-	name     string
-	email    string
-	phone    int
-	password string
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Phone    int    `json:"phone"`
+	Password string `json:"password"`
 }
 
 type UserSignUpOTPParams struct {
-	id  uuid.UUID
-	otp int
+	ID  uuid.UUID `json:"id"`
+	OTP int       `json:"otp"`
 }
 
 type UserForgotPasswordParams struct {
-	id uuid.UUID
+	ID uuid.UUID `json:"id"`
 }
 
 type UserBlockParams struct {
-	id uuid.UUID
+	ID uuid.UUID `json:"id"`
 }
 
 type UserUnblockParams struct {
-	id uuid.UUID
+	ID uuid.UUID `json:"id"`
 }
+

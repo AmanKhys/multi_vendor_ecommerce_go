@@ -6,27 +6,28 @@ import (
 )
 
 type User struct {
-	id         uuid.UUID
-	name       string
-	email      string
-	phone      int
-	password   string
-	is_blocked bool
-	created_at time.Time
-	updated_at time.Time
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Phone     int       `json:"phone"`
+	Password  string    `json:"password"`
+	IsBlocked bool      `json:"is_blocked"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type UserProfileRes struct {
-	id   uuid.UUID
-	name string
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
 type UserAdminRes struct {
-	id         uuid.UUID
-	name       string
-	email      string
-	phone      string
-	is_blocked string
-	created_at time.Time
-	updated_at time.Time
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Phone     string    `json:"phone"`
+	IsBlocked string    `json:"is_blocked"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
+
