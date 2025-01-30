@@ -6,22 +6,23 @@ import (
 )
 
 type Category struct {
-	id         uuid.UUID
-	name       string
-	is_deleted bool
-	created_at time.Time
-	updated_at time.Time
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	IsDeleted bool      `json:"is_deleted"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type CateogryAddParams struct {
-	name string
+type CategoryAddParams struct {
+	Name string `json:"name"`
 }
 
 type CategoryEditParams struct {
-	id   uuid.UUID
-	name bool
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
-type CateogryDeleteParams struct {
-	id uuid.UUID
+type CategoryDeleteParams struct {
+	ID uuid.UUID `json:"id"`
 }
+
