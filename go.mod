@@ -1,4 +1,4 @@
-module github.com/amankhys/multi_vendor_ecommerce_mvc
+module github.com/amankhys/multi_vendor_ecommerce_go
 
 go 1.22.2
 
