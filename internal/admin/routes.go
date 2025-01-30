@@ -4,20 +4,22 @@ import (
 	"net/http"
 )
 
-func RegisterAdminRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("get /admin/users/", admin.AdminUserHandler)
-	mux.HandleFunc("update /admin/user/{userID}/block/", admin.BlockUserHandler)
-	mux.HandleFunc("update /admin/user/{userID}/unblock/", admin.UnblockUserHandler)
+var a = Admin{}
 
-	mux.HandleFunc("get /admin/sellers/", admin.AdminSellerHandler)
-	mux.HandleFunc("update /admin/seller/{sellerID}/block/", admin.BlockSellerHandler)
-	mux.HandleFunc("update /admin/seller/{sellerID}/unblock/", admin.UnblockSellerHandler)
+func RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("get /admin/users/", a.AdminUserHandler)
+	mux.HandleFunc("put /admin/user/{userID}/block/", a.BlockUserHandler)
+	mux.HandleFunc("put /admin/user/{userID}/unblock/", a.UnblockUserHandler)
 
-	mux.HandleFunc("get /admin/products/", admin.AdminProductsHandler)
-	mux.HandleFunc("update /admin/product/{productID}/delete/", admin.DeleteProductHandler)
+	mux.HandleFunc("get /admin/sellers/", a.AdminSellerHandler)
+	mux.HandleFunc("put /admin/seller/{sellerID}/block/", a.BlockSellerHandler)
+	mux.HandleFunc("put /admin/seller/{sellerID}/unblock/", a.UnblockSellerHandler)
 
-	mux.HandleFunc("get /admin/categories/", admin.AdminCategoriesHandler)
-	mux.HandleFunc("post /admin/category/add/", admin.AddCategoryHandler)
-	mux.HandleFunc("update /admin/category/edit/", admin.EditCategoryHandler)
-	mux.HandleFunc("update /admin/category/add/", admin.DeleteCategoryHandler)
+	mux.HandleFunc("get /admin/products/", a.AdminProductsHandler)
+	mux.HandleFunc("delete /admin/product/{productID}/delete/", a.DeleteProductHandler)
+
+	mux.HandleFunc("get /admin/categories/", a.AdminCategoriesHandler)
+	mux.HandleFunc("post /admin/category/add/", a.AddCategoryHandler)
+	mux.HandleFunc("put /admin/category/edit/", a.EditCategoryHandler)
+	mux.HandleFunc("delete /admin/category/delete/", a.DeleteCategoryHandler)
 }

@@ -4,15 +4,17 @@ import (
 	"net/http"
 )
 
-func RegisterSellerHandlers(mux *http.ServeMux) {
-	mux.HandleFunc("post /seller/sign_up/", seller.SignUpHandler)
-	mux.HandleFunc("post /seller/sign_up_otp/", seller.SignUPOTPHandler)
-	mux.HandleFunc("post /seller/login/", seller.LoginHandler)
-	mux.HandleFunc("post /seller/sign_on_google/", seller.SignUpOnGoogleHandler)
+var s = Seller{}
 
-	mux.HandleFunc("get /seller/products/", seller.SellerProductsHandler)
-	mux.HandleFunc("get /seller/product/{productID}/details/", seller.ProductDetailsHandler)
-	mux.HandleFunc("get /seller/product/add", seller.AddProductHandler)
-	mux.HandleFunc("update /seller/product/{productID}/edit/", seller.EditProductHandler)
-	mux.HandleFunc("update /seller/product/{productID}/delete/", seller.DeleteProductHandler)
+func RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("post /seller/sign_up/", s.SignUpHandler)
+	mux.HandleFunc("post /seller/sign_up_otp/", s.SignUpOTPHandler)
+	mux.HandleFunc("post /seller/login/", s.LoginHandler)
+	mux.HandleFunc("post /seller/sign_on_google/", s.SignUpOnGoogleHandler)
+
+	mux.HandleFunc("get /seller/products/", s.ProductsHandler)
+	mux.HandleFunc("get /seller/product/{productID}/details/", s.ProductDetailsHandler)
+	mux.HandleFunc("post /seller/product/add", s.AddProductHandler)
+	mux.HandleFunc("put /seller/product/{productID}/edit/", s.EditProductHandler)
+	mux.HandleFunc("put /seller/product/{productID}/delete/", s.DeleteProductHandler)
 }
