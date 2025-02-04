@@ -1,4 +1,5 @@
-create table if not exists accounts (
+-- Users Table
+create table if not exists users (
     id uuid not null primary key default uuid_generate_v4(),
     name text not null,
     email text not null unique,
@@ -16,9 +17,10 @@ create table if not exists accounts (
     constraint updated_at_check check (updated_at >= created_at)
 );
 
+-- Addresses Table
 create table if not exists addresses (
     id uuid not null primary key default uuid_generate_v4(),
-    account_id uuid not null,
+    user_id uuid not null,
     type text not null check (type in ('user', 'seller')),
     building_name text not null,
     street_name text not null,
@@ -29,10 +31,11 @@ create table if not exists addresses (
     created_at timestamp without time zone not null default current_timestamp,
     updated_at timestamp without time zone not null default current_timestamp,
     constraint updated_at_check check (updated_at >= created_at),
-    constraint account_id_fk foreign key (account_id) references accounts(id),
-    unique (account_id, type) -- Ensures a user or seller has only one address
+    constraint user_id_fk foreign key (user_id) references users(id),
+    unique (user_id, type) -- Ensures a user or seller has only one address
 );
 
+-- Categories Table
 create table if not exists categories (
     id uuid not null primary key default uuid_generate_v4(),
     name text not null unique,
@@ -43,6 +46,7 @@ create table if not exists categories (
     constraint updated_at_check check (updated_at >= created_at)
 );
 
+-- Products Table
 create table if not exists products (
     id uuid not null primary key default uuid_generate_v4(),
     name text not null,
@@ -50,7 +54,7 @@ create table if not exists products (
     price integer not null,
     stock integer not null,
     seller_id uuid not null,
-    category_id uuid not null,
+    category_id uuid ,
     is_deleted boolean not null default false,
     created_at timestamp without time zone not null default current_timestamp,
     updated_at timestamp without time zone not null default current_timestamp,
@@ -59,9 +63,10 @@ create table if not exists products (
     constraint stock_check check (stock >= 0),
     constraint updated_at_check check (updated_at >= created_at),
     constraint category_id_fk foreign key (category_id) references categories (id),
-    constraint seller_id_fk foreign key (seller_id) references accounts (id)
+    constraint seller_id_fk foreign key (seller_id) references users (id)
 );
 
+-- Product Images Table
 create table if not exists product_images (
     id uuid not null primary key default uuid_generate_v4(),
     product_id uuid not null,
@@ -72,6 +77,7 @@ create table if not exists product_images (
     constraint product_id_fk foreign key (product_id) references products (id)
 );
 
+-- Reviews Table
 create table if not exists reviews (
     id uuid not null primary key default uuid_generate_v4(),
     user_id uuid not null,
@@ -84,16 +90,29 @@ create table if not exists reviews (
     updated_at timestamp not null default current_timestamp,
     constraint rating_check check (rating >= 1 and rating <= 5),
     constraint updated_at_check check (updated_at >= created_at),
-    constraint user_id_fk foreign key (user_id) references accounts (id),
+    constraint user_id_fk foreign key (user_id) references users (id),
     constraint product_id_fk foreign key (product_id) references products (id)
 );
 
+-- Login OTPs Table
 create table if not exists login_otps (
     id uuid not null primary key default uuid_generate_v4(),
-    account_id uuid not null,
+    user_id uuid not null,
     otp integer not null default floor(random() * 999999),
     created_at timestamp without time zone not null default current_timestamp,
     expires_at timestamp without time zone not null default (current_timestamp + interval '10 minutes'),
-    constraint account_id_fk foreign key (account_id) references accounts(id)
+    constraint user_id_fk foreign key (user_id) references users(id)
+);
+
+-- Sessions Table
+create table if not exists sessions (
+    id uuid not null primary key default uuid_generate_v4(),
+    user_id uuid not null,
+    ip_address inet not null,
+    user_agent text not null,
+    created_at timestamp without time zone not null default current_timestamp,
+    expires_at timestamp without time zone not null default (current_timestamp + interval '7 days'),
+    is_active boolean not null default true,
+    constraint user_id_fk foreign key (user_id) references users(id) on delete cascade
 );
 
