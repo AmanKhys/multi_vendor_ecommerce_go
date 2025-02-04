@@ -1,4 +1,4 @@
-package request_model
+package entity
 
 import (
 	"github.com/google/uuid"
@@ -16,14 +16,3 @@ type Review struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
-
-type ReviewEditParams struct {
-	ID      uuid.UUID `json:"id"`
-	Rating  int       `json:"rating"`
-	Comment string    `json:"comment"`
-}
-
-type ReviewDeleteParams struct {
-	ID uuid.UUID `json:"id"`
-}
-

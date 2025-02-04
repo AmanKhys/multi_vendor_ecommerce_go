@@ -1,4 +1,4 @@
-package request_model
+package dto
 
 import (
 	"github.com/google/uuid"
@@ -46,3 +46,26 @@ type SellerUnblockParams struct {
 	ID uuid.UUID `json:"id"`
 }
 
+// response part
+type SellerProfileRes struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	About     string    `json:"about"`
+	Email     string    `json:"email"`
+	Phone     int       `json:"phone"`
+	GstNo     string    `json:"gst_no"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type SellerAdminRes struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	About     string    `json:"about"`
+	Email     string    `json:"email"`
+	Phone     int       `json:"phone"`
+	GstNo     string    `json:"gst_no"`
+	IsBlocked bool      `json:"is_blocked"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

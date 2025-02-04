@@ -1,4 +1,4 @@
-package response_model
+package dto
 
 import (
 	"github.com/google/uuid"
@@ -13,3 +13,15 @@ type Category struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type CategoryAddParams struct {
+	Name string `json:"name"`
+}
+
+type CategoryEditParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+type CategoryDeleteParams struct {
+	ID uuid.UUID `json:"id"`
+}

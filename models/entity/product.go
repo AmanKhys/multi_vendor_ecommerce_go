@@ -1,4 +1,4 @@
-package response_model
+package entity
 
 import (
 	"github.com/google/uuid"
@@ -17,4 +17,3 @@ type Product struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
-

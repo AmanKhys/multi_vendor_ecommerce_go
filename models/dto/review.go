@@ -1,4 +1,4 @@
-package response_model
+package dto
 
 import (
 	"github.com/google/uuid"
@@ -17,3 +17,12 @@ type Review struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type ReviewEditParams struct {
+	ID      uuid.UUID `json:"id"`
+	Rating  int       `json:"rating"`
+	Comment string    `json:"comment"`
+}
+
+type ReviewDeleteParams struct {
+	ID uuid.UUID `json:"id"`
+}

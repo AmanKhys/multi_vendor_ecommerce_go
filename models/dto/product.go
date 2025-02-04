@@ -1,4 +1,4 @@
-package request_model
+package dto
 
 import (
 	"github.com/google/uuid"
@@ -40,4 +40,3 @@ type ProductDeleteParams struct {
 	ID        uuid.UUID `json:"id"`
 	IsDeleted bool      `json:"is_deleted"`
 }
-

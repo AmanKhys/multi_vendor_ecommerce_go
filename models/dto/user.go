@@ -1,4 +1,4 @@
-package request_model
+package dto
 
 import (
 	"github.com/google/uuid"
@@ -21,12 +21,13 @@ type UserSignUpParams struct {
 	Email    string `json:"email"`
 	Phone    int    `json:"phone"`
 	Password string `json:"password"`
+	Role     string `json:"role"`
+	GstNo    string `json:"gst_no"`
+	About    string `json:"about"`
 }
 
 type UserLoginParams struct {
-	Name     string `json:"name"`
 	Email    string `json:"email"`
-	Phone    int    `json:"phone"`
 	Password string `json:"password"`
 }
 
@@ -47,3 +48,18 @@ type UserUnblockParams struct {
 	ID uuid.UUID `json:"id"`
 }
 
+// response part
+type UserProfileRes struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+type UserAdminRes struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Phone     string    `json:"phone"`
+	IsBlocked string    `json:"is_blocked"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

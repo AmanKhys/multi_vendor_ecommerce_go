@@ -1,4 +1,4 @@
-package request_model
+package entity
 
 import (
 	"github.com/google/uuid"
@@ -12,17 +12,3 @@ type Category struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
-
-type CategoryAddParams struct {
-	Name string `json:"name"`
-}
-
-type CategoryEditParams struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-}
-
-type CategoryDeleteParams struct {
-	ID uuid.UUID `json:"id"`
-}
-
