@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/router"
 	// "github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
+	env "github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-	"os"
+	// "os"
 )
 
 func main() {
@@ -18,12 +19,12 @@ func main() {
 	// }
 	// defer DB.Close()
 
-	port, found := os.LookupEnv("port")
-	if !found {
-		log.Fatal("port variable not found")
+	envM, err := env.Read(".env")
+	if err != nil {
+		log.Fatal("couldn't load the env", err)
 	}
 	r := router.SetupRouter()
+	port := envM["port"]
 	log.Printf("Server running on port %s", port)
-	portStr := fmt.Sprintf(":%s", port)
-	log.Fatal(http.ListenAndServe(portStr, r))
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }

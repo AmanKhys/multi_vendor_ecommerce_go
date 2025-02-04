@@ -8,8 +8,8 @@ var g = Guest{}
 
 func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /", g.HomeHandler)
-	mux.HandleFunc("get /login/", g.LoginPageHandler)
-	mux.HandleFunc("post /login/", g.LoginHandler)
-	mux.HandleFunc("get /signup/", g.SignUpPageHandler)
-	mux.HandleFunc("post /signup/", g.SignUpHandler)
+	mux.HandleFunc("GET /login/", g.LoginPageHandler)
+	mux.HandleFunc("POST /login/", g.LoginHandler)
+	mux.HandleFunc("GET /signup/", g.SignUpPageHandler)
+	mux.HandleFunc("POST /signup/", g.SignUpHandler)
 }

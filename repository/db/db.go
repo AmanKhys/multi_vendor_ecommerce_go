@@ -3,32 +3,22 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	env "github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
-	"os"
+	// "os"
 )
 
 func ConnectDB() (*sql.DB, error) {
-	host, found := os.LookupEnv("host")
-	if !found {
-		log.Fatal("host not found in .env")
+	envM, err := env.Read(".env")
+	if err != nil {
+		log.Fatal("Couldn't load .env file", err)
 	}
-	user, found := os.LookupEnv("user")
-	if !found {
-		log.Fatal("user not found in .env")
-	}
-	pw, found := os.LookupEnv("pw")
-	if !found {
-		log.Fatal("password not found in .env")
-	}
-	port, found := os.LookupEnv("dbport")
-	if !found {
-		log.Fatal("port not found in .env")
-	}
-	dbname, found := os.LookupEnv("dbname")
-	if !found {
-		log.Fatal("db name not found in .env")
-	}
+	user := envM["user"]
+	pw := envM["password"]
+	host := envM["dbhost"]
+	port := envM["dbport"]
+	dbname := envM["dbname"]
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, pw, host, port, dbname)
 

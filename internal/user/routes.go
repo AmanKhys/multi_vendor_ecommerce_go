@@ -7,11 +7,11 @@ import (
 var u = User{}
 
 func RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("post /user/sign_up/", u.SignUpHandler)
-	mux.HandleFunc("post /user/sign_up_otp", u.SignUpOTPHandler)
-	mux.HandleFunc("post /user/login/", u.LoginHandler)
-	mux.HandleFunc("post /user/sign_on_google/", u.SignOnGoogleHandler)
+	mux.HandleFunc("POST /user/sign_up/", u.SignUpHandler)
+	mux.HandleFunc("POST /user/sign_up_otp", u.SignUpOTPHandler)
+	mux.HandleFunc("POST /user/login/", u.LoginHandler)
+	mux.HandleFunc("POST /user/sign_on_google/", u.SignOnGoogleHandler)
 
-	mux.HandleFunc("get /user/products/", u.ProductsHandler)
-	mux.HandleFunc("get /user/product/{productID}/", u.ProductHandler)
+	mux.HandleFunc("GET /user/products/", u.ProductsHandler)
+	mux.HandleFunc("GET /user/product/{productID}/", u.ProductHandler)
 }
