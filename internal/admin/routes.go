@@ -2,9 +2,14 @@ package admin
 
 import (
 	"net/http"
+
+	"github.com/amankhys/multi_vendor_ecommerce_go/repository"
+	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 )
 
-var a = Admin{}
+var dbConn = repository.NewDBConfig()
+var DB = db.New(dbConn)
+var a = Admin{DB: DB}
 
 func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/users/", a.AdminUserHandler)
