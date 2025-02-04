@@ -1,26 +1,14 @@
 package seller
 
 import (
+	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"net/http"
 )
 
 type Seller struct {
+	DB *db.Queries
 }
 
-func (s *Seller) SignUpHandler(w http.ResponseWriter, r *http.Request) {
-}
-
-func (s *Seller) SignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func (s *Seller) LoginHandler(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func (s *Seller) SignUpOnGoogleHandler(w http.ResponseWriter, r *http.Request) {
-
-}
 func (s *Seller) ProductsHandler(w http.ResponseWriter, r *http.Request) {
 
 }

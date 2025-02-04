@@ -1,10 +1,11 @@
 package admin
 
 import (
+	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"net/http"
 )
 
-type Admin struct{}
+type Admin struct{ DB *db.Queries }
 
 func (a *Admin) AdminUserHandler(w http.ResponseWriter, r *http.Request) {
 
