@@ -1,8 +1,12 @@
--- name: InsertProduct :one
+-- name: AddProduct :one
 insert into products
 (name, description, price, stock, seller_id)
 values ($1, $2, $3, $4, $5)
 returning *;
+
+-- name: GetProductByID :one
+select * from products
+where id = $1;
 
 -- name: GetAllProducts :many
 select * from products;
@@ -15,7 +19,7 @@ where category_id = $1;
 select * from products
 where seller_id = $1;
 
--- name: UpdateProductByID :one
+-- name: EditProductByID :one
 update products
 set name = $2, description = $3, price = $4, stock = $5, updated_at = $6
 where id = $1

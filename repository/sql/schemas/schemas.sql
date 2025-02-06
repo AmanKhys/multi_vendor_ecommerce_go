@@ -17,6 +17,16 @@ create table if not exists users (
     constraint updated_at_check check (updated_at >= created_at)
 );
 
+create table if not exists sessions (
+    id uuid not null primary key default uuid_generate_v4(),
+    user_id uuid not null,
+    is_valid boolean not null default true,
+    created_at timestamp without time zone not null default current_timestamp,
+    expires_at timestamp without time zone not null default current_timestamp + interval '7 days',
+    constraint user_id_fk foreign key (user_id) references users(id),
+    constraint expires_at_check check (expires_at >= created_at)
+);
+
 -- Addresses Table
 create table if not exists addresses (
     id uuid not null primary key default uuid_generate_v4(),
