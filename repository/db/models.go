@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
 )
 
 type Address struct {
@@ -76,13 +75,11 @@ type Review struct {
 }
 
 type Session struct {
-	ID        uuid.UUID   `json:"id"`
-	UserID    uuid.UUID   `json:"userId"`
-	IpAddress pqtype.Inet `json:"ipAddress"`
-	UserAgent string      `json:"userAgent"`
-	CreatedAt time.Time   `json:"createdAt"`
-	ExpiresAt time.Time   `json:"expiresAt"`
-	IsActive  bool        `json:"isActive"`
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"userId"`
+	IsValid   bool      `json:"isValid"`
+	CreatedAt time.Time `json:"createdAt"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }
 
 type User struct {

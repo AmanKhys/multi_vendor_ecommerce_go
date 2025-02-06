@@ -24,8 +24,14 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.addProductStmt, err = db.PrepareContext(ctx, addProduct); err != nil {
+		return nil, fmt.Errorf("error preparing query AddProduct: %w", err)
+	}
 	if q.blockUserByIDStmt, err = db.PrepareContext(ctx, blockUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query BlockUserByID: %w", err)
+	}
+	if q.createNewSessionByUserIDStmt, err = db.PrepareContext(ctx, createNewSessionByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateNewSessionByUserID: %w", err)
 	}
 	if q.deleteProductByIDStmt, err = db.PrepareContext(ctx, deleteProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteProductByID: %w", err)
@@ -33,8 +39,14 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteProductsBySellerIDStmt, err = db.PrepareContext(ctx, deleteProductsBySellerID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteProductsBySellerID: %w", err)
 	}
+	if q.editProductByIDStmt, err = db.PrepareContext(ctx, editProductByID); err != nil {
+		return nil, fmt.Errorf("error preparing query EditProductByID: %w", err)
+	}
 	if q.getAllProductsStmt, err = db.PrepareContext(ctx, getAllProducts); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllProducts: %w", err)
+	}
+	if q.getAllSessionsByUserIDStmt, err = db.PrepareContext(ctx, getAllSessionsByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAllSessionsByUserID: %w", err)
 	}
 	if q.getAllUsersStmt, err = db.PrepareContext(ctx, getAllUsers); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllUsers: %w", err)
@@ -42,11 +54,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getOTPByUserIDStmt, err = db.PrepareContext(ctx, getOTPByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOTPByUserID: %w", err)
 	}
+	if q.getProductByIDStmt, err = db.PrepareContext(ctx, getProductByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetProductByID: %w", err)
+	}
 	if q.getProductsByCategoryIDStmt, err = db.PrepareContext(ctx, getProductsByCategoryID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductsByCategoryID: %w", err)
 	}
 	if q.getProductsBySellerIDStmt, err = db.PrepareContext(ctx, getProductsBySellerID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductsBySellerID: %w", err)
+	}
+	if q.getSessionDetailsByIDStmt, err = db.PrepareContext(ctx, getSessionDetailsByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetSessionDetailsByID: %w", err)
 	}
 	if q.getUserByEmailStmt, err = db.PrepareContext(ctx, getUserByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByEmail: %w", err)
@@ -54,11 +72,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUserByIdStmt, err = db.PrepareContext(ctx, getUserById); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserById: %w", err)
 	}
+	if q.getUserBySessionIDStmt, err = db.PrepareContext(ctx, getUserBySessionID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetUserBySessionID: %w", err)
+	}
 	if q.getUsersByRoleStmt, err = db.PrepareContext(ctx, getUsersByRole); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUsersByRole: %w", err)
-	}
-	if q.insertProductStmt, err = db.PrepareContext(ctx, insertProduct); err != nil {
-		return nil, fmt.Errorf("error preparing query InsertProduct: %w", err)
 	}
 	if q.insertUserStmt, err = db.PrepareContext(ctx, insertUser); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertUser: %w", err)
@@ -66,17 +84,24 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.unblockUserByIDStmt, err = db.PrepareContext(ctx, unblockUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query UnblockUserByID: %w", err)
 	}
-	if q.updateProductByIDStmt, err = db.PrepareContext(ctx, updateProductByID); err != nil {
-		return nil, fmt.Errorf("error preparing query UpdateProductByID: %w", err)
-	}
 	return &q, nil
 }
 
 func (q *Queries) Close() error {
 	var err error
+	if q.addProductStmt != nil {
+		if cerr := q.addProductStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addProductStmt: %w", cerr)
+		}
+	}
 	if q.blockUserByIDStmt != nil {
 		if cerr := q.blockUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing blockUserByIDStmt: %w", cerr)
+		}
+	}
+	if q.createNewSessionByUserIDStmt != nil {
+		if cerr := q.createNewSessionByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createNewSessionByUserIDStmt: %w", cerr)
 		}
 	}
 	if q.deleteProductByIDStmt != nil {
@@ -89,9 +114,19 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteProductsBySellerIDStmt: %w", cerr)
 		}
 	}
+	if q.editProductByIDStmt != nil {
+		if cerr := q.editProductByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editProductByIDStmt: %w", cerr)
+		}
+	}
 	if q.getAllProductsStmt != nil {
 		if cerr := q.getAllProductsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getAllProductsStmt: %w", cerr)
+		}
+	}
+	if q.getAllSessionsByUserIDStmt != nil {
+		if cerr := q.getAllSessionsByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAllSessionsByUserIDStmt: %w", cerr)
 		}
 	}
 	if q.getAllUsersStmt != nil {
@@ -104,6 +139,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getOTPByUserIDStmt: %w", cerr)
 		}
 	}
+	if q.getProductByIDStmt != nil {
+		if cerr := q.getProductByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getProductByIDStmt: %w", cerr)
+		}
+	}
 	if q.getProductsByCategoryIDStmt != nil {
 		if cerr := q.getProductsByCategoryIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getProductsByCategoryIDStmt: %w", cerr)
@@ -112,6 +152,11 @@ func (q *Queries) Close() error {
 	if q.getProductsBySellerIDStmt != nil {
 		if cerr := q.getProductsBySellerIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getProductsBySellerIDStmt: %w", cerr)
+		}
+	}
+	if q.getSessionDetailsByIDStmt != nil {
+		if cerr := q.getSessionDetailsByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getSessionDetailsByIDStmt: %w", cerr)
 		}
 	}
 	if q.getUserByEmailStmt != nil {
@@ -124,14 +169,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getUserByIdStmt: %w", cerr)
 		}
 	}
+	if q.getUserBySessionIDStmt != nil {
+		if cerr := q.getUserBySessionIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getUserBySessionIDStmt: %w", cerr)
+		}
+	}
 	if q.getUsersByRoleStmt != nil {
 		if cerr := q.getUsersByRoleStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUsersByRoleStmt: %w", cerr)
-		}
-	}
-	if q.insertProductStmt != nil {
-		if cerr := q.insertProductStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing insertProductStmt: %w", cerr)
 		}
 	}
 	if q.insertUserStmt != nil {
@@ -142,11 +187,6 @@ func (q *Queries) Close() error {
 	if q.unblockUserByIDStmt != nil {
 		if cerr := q.unblockUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing unblockUserByIDStmt: %w", cerr)
-		}
-	}
-	if q.updateProductByIDStmt != nil {
-		if cerr := q.updateProductByIDStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing updateProductByIDStmt: %w", cerr)
 		}
 	}
 	return err
@@ -188,41 +228,51 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                           DBTX
 	tx                           *sql.Tx
+	addProductStmt               *sql.Stmt
 	blockUserByIDStmt            *sql.Stmt
+	createNewSessionByUserIDStmt *sql.Stmt
 	deleteProductByIDStmt        *sql.Stmt
 	deleteProductsBySellerIDStmt *sql.Stmt
+	editProductByIDStmt          *sql.Stmt
 	getAllProductsStmt           *sql.Stmt
+	getAllSessionsByUserIDStmt   *sql.Stmt
 	getAllUsersStmt              *sql.Stmt
 	getOTPByUserIDStmt           *sql.Stmt
+	getProductByIDStmt           *sql.Stmt
 	getProductsByCategoryIDStmt  *sql.Stmt
 	getProductsBySellerIDStmt    *sql.Stmt
+	getSessionDetailsByIDStmt    *sql.Stmt
 	getUserByEmailStmt           *sql.Stmt
 	getUserByIdStmt              *sql.Stmt
+	getUserBySessionIDStmt       *sql.Stmt
 	getUsersByRoleStmt           *sql.Stmt
-	insertProductStmt            *sql.Stmt
 	insertUserStmt               *sql.Stmt
 	unblockUserByIDStmt          *sql.Stmt
-	updateProductByIDStmt        *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                           tx,
 		tx:                           tx,
+		addProductStmt:               q.addProductStmt,
 		blockUserByIDStmt:            q.blockUserByIDStmt,
+		createNewSessionByUserIDStmt: q.createNewSessionByUserIDStmt,
 		deleteProductByIDStmt:        q.deleteProductByIDStmt,
 		deleteProductsBySellerIDStmt: q.deleteProductsBySellerIDStmt,
+		editProductByIDStmt:          q.editProductByIDStmt,
 		getAllProductsStmt:           q.getAllProductsStmt,
+		getAllSessionsByUserIDStmt:   q.getAllSessionsByUserIDStmt,
 		getAllUsersStmt:              q.getAllUsersStmt,
 		getOTPByUserIDStmt:           q.getOTPByUserIDStmt,
+		getProductByIDStmt:           q.getProductByIDStmt,
 		getProductsByCategoryIDStmt:  q.getProductsByCategoryIDStmt,
 		getProductsBySellerIDStmt:    q.getProductsBySellerIDStmt,
+		getSessionDetailsByIDStmt:    q.getSessionDetailsByIDStmt,
 		getUserByEmailStmt:           q.getUserByEmailStmt,
 		getUserByIdStmt:              q.getUserByIdStmt,
+		getUserBySessionIDStmt:       q.getUserBySessionIDStmt,
 		getUsersByRoleStmt:           q.getUsersByRoleStmt,
-		insertProductStmt:            q.insertProductStmt,
 		insertUserStmt:               q.insertUserStmt,
 		unblockUserByIDStmt:          q.unblockUserByIDStmt,
-		updateProductByIDStmt:        q.updateProductByIDStmt,
 	}
 }

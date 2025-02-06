@@ -12,6 +12,45 @@ import (
 	"github.com/google/uuid"
 )
 
+const addProduct = `-- name: AddProduct :one
+insert into products
+(name, description, price, stock, seller_id)
+values ($1, $2, $3, $4, $5)
+returning id, name, description, price, stock, seller_id, category_id, is_deleted, created_at, updated_at
+`
+
+type AddProductParams struct {
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       int32     `json:"price"`
+	Stock       int32     `json:"stock"`
+	SellerID    uuid.UUID `json:"sellerId"`
+}
+
+func (q *Queries) AddProduct(ctx context.Context, arg AddProductParams) (Product, error) {
+	row := q.queryRow(ctx, q.addProductStmt, addProduct,
+		arg.Name,
+		arg.Description,
+		arg.Price,
+		arg.Stock,
+		arg.SellerID,
+	)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Price,
+		&i.Stock,
+		&i.SellerID,
+		&i.CategoryID,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteProductByID = `-- name: DeleteProductByID :one
 update products
 set is_deleted = true
@@ -78,6 +117,47 @@ func (q *Queries) DeleteProductsBySellerID(ctx context.Context, sellerID uuid.UU
 	return items, nil
 }
 
+const editProductByID = `-- name: EditProductByID :one
+update products
+set name = $2, description = $3, price = $4, stock = $5, updated_at = $6
+where id = $1
+returning id, name, description, price, stock, seller_id, category_id, is_deleted, created_at, updated_at
+`
+
+type EditProductByIDParams struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       int32     `json:"price"`
+	Stock       int32     `json:"stock"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+func (q *Queries) EditProductByID(ctx context.Context, arg EditProductByIDParams) (Product, error) {
+	row := q.queryRow(ctx, q.editProductByIDStmt, editProductByID,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Price,
+		arg.Stock,
+		arg.UpdatedAt,
+	)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Price,
+		&i.Stock,
+		&i.SellerID,
+		&i.CategoryID,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAllProducts = `-- name: GetAllProducts :many
 select id, name, description, price, stock, seller_id, category_id, is_deleted, created_at, updated_at from products
 `
@@ -114,6 +194,29 @@ func (q *Queries) GetAllProducts(ctx context.Context) ([]Product, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const getProductByID = `-- name: GetProductByID :one
+select id, name, description, price, stock, seller_id, category_id, is_deleted, created_at, updated_at from products
+where id = $1
+`
+
+func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, error) {
+	row := q.queryRow(ctx, q.getProductByIDStmt, getProductByID, id)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Price,
+		&i.Stock,
+		&i.SellerID,
+		&i.CategoryID,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getProductsByCategoryID = `-- name: GetProductsByCategoryID :many
@@ -192,84 +295,4 @@ func (q *Queries) GetProductsBySellerID(ctx context.Context, sellerID uuid.UUID)
 		return nil, err
 	}
 	return items, nil
-}
-
-const insertProduct = `-- name: InsertProduct :one
-insert into products
-(name, description, price, stock, seller_id)
-values ($1, $2, $3, $4, $5)
-returning id, name, description, price, stock, seller_id, category_id, is_deleted, created_at, updated_at
-`
-
-type InsertProductParams struct {
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Price       int32     `json:"price"`
-	Stock       int32     `json:"stock"`
-	SellerID    uuid.UUID `json:"sellerId"`
-}
-
-func (q *Queries) InsertProduct(ctx context.Context, arg InsertProductParams) (Product, error) {
-	row := q.queryRow(ctx, q.insertProductStmt, insertProduct,
-		arg.Name,
-		arg.Description,
-		arg.Price,
-		arg.Stock,
-		arg.SellerID,
-	)
-	var i Product
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.Price,
-		&i.Stock,
-		&i.SellerID,
-		&i.CategoryID,
-		&i.IsDeleted,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const updateProductByID = `-- name: UpdateProductByID :one
-update products
-set name = $2, description = $3, price = $4, stock = $5, updated_at = $6
-where id = $1
-returning id, name, description, price, stock, seller_id, category_id, is_deleted, created_at, updated_at
-`
-
-type UpdateProductByIDParams struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Price       int32     `json:"price"`
-	Stock       int32     `json:"stock"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-}
-
-func (q *Queries) UpdateProductByID(ctx context.Context, arg UpdateProductByIDParams) (Product, error) {
-	row := q.queryRow(ctx, q.updateProductByIDStmt, updateProductByID,
-		arg.ID,
-		arg.Name,
-		arg.Description,
-		arg.Price,
-		arg.Stock,
-		arg.UpdatedAt,
-	)
-	var i Product
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.Price,
-		&i.Stock,
-		&i.SellerID,
-		&i.CategoryID,
-		&i.IsDeleted,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
 }
