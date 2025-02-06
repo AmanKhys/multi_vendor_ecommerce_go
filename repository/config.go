@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+
 	_ "github.com/lib/pq"
 
 	env "github.com/joho/godotenv"
@@ -14,18 +15,23 @@ func NewDBConfig() *sql.DB {
 	if err != nil {
 		log.Fatal("error loading environment vairables: ", err)
 	}
-	var dbName = envM["dbname"]
+	var dbName = envM["dbName"]
 	var dbPort = envM["dbPort"]
 	var dbDriver = envM["dbDriver"]
 	var host = envM["host"]
 	var dbUser = envM["dbUser"]
-	var pw = envM["dbpassword"]
+	var pw = envM["dbPassword"]
 
 	var connStr = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, pw, host, dbPort, dbName)
 	db, err := sql.Open(dbDriver, connStr)
 	if err != nil {
 		log.Fatal("error connecting to database: ", err)
 	}
+	err = db.Ping()
+	if err != nil {
+		log.Fatal("error pinging db: ", err)
+	}
+	log.Info("successful connection to  database;")
 
 	return db
 }
