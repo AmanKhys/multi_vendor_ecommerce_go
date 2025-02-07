@@ -13,32 +13,32 @@ import (
 
 type Address struct {
 	ID           uuid.UUID `json:"id"`
-	UserID       uuid.UUID `json:"userId"`
+	UserID       uuid.UUID `json:"user_id"`
 	Type         string    `json:"type"`
-	BuildingName string    `json:"buildingName"`
-	StreetName   string    `json:"streetName"`
+	BuildingName string    `json:"building_name"`
+	StreetName   string    `json:"street_name"`
 	Town         string    `json:"town"`
 	District     string    `json:"district"`
 	State        string    `json:"state"`
 	Pincode      int32     `json:"pincode"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type Category struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
-	IsDeleted bool      `json:"isDeleted"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	IsDeleted bool      `json:"is_deleted"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type LoginOtp struct {
 	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"userId"`
+	UserID    uuid.UUID `json:"user_id"`
 	Otp       int32     `json:"otp"`
-	CreatedAt time.Time `json:"createdAt"`
-	ExpiresAt time.Time `json:"expiresAt"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 type Product struct {
@@ -47,39 +47,39 @@ type Product struct {
 	Description string        `json:"description"`
 	Price       int32         `json:"price"`
 	Stock       int32         `json:"stock"`
-	SellerID    uuid.UUID     `json:"sellerId"`
-	CategoryID  uuid.NullUUID `json:"categoryId"`
-	IsDeleted   bool          `json:"isDeleted"`
-	CreatedAt   time.Time     `json:"createdAt"`
-	UpdatedAt   time.Time     `json:"updatedAt"`
+	SellerID    uuid.UUID     `json:"seller_id"`
+	CategoryID  uuid.NullUUID `json:"category_id"`
+	IsDeleted   bool          `json:"is_deleted"`
+	CreatedAt   time.Time     `json:"created_at"`
+	UpdatedAt   time.Time     `json:"updated_at"`
 }
 
 type ProductImage struct {
 	ID        uuid.UUID `json:"id"`
-	ProductID uuid.UUID `json:"productId"`
-	ImageUrl  string    `json:"imageUrl"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ProductID uuid.UUID `json:"product_id"`
+	ImageUrl  string    `json:"image_url"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type Review struct {
 	ID        uuid.UUID      `json:"id"`
-	UserID    uuid.UUID      `json:"userId"`
-	ProductID uuid.UUID      `json:"productId"`
+	UserID    uuid.UUID      `json:"user_id"`
+	ProductID uuid.UUID      `json:"product_id"`
 	Rating    int32          `json:"rating"`
 	Comment   sql.NullString `json:"comment"`
-	IsDeleted bool           `json:"isDeleted"`
-	IsEdited  bool           `json:"isEdited"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
+	IsDeleted bool           `json:"is_deleted"`
+	IsEdited  bool           `json:"is_edited"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 }
 
 type Session struct {
 	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"userId"`
-	IsValid   bool      `json:"isValid"`
-	CreatedAt time.Time `json:"createdAt"`
-	ExpiresAt time.Time `json:"expiresAt"`
+	UserID    uuid.UUID `json:"user_id"`
+	IsValid   bool      `json:"is_valid"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 type User struct {
@@ -89,9 +89,9 @@ type User struct {
 	Phone     int64          `json:"phone"`
 	Password  string         `json:"password"`
 	Role      string         `json:"role"`
-	IsBlocked bool           `json:"isBlocked"`
-	GstNo     sql.NullString `json:"gstNo"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
 	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 }

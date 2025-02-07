@@ -8,26 +8,95 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
 
-const blockUserByID = `-- name: BlockUserByID :one
-update users
-set is_blocked = true
-where id = $1
-returning id, name, email, phone, password, role, is_blocked, gst_no, about, created_at, updated_at
+const addUser = `-- name: AddUser :one
+insert into users
+(name, email, phone, password, role, gst_no, about)
+values ($1, $2, $3, $4, $5, $6, $7)
+returning id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at
 `
 
-func (q *Queries) BlockUserByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.queryRow(ctx, q.blockUserByIDStmt, blockUserByID, id)
-	var i User
+type AddUserParams struct {
+	Name     string         `json:"name"`
+	Email    string         `json:"email"`
+	Phone    int64          `json:"phone"`
+	Password string         `json:"password"`
+	Role     string         `json:"role"`
+	GstNo    sql.NullString `json:"gst_no"`
+	About    sql.NullString `json:"about"`
+}
+
+type AddUserRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Email     string         `json:"email"`
+	Phone     int64          `json:"phone"`
+	Role      string         `json:"role"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
+	About     sql.NullString `json:"about"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, error) {
+	row := q.queryRow(ctx, q.addUserStmt, addUser,
+		arg.Name,
+		arg.Email,
+		arg.Phone,
+		arg.Password,
+		arg.Role,
+		arg.GstNo,
+		arg.About,
+	)
+	var i AddUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Email,
 		&i.Phone,
-		&i.Password,
+		&i.Role,
+		&i.IsBlocked,
+		&i.GstNo,
+		&i.About,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const blockUserByID = `-- name: BlockUserByID :one
+update users
+set is_blocked = true, updated_at = current_timestamp
+where id = $1
+returning id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at
+`
+
+type BlockUserByIDRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Email     string         `json:"email"`
+	Phone     int64          `json:"phone"`
+	Role      string         `json:"role"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
+	About     sql.NullString `json:"about"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) BlockUserByID(ctx context.Context, id uuid.UUID) (BlockUserByIDRow, error) {
+	row := q.queryRow(ctx, q.blockUserByIDStmt, blockUserByID, id)
+	var i BlockUserByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
 		&i.Role,
 		&i.IsBlocked,
 		&i.GstNo,
@@ -39,24 +108,88 @@ func (q *Queries) BlockUserByID(ctx context.Context, id uuid.UUID) (User, error)
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-select id, name, email, phone, password, role, is_blocked, gst_no, about, created_at, updated_at from users
+select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
 `
 
-func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
+type GetAllUsersRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Email     string         `json:"email"`
+	Phone     int64          `json:"phone"`
+	Role      string         `json:"role"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
+	About     sql.NullString `json:"about"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) GetAllUsers(ctx context.Context) ([]GetAllUsersRow, error) {
 	rows, err := q.query(ctx, q.getAllUsersStmt, getAllUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []User{}
+	items := []GetAllUsersRow{}
 	for rows.Next() {
-		var i User
+		var i GetAllUsersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Email,
 			&i.Phone,
-			&i.Password,
+			&i.Role,
+			&i.IsBlocked,
+			&i.GstNo,
+			&i.About,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllUsersByRole = `-- name: GetAllUsersByRole :many
+select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
+where role = $1
+`
+
+type GetAllUsersByRoleRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Email     string         `json:"email"`
+	Phone     int64          `json:"phone"`
+	Role      string         `json:"role"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
+	About     sql.NullString `json:"about"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) GetAllUsersByRole(ctx context.Context, role string) ([]GetAllUsersByRoleRow, error) {
+	rows, err := q.query(ctx, q.getAllUsersByRoleStmt, getAllUsersByRole, role)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAllUsersByRoleRow{}
+	for rows.Next() {
+		var i GetAllUsersByRoleRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.Phone,
 			&i.Role,
 			&i.IsBlocked,
 			&i.GstNo,
@@ -98,12 +231,84 @@ func (q *Queries) GetOTPByUserID(ctx context.Context, userID uuid.UUID) (LoginOt
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-select id, name, email, phone, password, role, is_blocked, gst_no, about, created_at, updated_at from users
+select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
 where email = $1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+type GetUserByEmailRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Email     string         `json:"email"`
+	Phone     int64          `json:"phone"`
+	Role      string         `json:"role"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
+	About     sql.NullString `json:"about"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
 	row := q.queryRow(ctx, q.getUserByEmailStmt, getUserByEmail, email)
+	var i GetUserByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.IsBlocked,
+		&i.GstNo,
+		&i.About,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserById = `-- name: GetUserById :one
+select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
+where id = $1
+`
+
+type GetUserByIdRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Email     string         `json:"email"`
+	Phone     int64          `json:"phone"`
+	Role      string         `json:"role"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
+	About     sql.NullString `json:"about"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (GetUserByIdRow, error) {
+	row := q.queryRow(ctx, q.getUserByIdStmt, getUserById, id)
+	var i GetUserByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.IsBlocked,
+		&i.GstNo,
+		&i.About,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserWithPasswordByID = `-- name: GetUserWithPasswordByID :one
+select id, name, email, phone, password, role, is_blocked, gst_no, about, created_at, updated_at from users
+where id = $1
+`
+
+func (q *Queries) GetUserWithPasswordByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.queryRow(ctx, q.getUserWithPasswordByIDStmt, getUserWithPasswordByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -121,66 +326,38 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	return i, err
 }
 
-const getUserById = `-- name: GetUserById :many
-select id, name, email, phone, password, role, is_blocked, gst_no, about, created_at, updated_at from users
-where id = $1
-`
-
-func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) ([]User, error) {
-	rows, err := q.query(ctx, q.getUserByIdStmt, getUserById, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []User{}
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Email,
-			&i.Phone,
-			&i.Password,
-			&i.Role,
-			&i.IsBlocked,
-			&i.GstNo,
-			&i.About,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getUsersByRole = `-- name: GetUsersByRole :many
-select id, name, email, phone, password, role, is_blocked, gst_no, about, created_at, updated_at from users
+select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
 where role = $1
 `
 
-func (q *Queries) GetUsersByRole(ctx context.Context, role string) ([]User, error) {
+type GetUsersByRoleRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Email     string         `json:"email"`
+	Phone     int64          `json:"phone"`
+	Role      string         `json:"role"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
+	About     sql.NullString `json:"about"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) GetUsersByRole(ctx context.Context, role string) ([]GetUsersByRoleRow, error) {
 	rows, err := q.query(ctx, q.getUsersByRoleStmt, getUsersByRole, role)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []User{}
+	items := []GetUsersByRoleRow{}
 	for rows.Next() {
-		var i User
+		var i GetUsersByRoleRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Email,
 			&i.Phone,
-			&i.Password,
 			&i.Role,
 			&i.IsBlocked,
 			&i.GstNo,
@@ -201,66 +378,34 @@ func (q *Queries) GetUsersByRole(ctx context.Context, role string) ([]User, erro
 	return items, nil
 }
 
-const insertUser = `-- name: InsertUser :one
-insert into users
-(name, email, phone, password, role, gst_no, about)
-values ($1, $2, $3, $4, $5, $6, $7)
-returning id, name, email, phone, password, role, is_blocked, gst_no, about, created_at, updated_at
-`
-
-type InsertUserParams struct {
-	Name     string         `json:"name"`
-	Email    string         `json:"email"`
-	Phone    int64          `json:"phone"`
-	Password string         `json:"password"`
-	Role     string         `json:"role"`
-	GstNo    sql.NullString `json:"gstNo"`
-	About    sql.NullString `json:"about"`
-}
-
-func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, error) {
-	row := q.queryRow(ctx, q.insertUserStmt, insertUser,
-		arg.Name,
-		arg.Email,
-		arg.Phone,
-		arg.Password,
-		arg.Role,
-		arg.GstNo,
-		arg.About,
-	)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Email,
-		&i.Phone,
-		&i.Password,
-		&i.Role,
-		&i.IsBlocked,
-		&i.GstNo,
-		&i.About,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const unblockUserByID = `-- name: UnblockUserByID :one
 update users
-set is_blocked = false
+set is_blocked = false, updated_at = current_timestamp
 where id = $1
-returning id, name, email, phone, password, role, is_blocked, gst_no, about, created_at, updated_at
+returning id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at
 `
 
-func (q *Queries) UnblockUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+type UnblockUserByIDRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Email     string         `json:"email"`
+	Phone     int64          `json:"phone"`
+	Role      string         `json:"role"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
+	About     sql.NullString `json:"about"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) UnblockUserByID(ctx context.Context, id uuid.UUID) (UnblockUserByIDRow, error) {
 	row := q.queryRow(ctx, q.unblockUserByIDStmt, unblockUserByID, id)
-	var i User
+	var i UnblockUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Email,
 		&i.Phone,
-		&i.Password,
 		&i.Role,
 		&i.IsBlocked,
 		&i.GstNo,

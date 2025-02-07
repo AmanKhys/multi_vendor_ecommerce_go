@@ -1,11 +1,12 @@
 package seller
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"net/http"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -16,20 +17,10 @@ type Seller struct {
 }
 
 func (s *Seller) OwnProductsHandler(w http.ResponseWriter, r *http.Request) {
-	var SessionID, err = r.Cookie("SessionID")
-	if err != nil {
-		log.Warn(err)
-	}
-	uid, err := uuid.Parse(SessionID.Value)
-	if err != nil {
-		log.Warn("error parsing sessionID", err)
-		http.Error(w, "error parsing sessionID", http.StatusInternalServerError)
-		return
-	}
-	user, err := s.DB.GetUserBySessionID(r.Context(), uid)
-	if err != nil {
-		log.Warn("error fetching Seller from sessionID:", SessionID)
-		http.Error(w, "error fetching Seller from sessionID", http.StatusInternalServerError)
+	var user, ok = r.Context().Value(utils.UserKey).(db.User)
+	if !ok {
+		log.Warn("user not found in request context")
+		http.Error(w, "user not found in reqeust context", http.StatusInternalServerError)
 		return
 	}
 	products, err := s.DB.GetProductsBySellerID(r.Context(), user.ID)
@@ -49,7 +40,7 @@ func (s *Seller) OwnProductsHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	type req struct {
-		ProductID uuid.UUID `json:"product_id"`
+		ProductID uuid.UUID `json:"id"`
 	}
 	var request req
 	json.NewDecoder(r.Body).Decode(&request)
@@ -72,9 +63,10 @@ func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
-	var user, err = s.AuthenticateSeller(w, r)
-	if err != nil {
-		log.Warn(err)
+	var user, ok = r.Context().Value(utils.UserKey).(db.User)
+	if !ok {
+		log.Warn("user not found in request context")
+		http.Error(w, "user not found in request context", http.StatusInternalServerError)
 		return
 	}
 	var arg db.AddProductParams
@@ -95,13 +87,31 @@ func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
-	_, err := s.AuthenticateSeller(w, r)
-	if err != nil {
-		log.Warn(err)
+	var user, ok = r.Context().Value(utils.UserKey).(db.User)
+	if !ok {
+		log.Warn("user not found in request context")
+		http.Error(w, "user not found in request context", http.StatusInternalServerError)
+		return
 	}
 	var arg = db.EditProductByIDParams{}
 	json.NewDecoder(r.Body).Decode(&arg)
-	product, err := s.DB.EditProductByID(r.Context(), arg)
+	var productID = arg.ID
+	seller, err := s.DB.GetSellerByProductID(context.TODO(), productID)
+
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		log.Warn("error fetching sellerID from database")
+	}
+	if seller.ID != user.ID {
+		http.Error(w, "trying to edit products not owned by you", http.StatusBadRequest)
+		return
+	}
+
+	// logic
+	product, err := s.DB.EditProductByID(context.TODO(), arg)
 	if err == sql.ErrNoRows {
 		http.Error(w, "no product with the specified id", http.StatusBadRequest)
 		return
@@ -123,16 +133,42 @@ func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
-	_, err := s.AuthenticateSeller(w, r)
-	if err != nil {
-		log.Warn(err)
+	// take user from r context written by AuthenticateUserMiddleware
+	var user, ok = r.Context().Value(utils.UserKey).(db.User)
+	if !ok {
+		log.Warn("user not found in request context")
+		http.Error(w, "user not found in request context", http.StatusInternalServerError)
 		return
 	}
+
+	// arguemnt struct to unmarshall from r.Body
 	var req struct {
-		ProductID uuid.UUID `json:"product_id"`
+		ProductID uuid.UUID `json:"id"`
 	}
-	json.NewDecoder(r.Body).Decode(&req.ProductID)
-	product, err := s.DB.DeleteProductByID(r.Context(), req.ProductID)
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		log.Warn(err)
+		http.Error(w, "invalid data format", http.StatusBadRequest)
+		return
+	}
+
+	// checking if the user.ID is the same as the product.SellerID
+	var productID = req.ProductID
+	seller, err := s.DB.GetSellerByProductID(context.TODO(), productID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		log.Warn("error fetching sellerID from database")
+	}
+	if seller.ID != user.ID {
+		http.Error(w, "trying to edit products not owned by you", http.StatusBadRequest)
+		return
+	}
+
+	// business logic
+	product, err := s.DB.DeleteProductByID(context.TODO(), req.ProductID)
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, "error deleting product", http.StatusInternalServerError)
@@ -147,42 +183,4 @@ func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 		Message: "successfully deleted product",
 	}
 	json.NewEncoder(w).Encode(response)
-}
-
-func (s *Seller) AuthenticateSeller(w http.ResponseWriter, r *http.Request) (db.User, error) {
-	sessionCookie, err := r.Cookie("SessionID")
-	if err != nil {
-		log.Warn("SessionID cookie not found")
-		http.Error(w, "authentication required", http.StatusUnauthorized)
-		return db.User{}, errors.New("sessionID cookie missing")
-	}
-	if sessionCookie.Value == "" {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
-		return db.User{}, errors.New("empty sessionID")
-	}
-
-	uid, err := uuid.Parse(sessionCookie.Value)
-	if err != nil {
-		log.Warn("Invalid sessionID format")
-		http.Error(w, "invalid session", http.StatusUnauthorized)
-		return db.User{}, errors.New("invalid sessionID format")
-	}
-
-	user, err := s.DB.GetUserBySessionID(r.Context(), uid)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "invalid session", http.StatusUnauthorized)
-			return db.User{}, errors.New("session not found")
-		}
-		log.Error("Database error fetching user by sessionID:", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return db.User{}, errors.New("database error")
-	}
-
-	if user.Role != "seller" {
-		http.Error(w, "unauthorized", http.StatusForbidden)
-		return db.User{}, errors.New("user is not a seller")
-	}
-
-	return user, nil
 }

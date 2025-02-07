@@ -18,4 +18,4 @@ sql:
         emit_methods_with_db_argument: false
         emit_enum_valid_method: false
         emit_all_enum_values: false
-        json_tags_case_style: "camel"
+        json_tags_case_style: "snake"

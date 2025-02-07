@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -68,21 +70,44 @@ func (q *Queries) GetSessionDetailsByID(ctx context.Context, id uuid.UUID) (Sess
 }
 
 const getUserBySessionID = `-- name: GetUserBySessionID :one
-select u.id, u.name, u.email, u.phone, u.password, u.role, u.is_blocked, u.gst_no, u.about, u.created_at, u.updated_at from sessions s
+select 
+    u.id, 
+    u.name, 
+    u.email, 
+    u.phone, 
+    u.role, 
+    u.is_blocked, 
+    u.gst_no, 
+    u.about, 
+    u.created_at, 
+    u.updated_at
+from sessions s
 join users u
 on s.user_id = u.id
 where u.id = $1
 `
 
-func (q *Queries) GetUserBySessionID(ctx context.Context, id uuid.UUID) (User, error) {
+type GetUserBySessionIDRow struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Email     string         `json:"email"`
+	Phone     int64          `json:"phone"`
+	Role      string         `json:"role"`
+	IsBlocked bool           `json:"is_blocked"`
+	GstNo     sql.NullString `json:"gst_no"`
+	About     sql.NullString `json:"about"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) GetUserBySessionID(ctx context.Context, id uuid.UUID) (GetUserBySessionIDRow, error) {
 	row := q.queryRow(ctx, q.getUserBySessionIDStmt, getUserBySessionID, id)
-	var i User
+	var i GetUserBySessionIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Email,
 		&i.Phone,
-		&i.Password,
 		&i.Role,
 		&i.IsBlocked,
 		&i.GstNo,

@@ -1,3 +1,6 @@
+-- name: GetAllProductsForAdmin :many
+select * from products;
+
 -- name: AddProduct :one
 insert into products
 (name, description, price, stock, seller_id)
@@ -6,10 +9,11 @@ returning *;
 
 -- name: GetProductByID :one
 select * from products
-where id = $1;
+where id = $1 and is_deleted = false;
 
 -- name: GetAllProducts :many
-select * from products;
+select * from products
+where is_deleted = false;
 
 -- name: GetProductsByCategoryID :many
 select * from products
@@ -17,18 +21,18 @@ where category_id = $1;
 
 -- name: GetProductsBySellerID :many
 select * from products
-where seller_id = $1;
+where seller_id = $1 and is_deleted = false;
 
 -- name: EditProductByID :one
 update products
-set name = $2, description = $3, price = $4, stock = $5, updated_at = $6
-where id = $1
+set name = $2, description = $3, price = $4, stock = $5, updated_at = current_time
+where id = $1 and is_deleted = false
 returning *;
 
 -- name: DeleteProductByID :one
 update products
 set is_deleted = true
-where id = $1
+where id = $1 and is_deleted = false
 returning *;
 
 -- name: DeleteProductsBySellerID :many
@@ -37,3 +41,8 @@ set is_deleted = true
 where seller_id = $1
 returning *;
 
+-- name: GetSellerByProductID :one
+select u.* from  products p
+inner join users u
+on p.seller_id = u.id
+where p.id = $1 and u.role = 'seller' and p.is_deleted = false;
