@@ -16,6 +16,9 @@ func RegisterRoutes(mux *http.ServeMux) {
 	// mux.HandleFunc("GET /login/", g.LoginPageHandler)
 	mux.HandleFunc("POST /login", g.LoginHandler)
 	// mux.HandleFunc("GET /signup/", g.SignUpPageHandler)
-	mux.HandleFunc("POST /signup", g.SignUpHandler)
+	mux.HandleFunc("POST /user_signup", g.UserSignUpHandler)
+	mux.HandleFunc("POST /seller_signup", g.SellerSignUpHandler)
+	mux.HandleFunc("POST /user_signup_otp", g.UserSignUpOTPHandler)
+	mux.HandleFunc("POST /seller_signup_otp", g.SellerSignUpOTPHandler)
 
 }
