@@ -16,9 +16,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type EnvType string
+
+const (
+	Production  EnvType = "production"
+	Development EnvType = "development"
+	Testing     EnvType = "testing"
+)
+
 type config struct {
 	port int
-	env  string
+	env  EnvType
 }
 
 var dbConn = repository.NewDBConfig()
@@ -30,10 +38,16 @@ func main() {
 	if err != nil {
 		log.Fatal("couldn't load the env", err)
 	}
-	cfg.port, err = strconv.Atoi(envM["port"])
+	port, err := strconv.Atoi(envM["port"])
 	if err != nil {
 		log.Fatal("invalid port number")
 	}
+
+	cfg = config{
+		port: port,
+		env:  Production,
+	}
+
 	mux := router.SetupRouter()
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
@@ -42,7 +56,7 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
-	log.Printf("Server running on port %s", cfg.port)
+	log.Printf("Server running on port %d in %s", cfg.port, cfg.env)
 	err = srv.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
