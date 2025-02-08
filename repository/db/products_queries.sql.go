@@ -334,7 +334,7 @@ func (q *Queries) GetProductsBySellerID(ctx context.Context, sellerID uuid.UUID)
 }
 
 const getSellerByProductID = `-- name: GetSellerByProductID :one
-select u.id, u.name, u.email, u.phone, u.password, u.role, u.is_blocked, u.gst_no, u.about, u.created_at, u.updated_at from  products p
+select u.id, u.name, u.email, u.phone, u.password, u.role, u.email_verified, u.user_verified, u.is_blocked, u.gst_no, u.about, u.created_at, u.updated_at from  products p
 inner join users u
 on p.seller_id = u.id
 where p.id = $1 and u.role = 'seller' and p.is_deleted = false
@@ -350,6 +350,8 @@ func (q *Queries) GetSellerByProductID(ctx context.Context, id uuid.UUID) (User,
 		&i.Phone,
 		&i.Password,
 		&i.Role,
+		&i.EmailVerified,
+		&i.UserVerified,
 		&i.IsBlocked,
 		&i.GstNo,
 		&i.About,

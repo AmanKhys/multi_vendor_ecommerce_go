@@ -3,9 +3,11 @@ create table if not exists users (
     id uuid not null primary key default uuid_generate_v4(),
     name text not null,
     email text not null unique,
-    phone bigint not null unique,
+    phone bigint unique,
     password text not null,
     role text not null check (role in ('user', 'seller', 'admin')),
+    email_verified boolean not null default false,
+    user_verified boolean not null default false,
     is_blocked boolean not null default false,
     gst_no text unique, -- Only applicable for sellers
     about text, -- Only applicable for sellers
@@ -15,16 +17,6 @@ create table if not exists users (
     constraint name_check check (name ~* '^[a-za-z]{3,}[a-za-z ]{0,}$'),
     constraint phone_check check (phone >= 1000000000 and phone <= 9999999999),
     constraint updated_at_check check (updated_at >= created_at)
-);
-
-create table if not exists sessions (
-    id uuid not null primary key default uuid_generate_v4(),
-    user_id uuid not null,
-    is_valid boolean not null default true,
-    created_at timestamp without time zone not null default current_timestamp,
-    expires_at timestamp without time zone not null default current_timestamp + interval '7 days',
-    constraint user_id_fk foreign key (user_id) references users(id),
-    constraint expires_at_check check (expires_at >= created_at)
 );
 
 -- Addresses Table
@@ -118,11 +110,10 @@ create table if not exists login_otps (
 create table if not exists sessions (
     id uuid not null primary key default uuid_generate_v4(),
     user_id uuid not null,
-    ip_address inet not null,
+    ip_address text not null,
     user_agent text not null,
     created_at timestamp without time zone not null default current_timestamp,
     expires_at timestamp without time zone not null default (current_timestamp + interval '7 days'),
     is_active boolean not null default true,
     constraint user_id_fk foreign key (user_id) references users(id) on delete cascade
 );
-

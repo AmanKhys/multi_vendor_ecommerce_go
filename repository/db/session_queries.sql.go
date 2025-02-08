@@ -13,28 +13,37 @@ import (
 	"github.com/google/uuid"
 )
 
-const createNewSessionByUserID = `-- name: CreateNewSessionByUserID :one
+const addSession = `-- name: AddSession :one
 insert into sessions
-(user_id) 
-values ($1)
-returning id, user_id, is_valid, created_at, expires_at
+(user_id, ip_address, user_agent )
+values
+($1, $2, $3)
+returning id, user_id, ip_address, user_agent, created_at, expires_at, is_active
 `
 
-func (q *Queries) CreateNewSessionByUserID(ctx context.Context, userID uuid.UUID) (Session, error) {
-	row := q.queryRow(ctx, q.createNewSessionByUserIDStmt, createNewSessionByUserID, userID)
+type AddSessionParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	IpAddress string    `json:"ip_address"`
+	UserAgent string    `json:"user_agent"`
+}
+
+func (q *Queries) AddSession(ctx context.Context, arg AddSessionParams) (Session, error) {
+	row := q.queryRow(ctx, q.addSessionStmt, addSession, arg.UserID, arg.IpAddress, arg.UserAgent)
 	var i Session
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.IsValid,
+		&i.IpAddress,
+		&i.UserAgent,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.IsActive,
 	)
 	return i, err
 }
 
 const getAllSessionsByUserID = `-- name: GetAllSessionsByUserID :one
-select id, user_id, is_valid, created_at, expires_at from sessions
+select id, user_id, ip_address, user_agent, created_at, expires_at, is_active from sessions
 where user_id = $1
 `
 
@@ -44,15 +53,17 @@ func (q *Queries) GetAllSessionsByUserID(ctx context.Context, userID uuid.UUID) 
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.IsValid,
+		&i.IpAddress,
+		&i.UserAgent,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.IsActive,
 	)
 	return i, err
 }
 
 const getSessionDetailsByID = `-- name: GetSessionDetailsByID :one
-select id, user_id, is_valid, created_at, expires_at from sessions
+select id, user_id, ip_address, user_agent, created_at, expires_at, is_active from sessions
 where id = $1
 `
 
@@ -62,9 +73,11 @@ func (q *Queries) GetSessionDetailsByID(ctx context.Context, id uuid.UUID) (Sess
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.IsValid,
+		&i.IpAddress,
+		&i.UserAgent,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.IsActive,
 	)
 	return i, err
 }

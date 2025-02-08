@@ -1,47 +1,70 @@
 -- name: AddUser :one
-insert into users
-(name, email, phone, password, role, gst_no, about)
-values ($1, $2, $3, $4, $5, $6, $7)
-returning id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at;
+INSERT INTO users
+(name, email, phone, password, role)
+VALUES ($1, $2, $3, $4, 'user')
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at;
 
+-- name: AddSeller :one
+INSERT INTO users
+(name, email, phone, password, role, gst_no, about)
+VALUES ($1, $2, $3, $4, 'seller', $5, $6)
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at;
+
+-- name: VerifyUserEmailByID :one
+UPDATE users
+SET email_verified = true, user_verified = true, updated_at = current_timestamp
+WHERE id = $1
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at;
+
+-- name: VerifySellerEmailByID :one
+UPDATE users
+SET email_verified = true, updated_at = current_timestamp
+WHERE id = $1
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at;
+
+-- name: VerifySellerUserByID :one
+update users
+set user_verified = true, updated_at = current_timestamp
+where id = $1
+returning id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at;
 
 -- name: GetAllUsers :many
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users;
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users;
 
 -- name: GetAllUsersByRole :many
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
-where role = $1;
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+WHERE role = $1;
 
 -- name: GetUserById :one
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
-where id = $1;
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+WHERE id = $1;
 
--- name: GetUserWithPasswordByID :one
-select * from users
-where id = $1;
+-- name: GetUserWithPasswordByEmail :one
+SELECT * FROM users
+WHERE email = $1;
 
 -- name: GetUserByEmail :one
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
-where email = $1;
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+WHERE email = $1;
 
 -- name: GetUsersByRole :many
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
-where role = $1;
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+WHERE role = $1;
 
 -- name: BlockUserByID :one
-update users
-set is_blocked = true, updated_at = current_timestamp
-where id = $1
-returning id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at;
+UPDATE users
+SET is_blocked = true, updated_at = current_timestamp
+WHERE id = $1
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at;
 
 -- name: UnblockUserByID :one
-update users
-set is_blocked = false, updated_at = current_timestamp
-where id = $1
-returning id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at;
+UPDATE users
+SET is_blocked = false, updated_at = current_timestamp
+WHERE id = $1
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at;
 
 -- name: GetOTPByUserID :one
-select * from login_otps
-where user_id = $1
-order by created_at desc
-limit 1;
+SELECT * FROM login_otps
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT 1;

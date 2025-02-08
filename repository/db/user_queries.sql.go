@@ -13,34 +13,89 @@ import (
 	"github.com/google/uuid"
 )
 
-const addUser = `-- name: AddUser :one
-insert into users
+const addSeller = `-- name: AddSeller :one
+INSERT INTO users
 (name, email, phone, password, role, gst_no, about)
-values ($1, $2, $3, $4, $5, $6, $7)
-returning id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at
+VALUES ($1, $2, $3, $4, 'seller', $5, $6)
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at
 `
 
-type AddUserParams struct {
+type AddSellerParams struct {
 	Name     string         `json:"name"`
 	Email    string         `json:"email"`
 	Phone    int64          `json:"phone"`
 	Password string         `json:"password"`
-	Role     string         `json:"role"`
 	GstNo    sql.NullString `json:"gst_no"`
 	About    sql.NullString `json:"about"`
 }
 
+type AddSellerRow struct {
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         int64          `json:"phone"`
+	Role          string         `json:"role"`
+	IsBlocked     bool           `json:"is_blocked"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) AddSeller(ctx context.Context, arg AddSellerParams) (AddSellerRow, error) {
+	row := q.queryRow(ctx, q.addSellerStmt, addSeller,
+		arg.Name,
+		arg.Email,
+		arg.Phone,
+		arg.Password,
+		arg.GstNo,
+		arg.About,
+	)
+	var i AddSellerRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
+		&i.GstNo,
+		&i.About,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const addUser = `-- name: AddUser :one
+INSERT INTO users
+(name, email, phone, password, role)
+VALUES ($1, $2, $3, $4, 'user')
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
+`
+
+type AddUserParams struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Phone    int64  `json:"phone"`
+	Password string `json:"password"`
+}
+
 type AddUserRow struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
-	Role      string         `json:"role"`
-	IsBlocked bool           `json:"is_blocked"`
-	GstNo     sql.NullString `json:"gst_no"`
-	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Email         string    `json:"email"`
+	Phone         int64     `json:"phone"`
+	Role          string    `json:"role"`
+	IsBlocked     bool      `json:"is_blocked"`
+	EmailVerified bool      `json:"email_verified"`
+	UserVerified  bool      `json:"user_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, error) {
@@ -49,9 +104,6 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, e
 		arg.Email,
 		arg.Phone,
 		arg.Password,
-		arg.Role,
-		arg.GstNo,
-		arg.About,
 	)
 	var i AddUserRow
 	err := row.Scan(
@@ -61,8 +113,8 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, e
 		&i.Phone,
 		&i.Role,
 		&i.IsBlocked,
-		&i.GstNo,
-		&i.About,
+		&i.EmailVerified,
+		&i.UserVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -70,23 +122,25 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, e
 }
 
 const blockUserByID = `-- name: BlockUserByID :one
-update users
-set is_blocked = true, updated_at = current_timestamp
-where id = $1
-returning id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at
+UPDATE users
+SET is_blocked = true, updated_at = current_timestamp
+WHERE id = $1
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at
 `
 
 type BlockUserByIDRow struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
-	Role      string         `json:"role"`
-	IsBlocked bool           `json:"is_blocked"`
-	GstNo     sql.NullString `json:"gst_no"`
-	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         int64          `json:"phone"`
+	Role          string         `json:"role"`
+	IsBlocked     bool           `json:"is_blocked"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) BlockUserByID(ctx context.Context, id uuid.UUID) (BlockUserByIDRow, error) {
@@ -99,6 +153,8 @@ func (q *Queries) BlockUserByID(ctx context.Context, id uuid.UUID) (BlockUserByI
 		&i.Phone,
 		&i.Role,
 		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
 		&i.GstNo,
 		&i.About,
 		&i.CreatedAt,
@@ -108,20 +164,22 @@ func (q *Queries) BlockUserByID(ctx context.Context, id uuid.UUID) (BlockUserByI
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
 `
 
 type GetAllUsersRow struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
-	Role      string         `json:"role"`
-	IsBlocked bool           `json:"is_blocked"`
-	GstNo     sql.NullString `json:"gst_no"`
-	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         int64          `json:"phone"`
+	Role          string         `json:"role"`
+	IsBlocked     bool           `json:"is_blocked"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]GetAllUsersRow, error) {
@@ -140,6 +198,8 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]GetAllUsersRow, error) {
 			&i.Phone,
 			&i.Role,
 			&i.IsBlocked,
+			&i.EmailVerified,
+			&i.UserVerified,
 			&i.GstNo,
 			&i.About,
 			&i.CreatedAt,
@@ -159,21 +219,23 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]GetAllUsersRow, error) {
 }
 
 const getAllUsersByRole = `-- name: GetAllUsersByRole :many
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
-where role = $1
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+WHERE role = $1
 `
 
 type GetAllUsersByRoleRow struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
-	Role      string         `json:"role"`
-	IsBlocked bool           `json:"is_blocked"`
-	GstNo     sql.NullString `json:"gst_no"`
-	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         int64          `json:"phone"`
+	Role          string         `json:"role"`
+	IsBlocked     bool           `json:"is_blocked"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) GetAllUsersByRole(ctx context.Context, role string) ([]GetAllUsersByRoleRow, error) {
@@ -192,6 +254,8 @@ func (q *Queries) GetAllUsersByRole(ctx context.Context, role string) ([]GetAllU
 			&i.Phone,
 			&i.Role,
 			&i.IsBlocked,
+			&i.EmailVerified,
+			&i.UserVerified,
 			&i.GstNo,
 			&i.About,
 			&i.CreatedAt,
@@ -211,10 +275,10 @@ func (q *Queries) GetAllUsersByRole(ctx context.Context, role string) ([]GetAllU
 }
 
 const getOTPByUserID = `-- name: GetOTPByUserID :one
-select id, user_id, otp, created_at, expires_at from login_otps
-where user_id = $1
-order by created_at desc
-limit 1
+SELECT id, user_id, otp, created_at, expires_at FROM login_otps
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT 1
 `
 
 func (q *Queries) GetOTPByUserID(ctx context.Context, userID uuid.UUID) (LoginOtp, error) {
@@ -231,21 +295,23 @@ func (q *Queries) GetOTPByUserID(ctx context.Context, userID uuid.UUID) (LoginOt
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
-where email = $1
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+WHERE email = $1
 `
 
 type GetUserByEmailRow struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
-	Role      string         `json:"role"`
-	IsBlocked bool           `json:"is_blocked"`
-	GstNo     sql.NullString `json:"gst_no"`
-	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         int64          `json:"phone"`
+	Role          string         `json:"role"`
+	IsBlocked     bool           `json:"is_blocked"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
@@ -258,6 +324,8 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 		&i.Phone,
 		&i.Role,
 		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
 		&i.GstNo,
 		&i.About,
 		&i.CreatedAt,
@@ -267,21 +335,23 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 }
 
 const getUserById = `-- name: GetUserById :one
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
-where id = $1
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+WHERE id = $1
 `
 
 type GetUserByIdRow struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
-	Role      string         `json:"role"`
-	IsBlocked bool           `json:"is_blocked"`
-	GstNo     sql.NullString `json:"gst_no"`
-	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         int64          `json:"phone"`
+	Role          string         `json:"role"`
+	IsBlocked     bool           `json:"is_blocked"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (GetUserByIdRow, error) {
@@ -294,6 +364,8 @@ func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (GetUserByIdRow
 		&i.Phone,
 		&i.Role,
 		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
 		&i.GstNo,
 		&i.About,
 		&i.CreatedAt,
@@ -302,13 +374,13 @@ func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (GetUserByIdRow
 	return i, err
 }
 
-const getUserWithPasswordByID = `-- name: GetUserWithPasswordByID :one
-select id, name, email, phone, password, role, is_blocked, gst_no, about, created_at, updated_at from users
-where id = $1
+const getUserWithPasswordByEmail = `-- name: GetUserWithPasswordByEmail :one
+SELECT id, name, email, phone, password, role, email_verified, user_verified, is_blocked, gst_no, about, created_at, updated_at FROM users
+WHERE email = $1
 `
 
-func (q *Queries) GetUserWithPasswordByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.queryRow(ctx, q.getUserWithPasswordByIDStmt, getUserWithPasswordByID, id)
+func (q *Queries) GetUserWithPasswordByEmail(ctx context.Context, email string) (User, error) {
+	row := q.queryRow(ctx, q.getUserWithPasswordByEmailStmt, getUserWithPasswordByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -317,6 +389,8 @@ func (q *Queries) GetUserWithPasswordByID(ctx context.Context, id uuid.UUID) (Us
 		&i.Phone,
 		&i.Password,
 		&i.Role,
+		&i.EmailVerified,
+		&i.UserVerified,
 		&i.IsBlocked,
 		&i.GstNo,
 		&i.About,
@@ -327,21 +401,23 @@ func (q *Queries) GetUserWithPasswordByID(ctx context.Context, id uuid.UUID) (Us
 }
 
 const getUsersByRole = `-- name: GetUsersByRole :many
-select id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at from users
-where role = $1
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+WHERE role = $1
 `
 
 type GetUsersByRoleRow struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
-	Role      string         `json:"role"`
-	IsBlocked bool           `json:"is_blocked"`
-	GstNo     sql.NullString `json:"gst_no"`
-	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         int64          `json:"phone"`
+	Role          string         `json:"role"`
+	IsBlocked     bool           `json:"is_blocked"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) GetUsersByRole(ctx context.Context, role string) ([]GetUsersByRoleRow, error) {
@@ -360,6 +436,8 @@ func (q *Queries) GetUsersByRole(ctx context.Context, role string) ([]GetUsersBy
 			&i.Phone,
 			&i.Role,
 			&i.IsBlocked,
+			&i.EmailVerified,
+			&i.UserVerified,
 			&i.GstNo,
 			&i.About,
 			&i.CreatedAt,
@@ -379,23 +457,25 @@ func (q *Queries) GetUsersByRole(ctx context.Context, role string) ([]GetUsersBy
 }
 
 const unblockUserByID = `-- name: UnblockUserByID :one
-update users
-set is_blocked = false, updated_at = current_timestamp
-where id = $1
-returning id, name, email, phone, role, is_blocked, gst_no, about, created_at, updated_at
+UPDATE users
+SET is_blocked = false, updated_at = current_timestamp
+WHERE id = $1
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at
 `
 
 type UnblockUserByIDRow struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
-	Role      string         `json:"role"`
-	IsBlocked bool           `json:"is_blocked"`
-	GstNo     sql.NullString `json:"gst_no"`
-	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         int64          `json:"phone"`
+	Role          string         `json:"role"`
+	IsBlocked     bool           `json:"is_blocked"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) UnblockUserByID(ctx context.Context, id uuid.UUID) (UnblockUserByIDRow, error) {
@@ -408,8 +488,124 @@ func (q *Queries) UnblockUserByID(ctx context.Context, id uuid.UUID) (UnblockUse
 		&i.Phone,
 		&i.Role,
 		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
 		&i.GstNo,
 		&i.About,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const verifySellerEmailByID = `-- name: VerifySellerEmailByID :one
+UPDATE users
+SET email_verified = true, updated_at = current_timestamp
+WHERE id = $1
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
+`
+
+type VerifySellerEmailByIDRow struct {
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Email         string    `json:"email"`
+	Phone         int64     `json:"phone"`
+	Role          string    `json:"role"`
+	IsBlocked     bool      `json:"is_blocked"`
+	EmailVerified bool      `json:"email_verified"`
+	UserVerified  bool      `json:"user_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (q *Queries) VerifySellerEmailByID(ctx context.Context, id uuid.UUID) (VerifySellerEmailByIDRow, error) {
+	row := q.queryRow(ctx, q.verifySellerEmailByIDStmt, verifySellerEmailByID, id)
+	var i VerifySellerEmailByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const verifySellerUserByID = `-- name: VerifySellerUserByID :one
+update users
+set user_verified = true, updated_at = current_timestamp
+where id = $1
+returning id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
+`
+
+type VerifySellerUserByIDRow struct {
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Email         string    `json:"email"`
+	Phone         int64     `json:"phone"`
+	Role          string    `json:"role"`
+	IsBlocked     bool      `json:"is_blocked"`
+	EmailVerified bool      `json:"email_verified"`
+	UserVerified  bool      `json:"user_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (q *Queries) VerifySellerUserByID(ctx context.Context, id uuid.UUID) (VerifySellerUserByIDRow, error) {
+	row := q.queryRow(ctx, q.verifySellerUserByIDStmt, verifySellerUserByID, id)
+	var i VerifySellerUserByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const verifyUserEmailByID = `-- name: VerifyUserEmailByID :one
+UPDATE users
+SET email_verified = true, user_verified = true, updated_at = current_timestamp
+WHERE id = $1
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
+`
+
+type VerifyUserEmailByIDRow struct {
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Email         string    `json:"email"`
+	Phone         int64     `json:"phone"`
+	Role          string    `json:"role"`
+	IsBlocked     bool      `json:"is_blocked"`
+	EmailVerified bool      `json:"email_verified"`
+	UserVerified  bool      `json:"user_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (q *Queries) VerifyUserEmailByID(ctx context.Context, id uuid.UUID) (VerifyUserEmailByIDRow, error) {
+	row := q.queryRow(ctx, q.verifyUserEmailByIDStmt, verifyUserEmailByID, id)
+	var i VerifyUserEmailByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

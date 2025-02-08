@@ -1,9 +1,3 @@
--- name: CreateNewSessionByUserID :one
-insert into sessions
-(user_id) 
-values ($1)
-returning *;
-
 -- name: GetSessionDetailsByID :one
 select * from sessions
 where id = $1;
@@ -28,3 +22,11 @@ from sessions s
 join users u
 on s.user_id = u.id
 where u.id = $1;
+
+
+-- name: AddSession :one
+insert into sessions
+(user_id, ip_address, user_agent )
+values
+($1, $2, $3)
+returning *;

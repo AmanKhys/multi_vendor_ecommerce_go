@@ -30,14 +30,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addProductStmt, err = db.PrepareContext(ctx, addProduct); err != nil {
 		return nil, fmt.Errorf("error preparing query AddProduct: %w", err)
 	}
+	if q.addSellerStmt, err = db.PrepareContext(ctx, addSeller); err != nil {
+		return nil, fmt.Errorf("error preparing query AddSeller: %w", err)
+	}
+	if q.addSessionStmt, err = db.PrepareContext(ctx, addSession); err != nil {
+		return nil, fmt.Errorf("error preparing query AddSession: %w", err)
+	}
 	if q.addUserStmt, err = db.PrepareContext(ctx, addUser); err != nil {
 		return nil, fmt.Errorf("error preparing query AddUser: %w", err)
 	}
 	if q.blockUserByIDStmt, err = db.PrepareContext(ctx, blockUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query BlockUserByID: %w", err)
-	}
-	if q.createNewSessionByUserIDStmt, err = db.PrepareContext(ctx, createNewSessionByUserID); err != nil {
-		return nil, fmt.Errorf("error preparing query CreateNewSessionByUserID: %w", err)
 	}
 	if q.deleteCategoryByIDStmt, err = db.PrepareContext(ctx, deleteCategoryByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteCategoryByID: %w", err)
@@ -105,14 +108,23 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUserBySessionIDStmt, err = db.PrepareContext(ctx, getUserBySessionID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserBySessionID: %w", err)
 	}
-	if q.getUserWithPasswordByIDStmt, err = db.PrepareContext(ctx, getUserWithPasswordByID); err != nil {
-		return nil, fmt.Errorf("error preparing query GetUserWithPasswordByID: %w", err)
+	if q.getUserWithPasswordByEmailStmt, err = db.PrepareContext(ctx, getUserWithPasswordByEmail); err != nil {
+		return nil, fmt.Errorf("error preparing query GetUserWithPasswordByEmail: %w", err)
 	}
 	if q.getUsersByRoleStmt, err = db.PrepareContext(ctx, getUsersByRole); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUsersByRole: %w", err)
 	}
 	if q.unblockUserByIDStmt, err = db.PrepareContext(ctx, unblockUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query UnblockUserByID: %w", err)
+	}
+	if q.verifySellerEmailByIDStmt, err = db.PrepareContext(ctx, verifySellerEmailByID); err != nil {
+		return nil, fmt.Errorf("error preparing query VerifySellerEmailByID: %w", err)
+	}
+	if q.verifySellerUserByIDStmt, err = db.PrepareContext(ctx, verifySellerUserByID); err != nil {
+		return nil, fmt.Errorf("error preparing query VerifySellerUserByID: %w", err)
+	}
+	if q.verifyUserEmailByIDStmt, err = db.PrepareContext(ctx, verifyUserEmailByID); err != nil {
+		return nil, fmt.Errorf("error preparing query VerifyUserEmailByID: %w", err)
 	}
 	return &q, nil
 }
@@ -129,6 +141,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing addProductStmt: %w", cerr)
 		}
 	}
+	if q.addSellerStmt != nil {
+		if cerr := q.addSellerStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addSellerStmt: %w", cerr)
+		}
+	}
+	if q.addSessionStmt != nil {
+		if cerr := q.addSessionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addSessionStmt: %w", cerr)
+		}
+	}
 	if q.addUserStmt != nil {
 		if cerr := q.addUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addUserStmt: %w", cerr)
@@ -137,11 +159,6 @@ func (q *Queries) Close() error {
 	if q.blockUserByIDStmt != nil {
 		if cerr := q.blockUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing blockUserByIDStmt: %w", cerr)
-		}
-	}
-	if q.createNewSessionByUserIDStmt != nil {
-		if cerr := q.createNewSessionByUserIDStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing createNewSessionByUserIDStmt: %w", cerr)
 		}
 	}
 	if q.deleteCategoryByIDStmt != nil {
@@ -254,9 +271,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getUserBySessionIDStmt: %w", cerr)
 		}
 	}
-	if q.getUserWithPasswordByIDStmt != nil {
-		if cerr := q.getUserWithPasswordByIDStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getUserWithPasswordByIDStmt: %w", cerr)
+	if q.getUserWithPasswordByEmailStmt != nil {
+		if cerr := q.getUserWithPasswordByEmailStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getUserWithPasswordByEmailStmt: %w", cerr)
 		}
 	}
 	if q.getUsersByRoleStmt != nil {
@@ -267,6 +284,21 @@ func (q *Queries) Close() error {
 	if q.unblockUserByIDStmt != nil {
 		if cerr := q.unblockUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing unblockUserByIDStmt: %w", cerr)
+		}
+	}
+	if q.verifySellerEmailByIDStmt != nil {
+		if cerr := q.verifySellerEmailByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing verifySellerEmailByIDStmt: %w", cerr)
+		}
+	}
+	if q.verifySellerUserByIDStmt != nil {
+		if cerr := q.verifySellerUserByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing verifySellerUserByIDStmt: %w", cerr)
+		}
+	}
+	if q.verifyUserEmailByIDStmt != nil {
+		if cerr := q.verifyUserEmailByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing verifyUserEmailByIDStmt: %w", cerr)
 		}
 	}
 	return err
@@ -306,73 +338,81 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                           DBTX
-	tx                           *sql.Tx
-	addCateogryStmt              *sql.Stmt
-	addProductStmt               *sql.Stmt
-	addUserStmt                  *sql.Stmt
-	blockUserByIDStmt            *sql.Stmt
-	createNewSessionByUserIDStmt *sql.Stmt
-	deleteCategoryByIDStmt       *sql.Stmt
-	deleteProductByIDStmt        *sql.Stmt
-	deleteProductsBySellerIDStmt *sql.Stmt
-	editCategoryNameByIDStmt     *sql.Stmt
-	editProductByIDStmt          *sql.Stmt
-	getAllCategoriesStmt         *sql.Stmt
-	getAllCategoriesForAdminStmt *sql.Stmt
-	getAllProductsStmt           *sql.Stmt
-	getAllProductsForAdminStmt   *sql.Stmt
-	getAllSessionsByUserIDStmt   *sql.Stmt
-	getAllUsersStmt              *sql.Stmt
-	getAllUsersByRoleStmt        *sql.Stmt
-	getCategoryByIDStmt          *sql.Stmt
-	getOTPByUserIDStmt           *sql.Stmt
-	getProductByIDStmt           *sql.Stmt
-	getProductsByCategoryIDStmt  *sql.Stmt
-	getProductsBySellerIDStmt    *sql.Stmt
-	getSellerByProductIDStmt     *sql.Stmt
-	getSessionDetailsByIDStmt    *sql.Stmt
-	getUserByEmailStmt           *sql.Stmt
-	getUserByIdStmt              *sql.Stmt
-	getUserBySessionIDStmt       *sql.Stmt
-	getUserWithPasswordByIDStmt  *sql.Stmt
-	getUsersByRoleStmt           *sql.Stmt
-	unblockUserByIDStmt          *sql.Stmt
+	db                             DBTX
+	tx                             *sql.Tx
+	addCateogryStmt                *sql.Stmt
+	addProductStmt                 *sql.Stmt
+	addSellerStmt                  *sql.Stmt
+	addSessionStmt                 *sql.Stmt
+	addUserStmt                    *sql.Stmt
+	blockUserByIDStmt              *sql.Stmt
+	deleteCategoryByIDStmt         *sql.Stmt
+	deleteProductByIDStmt          *sql.Stmt
+	deleteProductsBySellerIDStmt   *sql.Stmt
+	editCategoryNameByIDStmt       *sql.Stmt
+	editProductByIDStmt            *sql.Stmt
+	getAllCategoriesStmt           *sql.Stmt
+	getAllCategoriesForAdminStmt   *sql.Stmt
+	getAllProductsStmt             *sql.Stmt
+	getAllProductsForAdminStmt     *sql.Stmt
+	getAllSessionsByUserIDStmt     *sql.Stmt
+	getAllUsersStmt                *sql.Stmt
+	getAllUsersByRoleStmt          *sql.Stmt
+	getCategoryByIDStmt            *sql.Stmt
+	getOTPByUserIDStmt             *sql.Stmt
+	getProductByIDStmt             *sql.Stmt
+	getProductsByCategoryIDStmt    *sql.Stmt
+	getProductsBySellerIDStmt      *sql.Stmt
+	getSellerByProductIDStmt       *sql.Stmt
+	getSessionDetailsByIDStmt      *sql.Stmt
+	getUserByEmailStmt             *sql.Stmt
+	getUserByIdStmt                *sql.Stmt
+	getUserBySessionIDStmt         *sql.Stmt
+	getUserWithPasswordByEmailStmt *sql.Stmt
+	getUsersByRoleStmt             *sql.Stmt
+	unblockUserByIDStmt            *sql.Stmt
+	verifySellerEmailByIDStmt      *sql.Stmt
+	verifySellerUserByIDStmt       *sql.Stmt
+	verifyUserEmailByIDStmt        *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                           tx,
-		tx:                           tx,
-		addCateogryStmt:              q.addCateogryStmt,
-		addProductStmt:               q.addProductStmt,
-		addUserStmt:                  q.addUserStmt,
-		blockUserByIDStmt:            q.blockUserByIDStmt,
-		createNewSessionByUserIDStmt: q.createNewSessionByUserIDStmt,
-		deleteCategoryByIDStmt:       q.deleteCategoryByIDStmt,
-		deleteProductByIDStmt:        q.deleteProductByIDStmt,
-		deleteProductsBySellerIDStmt: q.deleteProductsBySellerIDStmt,
-		editCategoryNameByIDStmt:     q.editCategoryNameByIDStmt,
-		editProductByIDStmt:          q.editProductByIDStmt,
-		getAllCategoriesStmt:         q.getAllCategoriesStmt,
-		getAllCategoriesForAdminStmt: q.getAllCategoriesForAdminStmt,
-		getAllProductsStmt:           q.getAllProductsStmt,
-		getAllProductsForAdminStmt:   q.getAllProductsForAdminStmt,
-		getAllSessionsByUserIDStmt:   q.getAllSessionsByUserIDStmt,
-		getAllUsersStmt:              q.getAllUsersStmt,
-		getAllUsersByRoleStmt:        q.getAllUsersByRoleStmt,
-		getCategoryByIDStmt:          q.getCategoryByIDStmt,
-		getOTPByUserIDStmt:           q.getOTPByUserIDStmt,
-		getProductByIDStmt:           q.getProductByIDStmt,
-		getProductsByCategoryIDStmt:  q.getProductsByCategoryIDStmt,
-		getProductsBySellerIDStmt:    q.getProductsBySellerIDStmt,
-		getSellerByProductIDStmt:     q.getSellerByProductIDStmt,
-		getSessionDetailsByIDStmt:    q.getSessionDetailsByIDStmt,
-		getUserByEmailStmt:           q.getUserByEmailStmt,
-		getUserByIdStmt:              q.getUserByIdStmt,
-		getUserBySessionIDStmt:       q.getUserBySessionIDStmt,
-		getUserWithPasswordByIDStmt:  q.getUserWithPasswordByIDStmt,
-		getUsersByRoleStmt:           q.getUsersByRoleStmt,
-		unblockUserByIDStmt:          q.unblockUserByIDStmt,
+		db:                             tx,
+		tx:                             tx,
+		addCateogryStmt:                q.addCateogryStmt,
+		addProductStmt:                 q.addProductStmt,
+		addSellerStmt:                  q.addSellerStmt,
+		addSessionStmt:                 q.addSessionStmt,
+		addUserStmt:                    q.addUserStmt,
+		blockUserByIDStmt:              q.blockUserByIDStmt,
+		deleteCategoryByIDStmt:         q.deleteCategoryByIDStmt,
+		deleteProductByIDStmt:          q.deleteProductByIDStmt,
+		deleteProductsBySellerIDStmt:   q.deleteProductsBySellerIDStmt,
+		editCategoryNameByIDStmt:       q.editCategoryNameByIDStmt,
+		editProductByIDStmt:            q.editProductByIDStmt,
+		getAllCategoriesStmt:           q.getAllCategoriesStmt,
+		getAllCategoriesForAdminStmt:   q.getAllCategoriesForAdminStmt,
+		getAllProductsStmt:             q.getAllProductsStmt,
+		getAllProductsForAdminStmt:     q.getAllProductsForAdminStmt,
+		getAllSessionsByUserIDStmt:     q.getAllSessionsByUserIDStmt,
+		getAllUsersStmt:                q.getAllUsersStmt,
+		getAllUsersByRoleStmt:          q.getAllUsersByRoleStmt,
+		getCategoryByIDStmt:            q.getCategoryByIDStmt,
+		getOTPByUserIDStmt:             q.getOTPByUserIDStmt,
+		getProductByIDStmt:             q.getProductByIDStmt,
+		getProductsByCategoryIDStmt:    q.getProductsByCategoryIDStmt,
+		getProductsBySellerIDStmt:      q.getProductsBySellerIDStmt,
+		getSellerByProductIDStmt:       q.getSellerByProductIDStmt,
+		getSessionDetailsByIDStmt:      q.getSessionDetailsByIDStmt,
+		getUserByEmailStmt:             q.getUserByEmailStmt,
+		getUserByIdStmt:                q.getUserByIdStmt,
+		getUserBySessionIDStmt:         q.getUserBySessionIDStmt,
+		getUserWithPasswordByEmailStmt: q.getUserWithPasswordByEmailStmt,
+		getUsersByRoleStmt:             q.getUsersByRoleStmt,
+		unblockUserByIDStmt:            q.unblockUserByIDStmt,
+		verifySellerEmailByIDStmt:      q.verifySellerEmailByIDStmt,
+		verifySellerUserByIDStmt:       q.verifySellerUserByIDStmt,
+		verifyUserEmailByIDStmt:        q.verifyUserEmailByIDStmt,
 	}
 }

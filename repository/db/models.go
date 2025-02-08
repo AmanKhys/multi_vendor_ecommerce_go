@@ -77,21 +77,25 @@ type Review struct {
 type Session struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`
-	IsValid   bool      `json:"is_valid"`
+	IpAddress string    `json:"ip_address"`
+	UserAgent string    `json:"user_agent"`
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
+	IsActive  bool      `json:"is_active"`
 }
 
 type User struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
-	Password  string         `json:"password"`
-	Role      string         `json:"role"`
-	IsBlocked bool           `json:"is_blocked"`
-	GstNo     sql.NullString `json:"gst_no"`
-	About     sql.NullString `json:"about"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         int64          `json:"phone"`
+	Password      string         `json:"password"`
+	Role          string         `json:"role"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	IsBlocked     bool           `json:"is_blocked"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
