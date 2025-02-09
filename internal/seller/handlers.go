@@ -17,13 +17,13 @@ type Seller struct {
 }
 
 func (s *Seller) OwnProductsHandler(w http.ResponseWriter, r *http.Request) {
-	var user, ok = r.Context().Value(utils.UserKey).(db.User)
+	var user, ok = r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
 	if !ok {
 		log.Warn("user not found in request context")
 		http.Error(w, "user not found in reqeust context", http.StatusInternalServerError)
 		return
 	}
-	products, err := s.DB.GetProductsBySellerID(r.Context(), user.ID)
+	products, err := s.DB.GetProductsBySellerID(context.TODO(), user.ID)
 	if err != nil {
 		log.Warn("error fetching products for seller: ", user.ID, ":", err)
 		http.Error(w, "unable to fetch seller products", http.StatusInternalServerError)
@@ -44,7 +44,7 @@ func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var request req
 	json.NewDecoder(r.Body).Decode(&request)
-	product, err := s.DB.GetProductByID(r.Context(), request.ProductID)
+	product, err := s.DB.GetProductByID(context.TODO(), request.ProductID)
 	if err != nil {
 		log.Warn("error fetching product from seller")
 		http.Error(w, "error fetching product", http.StatusInternalServerError)
@@ -54,6 +54,7 @@ func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		Data db.Product `json:"data"`
 	}
 	resp := response{Data: product}
+	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		log.Warn("error parsing response")
@@ -63,7 +64,7 @@ func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
-	var user, ok = r.Context().Value(utils.UserKey).(db.User)
+	var user, ok = r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
 	if !ok {
 		log.Warn("user not found in request context")
 		http.Error(w, "user not found in request context", http.StatusInternalServerError)
@@ -72,9 +73,11 @@ func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 	var arg db.AddProductParams
 	json.NewDecoder(r.Body).Decode(&arg)
 	arg.SellerID = user.ID
-	product, err := s.DB.AddProduct(r.Context(), arg)
+	product, err := s.DB.AddProduct(context.TODO(), arg)
 	if err != nil {
+		log.Info("product", arg)
 		log.Warnf("error adding product from sellerID: %s", user.ID)
+		log.Warn(err)
 		http.Error(w, "internal error while adding product", http.StatusInternalServerError)
 		return
 	}
@@ -83,11 +86,12 @@ func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		Message string     `json:"message"`
 	}
 	var response = resp{Data: product, Message: "product added successfully"}
+	w.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
 
 func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
-	var user, ok = r.Context().Value(utils.UserKey).(db.User)
+	var user, ok = r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
 	if !ok {
 		log.Warn("user not found in request context")
 		http.Error(w, "user not found in request context", http.StatusInternalServerError)
@@ -129,12 +133,13 @@ func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
 		Data:    product,
 		Message: "successfully updated product",
 	}
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
 
 func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 	// take user from r context written by AuthenticateUserMiddleware
-	var user, ok = r.Context().Value(utils.UserKey).(db.User)
+	var user, ok = r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
 	if !ok {
 		log.Warn("user not found in request context")
 		http.Error(w, "user not found in request context", http.StatusInternalServerError)
@@ -156,6 +161,7 @@ func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 	var productID = req.ProductID
 	seller, err := s.DB.GetSellerByProductID(context.TODO(), productID)
 	if err == sql.ErrNoRows {
+		log.Info(seller)
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -182,5 +188,6 @@ func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 		Product: product,
 		Message: "successfully deleted product",
 	}
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
