@@ -24,7 +24,10 @@ func AuthenticateUserMiddleware(next http.HandlerFunc, role string) http.Handler
 			http.Error(w, "authentication required", http.StatusUnauthorized)
 			return
 		}
+		log.Info("Received SessionID:", sessionCookie.Value)
+
 		if sessionCookie.Value == "" {
+			log.Info("Received SessionID : ", sessionCookie.Value)
 			http.Error(w, "invalid session", http.StatusUnauthorized)
 			return
 		}
@@ -37,6 +40,7 @@ func AuthenticateUserMiddleware(next http.HandlerFunc, role string) http.Handler
 		}
 
 		user, err := DB.GetUserBySessionID(r.Context(), uid)
+		log.Info(user)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				http.Error(w, "invalid session", http.StatusUnauthorized)
