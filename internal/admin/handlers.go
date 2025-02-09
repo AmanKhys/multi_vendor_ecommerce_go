@@ -14,8 +14,6 @@ import (
 
 type Admin struct{ DB *db.Queries }
 
-const AdminRole string = "admin"
-
 func (a *Admin) AdminAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var resp struct {
 		Data    []db.GetAllUsersRow `json:"data"`
@@ -135,7 +133,7 @@ func (a *Admin) BlockUserHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "trying to block admin: invalid request", http.StatusBadRequest)
 		return
 	}
-	blockedUser, err := a.DB.BlockUserByID(r.Context(), req.UserID)
+	blockedUser, err := a.DB.BlockUserByID(context.TODO(), req.UserID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid user data", http.StatusBadRequest)
 		return
@@ -161,7 +159,7 @@ func (a *Admin) UnblockUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.DB.UnblockUserByID(r.Context(), req.UserID)
+	user, err := a.DB.UnblockUserByID(context.TODO(), req.UserID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid user data", http.StatusBadRequest)
 		return
@@ -187,7 +185,7 @@ func (a *Admin) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := a.DB.DeleteProductByID(r.Context(), req.ProductID)
+	product, err := a.DB.DeleteProductByID(context.TODO(), req.ProductID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid user data", http.StatusBadRequest)
 		return
@@ -212,7 +210,7 @@ func (a *Admin) AddCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return
 	}
-	category, err := a.DB.AddCateogry(r.Context(), req.Name)
+	category, err := a.DB.AddCateogry(context.TODO(), req.Name)
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed to add cateogry: %w", err).Error(), http.StatusBadRequest)
@@ -231,7 +229,7 @@ func (a *Admin) EditCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return
 	}
-	category, err := a.DB.EditCategoryNameByID(r.Context(), req)
+	category, err := a.DB.EditCategoryNameByID(context.TODO(), req)
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed to rename cateogry: %w", err).Error(), http.StatusBadRequest)
@@ -253,7 +251,7 @@ func (a *Admin) DeleteCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	category, err := a.DB.DeleteCategoryByID(r.Context(), req.CategoryID)
+	category, err := a.DB.DeleteCategoryByID(context.TODO(), req.CategoryID)
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed to delete category: %w", err).Error(), http.StatusBadRequest)
