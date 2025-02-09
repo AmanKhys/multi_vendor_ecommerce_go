@@ -3,6 +3,7 @@ package guest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/sessions"
@@ -118,8 +119,11 @@ func (g *Guest) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid email", http.StatusBadRequest)
 		return
 	}
+
 	err = utils.ComparePassword(req.Password, user.Password)
+	log.Info(req.Password, user.Password)
 	if err != nil {
+		log.Warn(err)
 		http.Error(w, "wrong password", http.StatusUnauthorized)
 		return
 	}
@@ -135,7 +139,10 @@ func (g *Guest) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sessions.SetSessionCookie(w, session.ID.String())
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
+	w.Header().Set("Content-Type", "text/plain")
+	message := fmt.Sprintf("%s of id: %s has successfully logged in", user.Role, user.ID.String())
+	w.Write([]byte(message))
+	// http.Redirect(w, r, "/home", http.StatusSeeOther)
 }
 
 func (g *Guest) LogoutHandler(w http.ResponseWriter, r *http.Request) {
