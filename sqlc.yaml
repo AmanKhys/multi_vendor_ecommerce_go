@@ -19,3 +19,12 @@ sql:
         emit_enum_valid_method: false
         emit_all_enum_values: false
         json_tags_case_style: "snake"
+        overrides:
+          - db_type: "text"
+            go_type: "string"
+          - db_type: "varchar"
+            go_type: "string"
+          - db_type: "integer"
+            go_type: "int"
+          - db_type: "bigint"
+            go_type: "int"

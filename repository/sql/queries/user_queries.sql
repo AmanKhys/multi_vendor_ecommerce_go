@@ -41,9 +41,10 @@ WHERE id = $1;
 
 -- name: GetSellerByProductID :one
 SELECT u.id, u.name, u.email, u.phone, u.role, u.is_blocked, u.email_verified, u.user_verified, u.gst_no, u.about, u.created_at, u.updated_at
- FROM  products p
+FROM  products p
 INNER JOIN  users u
-on p.seller_id = u.id and u.role = 'seller' and p.is_deleted = false;
+on p.seller_id = u.id and u.role = 'seller' and p.is_deleted = false
+where p.id = $1;
 
 -- name: GetUserWithPasswordByEmail :one
 SELECT * FROM users

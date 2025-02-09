@@ -40,9 +40,3 @@ update products
 set is_deleted = true, updated_at = current_timestamp
 where seller_id = $1
 returning *;
-
--- name: GetSellerByProductID :one
-select u.* from  products p
-inner join users u
-on p.seller_id = u.id
-where p.id = $1 and u.role = 'seller' and p.is_deleted = false;

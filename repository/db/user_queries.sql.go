@@ -294,6 +294,49 @@ func (q *Queries) GetOTPByUserID(ctx context.Context, userID uuid.UUID) (LoginOt
 	return i, err
 }
 
+const getSellerByProductID = `-- name: GetSellerByProductID :one
+SELECT u.id, u.name, u.email, u.phone, u.role, u.is_blocked, u.email_verified, u.user_verified, u.gst_no, u.about, u.created_at, u.updated_at
+FROM  products p
+INNER JOIN  users u
+on p.seller_id = u.id and u.role = 'seller' and p.is_deleted = false
+where p.id = $1
+`
+
+type GetSellerByProductIDRow struct {
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Phone         sql.NullInt64  `json:"phone"`
+	Role          string         `json:"role"`
+	IsBlocked     bool           `json:"is_blocked"`
+	EmailVerified bool           `json:"email_verified"`
+	UserVerified  bool           `json:"user_verified"`
+	GstNo         sql.NullString `json:"gst_no"`
+	About         sql.NullString `json:"about"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) GetSellerByProductID(ctx context.Context, id uuid.UUID) (GetSellerByProductIDRow, error) {
+	row := q.queryRow(ctx, q.getSellerByProductIDStmt, getSellerByProductID, id)
+	var i GetSellerByProductIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
+		&i.GstNo,
+		&i.About,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
 WHERE email = $1
