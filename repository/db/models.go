@@ -45,7 +45,7 @@ type Product struct {
 	ID          uuid.UUID     `json:"id"`
 	Name        string        `json:"name"`
 	Description string        `json:"description"`
-	Price       int32         `json:"price"`
+	Price       string        `json:"price"`
 	Stock       int32         `json:"stock"`
 	SellerID    uuid.UUID     `json:"seller_id"`
 	CategoryID  uuid.NullUUID `json:"category_id"`
@@ -88,7 +88,7 @@ type User struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
-	Phone         int64          `json:"phone"`
+	Phone         sql.NullInt64  `json:"phone"`
 	Password      string         `json:"password"`
 	Role          string         `json:"role"`
 	EmailVerified bool           `json:"email_verified"`

@@ -16,12 +16,12 @@ returning *;
 
 -- name: DeleteCategoryByID :one
 update categories
-set is_deleted = true
+set is_deleted = true, updated_at = current_timestamp
 where id = $1
 returning *;
 
 -- name: EditCategoryNameByID :one
 update categories
-set name = $2
+set name = $2, updated_at = current_timestamp
 where id = $1
 returning *;

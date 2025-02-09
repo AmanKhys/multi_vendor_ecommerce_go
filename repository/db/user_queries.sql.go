@@ -23,7 +23,7 @@ RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verifie
 type AddSellerParams struct {
 	Name     string         `json:"name"`
 	Email    string         `json:"email"`
-	Phone    int64          `json:"phone"`
+	Phone    sql.NullInt64  `json:"phone"`
 	Password string         `json:"password"`
 	GstNo    sql.NullString `json:"gst_no"`
 	About    sql.NullString `json:"about"`
@@ -33,7 +33,7 @@ type AddSellerRow struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
-	Phone         int64          `json:"phone"`
+	Phone         sql.NullInt64  `json:"phone"`
 	Role          string         `json:"role"`
 	IsBlocked     bool           `json:"is_blocked"`
 	EmailVerified bool           `json:"email_verified"`
@@ -79,23 +79,23 @@ RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verifie
 `
 
 type AddUserParams struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Phone    int64  `json:"phone"`
-	Password string `json:"password"`
+	Name     string        `json:"name"`
+	Email    string        `json:"email"`
+	Phone    sql.NullInt64 `json:"phone"`
+	Password string        `json:"password"`
 }
 
 type AddUserRow struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	Email         string    `json:"email"`
-	Phone         int64     `json:"phone"`
-	Role          string    `json:"role"`
-	IsBlocked     bool      `json:"is_blocked"`
-	EmailVerified bool      `json:"email_verified"`
-	UserVerified  bool      `json:"user_verified"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            uuid.UUID     `json:"id"`
+	Name          string        `json:"name"`
+	Email         string        `json:"email"`
+	Phone         sql.NullInt64 `json:"phone"`
+	Role          string        `json:"role"`
+	IsBlocked     bool          `json:"is_blocked"`
+	EmailVerified bool          `json:"email_verified"`
+	UserVerified  bool          `json:"user_verified"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, error) {
@@ -132,7 +132,7 @@ type BlockUserByIDRow struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
-	Phone         int64          `json:"phone"`
+	Phone         sql.NullInt64  `json:"phone"`
 	Role          string         `json:"role"`
 	IsBlocked     bool           `json:"is_blocked"`
 	EmailVerified bool           `json:"email_verified"`
@@ -171,7 +171,7 @@ type GetAllUsersRow struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
-	Phone         int64          `json:"phone"`
+	Phone         sql.NullInt64  `json:"phone"`
 	Role          string         `json:"role"`
 	IsBlocked     bool           `json:"is_blocked"`
 	EmailVerified bool           `json:"email_verified"`
@@ -227,7 +227,7 @@ type GetAllUsersByRoleRow struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
-	Phone         int64          `json:"phone"`
+	Phone         sql.NullInt64  `json:"phone"`
 	Role          string         `json:"role"`
 	IsBlocked     bool           `json:"is_blocked"`
 	EmailVerified bool           `json:"email_verified"`
@@ -303,7 +303,7 @@ type GetUserByEmailRow struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
-	Phone         int64          `json:"phone"`
+	Phone         sql.NullInt64  `json:"phone"`
 	Role          string         `json:"role"`
 	IsBlocked     bool           `json:"is_blocked"`
 	EmailVerified bool           `json:"email_verified"`
@@ -343,7 +343,7 @@ type GetUserByIdRow struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
-	Phone         int64          `json:"phone"`
+	Phone         sql.NullInt64  `json:"phone"`
 	Role          string         `json:"role"`
 	IsBlocked     bool           `json:"is_blocked"`
 	EmailVerified bool           `json:"email_verified"`
@@ -409,7 +409,7 @@ type GetUsersByRoleRow struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
-	Phone         int64          `json:"phone"`
+	Phone         sql.NullInt64  `json:"phone"`
 	Role          string         `json:"role"`
 	IsBlocked     bool           `json:"is_blocked"`
 	EmailVerified bool           `json:"email_verified"`
@@ -467,7 +467,7 @@ type UnblockUserByIDRow struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
-	Phone         int64          `json:"phone"`
+	Phone         sql.NullInt64  `json:"phone"`
 	Role          string         `json:"role"`
 	IsBlocked     bool           `json:"is_blocked"`
 	EmailVerified bool           `json:"email_verified"`
@@ -506,16 +506,16 @@ RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verifie
 `
 
 type VerifySellerEmailByIDRow struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	Email         string    `json:"email"`
-	Phone         int64     `json:"phone"`
-	Role          string    `json:"role"`
-	IsBlocked     bool      `json:"is_blocked"`
-	EmailVerified bool      `json:"email_verified"`
-	UserVerified  bool      `json:"user_verified"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            uuid.UUID     `json:"id"`
+	Name          string        `json:"name"`
+	Email         string        `json:"email"`
+	Phone         sql.NullInt64 `json:"phone"`
+	Role          string        `json:"role"`
+	IsBlocked     bool          `json:"is_blocked"`
+	EmailVerified bool          `json:"email_verified"`
+	UserVerified  bool          `json:"user_verified"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 func (q *Queries) VerifySellerEmailByID(ctx context.Context, id uuid.UUID) (VerifySellerEmailByIDRow, error) {
@@ -544,16 +544,16 @@ returning id, name, email, phone, role, is_blocked, email_verified, user_verifie
 `
 
 type VerifySellerUserByIDRow struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	Email         string    `json:"email"`
-	Phone         int64     `json:"phone"`
-	Role          string    `json:"role"`
-	IsBlocked     bool      `json:"is_blocked"`
-	EmailVerified bool      `json:"email_verified"`
-	UserVerified  bool      `json:"user_verified"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            uuid.UUID     `json:"id"`
+	Name          string        `json:"name"`
+	Email         string        `json:"email"`
+	Phone         sql.NullInt64 `json:"phone"`
+	Role          string        `json:"role"`
+	IsBlocked     bool          `json:"is_blocked"`
+	EmailVerified bool          `json:"email_verified"`
+	UserVerified  bool          `json:"user_verified"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 func (q *Queries) VerifySellerUserByID(ctx context.Context, id uuid.UUID) (VerifySellerUserByIDRow, error) {
@@ -582,16 +582,16 @@ RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verifie
 `
 
 type VerifyUserEmailByIDRow struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	Email         string    `json:"email"`
-	Phone         int64     `json:"phone"`
-	Role          string    `json:"role"`
-	IsBlocked     bool      `json:"is_blocked"`
-	EmailVerified bool      `json:"email_verified"`
-	UserVerified  bool      `json:"user_verified"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            uuid.UUID     `json:"id"`
+	Name          string        `json:"name"`
+	Email         string        `json:"email"`
+	Phone         sql.NullInt64 `json:"phone"`
+	Role          string        `json:"role"`
+	IsBlocked     bool          `json:"is_blocked"`
+	EmailVerified bool          `json:"email_verified"`
+	UserVerified  bool          `json:"user_verified"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 func (q *Queries) VerifyUserEmailByID(ctx context.Context, id uuid.UUID) (VerifyUserEmailByIDRow, error) {

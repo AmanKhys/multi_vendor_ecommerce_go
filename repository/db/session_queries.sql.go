@@ -97,14 +97,14 @@ select
 from sessions s
 join users u
 on s.user_id = u.id
-where u.id = $1
+where s.id = $1
 `
 
 type GetUserBySessionIDRow struct {
 	ID        uuid.UUID      `json:"id"`
 	Name      string         `json:"name"`
 	Email     string         `json:"email"`
-	Phone     int64          `json:"phone"`
+	Phone     sql.NullInt64  `json:"phone"`
 	Role      string         `json:"role"`
 	IsBlocked bool           `json:"is_blocked"`
 	GstNo     sql.NullString `json:"gst_no"`

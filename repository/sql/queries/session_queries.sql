@@ -21,7 +21,7 @@ select
 from sessions s
 join users u
 on s.user_id = u.id
-where u.id = $1;
+where s.id = $1;
 
 
 -- name: AddSession :one

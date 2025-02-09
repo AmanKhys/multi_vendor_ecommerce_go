@@ -25,19 +25,19 @@ where seller_id = $1 and is_deleted = false;
 
 -- name: EditProductByID :one
 update products
-set name = $2, description = $3, price = $4, stock = $5, updated_at = current_time
+set name = $2, description = $3, price = $4, stock = $5, updated_at = current_timestamp
 where id = $1 and is_deleted = false
 returning *;
 
 -- name: DeleteProductByID :one
 update products
-set is_deleted = true
+set is_deleted = true, updated_at = current_timestamp
 where id = $1 and is_deleted = false
 returning *;
 
 -- name: DeleteProductsBySellerID :many
 update products
-set is_deleted = true
+set is_deleted = true, updated_at = current_timestamp
 where seller_id = $1
 returning *;
 

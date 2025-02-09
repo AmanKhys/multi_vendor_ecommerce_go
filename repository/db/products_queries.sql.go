@@ -21,7 +21,7 @@ returning id, name, description, price, stock, seller_id, category_id, is_delete
 type AddProductParams struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Price       int32     `json:"price"`
+	Price       string    `json:"price"`
 	Stock       int32     `json:"stock"`
 	SellerID    uuid.UUID `json:"seller_id"`
 }
@@ -52,7 +52,7 @@ func (q *Queries) AddProduct(ctx context.Context, arg AddProductParams) (Product
 
 const deleteProductByID = `-- name: DeleteProductByID :one
 update products
-set is_deleted = true
+set is_deleted = true, updated_at = current_timestamp
 where id = $1 and is_deleted = false
 returning id, name, description, price, stock, seller_id, category_id, is_deleted, created_at, updated_at
 `
@@ -77,7 +77,7 @@ func (q *Queries) DeleteProductByID(ctx context.Context, id uuid.UUID) (Product,
 
 const deleteProductsBySellerID = `-- name: DeleteProductsBySellerID :many
 update products
-set is_deleted = true
+set is_deleted = true, updated_at = current_timestamp
 where seller_id = $1
 returning id, name, description, price, stock, seller_id, category_id, is_deleted, created_at, updated_at
 `
@@ -118,7 +118,7 @@ func (q *Queries) DeleteProductsBySellerID(ctx context.Context, sellerID uuid.UU
 
 const editProductByID = `-- name: EditProductByID :one
 update products
-set name = $2, description = $3, price = $4, stock = $5, updated_at = current_time
+set name = $2, description = $3, price = $4, stock = $5, updated_at = current_timestamp
 where id = $1 and is_deleted = false
 returning id, name, description, price, stock, seller_id, category_id, is_deleted, created_at, updated_at
 `
@@ -127,7 +127,7 @@ type EditProductByIDParams struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Price       int32     `json:"price"`
+	Price       string    `json:"price"`
 	Stock       int32     `json:"stock"`
 }
 
