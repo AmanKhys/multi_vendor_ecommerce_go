@@ -99,6 +99,14 @@ func (g *Guest) SellerSignUpHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (g *Guest) SellerSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func (g *Guest) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
@@ -138,12 +146,4 @@ func (g *Guest) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sessions.DeleteSessionCookie(w, cookie)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func (g *Guest) SellerSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
-
 }

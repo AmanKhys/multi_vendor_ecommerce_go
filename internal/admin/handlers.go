@@ -70,6 +70,9 @@ func (a *Admin) AdminSellersHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 
 }
+func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
+
+}
 
 func (a *Admin) AdminProductsHandler(w http.ResponseWriter, r *http.Request) {
 	var resp struct {

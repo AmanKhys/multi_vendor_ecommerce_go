@@ -18,6 +18,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc("GET /admin/users", a.AdminUsersHandler)
 	mux.HandleFunc("GET /admin/sellers", a.AdminSellersHandler)
+	mux.HandleFunc("POST /admin/verify_seller", a.VerifySellerHandler)
 
 	mux.HandleFunc("GET /admin/products", a.AdminProductsHandler)
 	mux.HandleFunc("DELETE /admin/product/delete", a.DeleteProductHandler)

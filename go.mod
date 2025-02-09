@@ -8,7 +8,6 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/sirupsen/logrus v1.9.3
-	github.com/sqlc-dev/pqtype v0.3.0
 	golang.org/x/crypto v0.32.0
 )
 
