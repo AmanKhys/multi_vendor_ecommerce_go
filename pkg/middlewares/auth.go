@@ -35,11 +35,11 @@ func AuthenticateUserMiddleware(next http.HandlerFunc, role string) http.Handler
 		uid, err := uuid.Parse(sessionCookie.Value)
 		if err != nil {
 			log.Warn("Invalid sessionID format")
-			http.Error(w, "invalid session", http.StatusUnauthorized)
+			http.Error(w, "invalid session id format", http.StatusUnauthorized)
 			return
 		}
 
-		user, err := DB.GetUserBySessionID(r.Context(), uid)
+		user, err := DB.GetUserBySessionID(context.TODO(), uid)
 		log.Info(user)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
