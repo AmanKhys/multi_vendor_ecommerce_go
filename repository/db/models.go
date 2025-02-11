@@ -33,7 +33,7 @@ type Category struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type LoginOtp struct {
+type Otp struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`
 	Otp       int32     `json:"otp"`

@@ -13,6 +13,25 @@ import (
 	"github.com/google/uuid"
 )
 
+const addOTP = `-- name: AddOTP :one
+insert into otps
+(user_id) values ($1)
+returning id, user_id, otp, created_at, expires_at
+`
+
+func (q *Queries) AddOTP(ctx context.Context, userID uuid.UUID) (Otp, error) {
+	row := q.queryRow(ctx, q.addOTPStmt, addOTP, userID)
+	var i Otp
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Otp,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const addSeller = `-- name: AddSeller :one
 INSERT INTO users
 (name, email, phone, password, role, gst_no, about)
@@ -274,26 +293,6 @@ func (q *Queries) GetAllUsersByRole(ctx context.Context, role string) ([]GetAllU
 	return items, nil
 }
 
-const getOTPByUserID = `-- name: GetOTPByUserID :one
-SELECT id, user_id, otp, created_at, expires_at FROM login_otps
-WHERE user_id = $1
-ORDER BY created_at DESC
-LIMIT 1
-`
-
-func (q *Queries) GetOTPByUserID(ctx context.Context, userID uuid.UUID) (LoginOtp, error) {
-	row := q.queryRow(ctx, q.getOTPByUserIDStmt, getOTPByUserID, userID)
-	var i LoginOtp
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Otp,
-		&i.CreatedAt,
-		&i.ExpiresAt,
-	)
-	return i, err
-}
-
 const getSellerByProductID = `-- name: GetSellerByProductID :one
 SELECT u.id, u.name, u.email, u.phone, u.role, u.is_blocked, u.email_verified, u.user_verified, u.gst_no, u.about, u.created_at, u.updated_at
 FROM  products p
@@ -499,6 +498,26 @@ func (q *Queries) GetUsersByRole(ctx context.Context, role string) ([]GetUsersBy
 	return items, nil
 }
 
+const getValidOTPByUserID = `-- name: GetValidOTPByUserID :one
+SELECT id, user_id, otp, created_at, expires_at FROM otps
+WHERE user_id = $1 and expires_at > current_timestamp
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetValidOTPByUserID(ctx context.Context, userID uuid.UUID) (Otp, error) {
+	row := q.queryRow(ctx, q.getValidOTPByUserIDStmt, getValidOTPByUserID, userID)
+	var i Otp
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Otp,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const unblockUserByID = `-- name: UnblockUserByID :one
 UPDATE users
 SET is_blocked = false, updated_at = current_timestamp
@@ -535,6 +554,44 @@ func (q *Queries) UnblockUserByID(ctx context.Context, id uuid.UUID) (UnblockUse
 		&i.UserVerified,
 		&i.GstNo,
 		&i.About,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const verifySellerByID = `-- name: VerifySellerByID :one
+update users
+set user_verified = true, updated_at = current_timestamp
+where id = $1
+returning id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
+`
+
+type VerifySellerByIDRow struct {
+	ID            uuid.UUID     `json:"id"`
+	Name          string        `json:"name"`
+	Email         string        `json:"email"`
+	Phone         sql.NullInt64 `json:"phone"`
+	Role          string        `json:"role"`
+	IsBlocked     bool          `json:"is_blocked"`
+	EmailVerified bool          `json:"email_verified"`
+	UserVerified  bool          `json:"user_verified"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+}
+
+func (q *Queries) VerifySellerByID(ctx context.Context, id uuid.UUID) (VerifySellerByIDRow, error) {
+	row := q.queryRow(ctx, q.verifySellerByIDStmt, verifySellerByID, id)
+	var i VerifySellerByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -579,52 +636,14 @@ func (q *Queries) VerifySellerEmailByID(ctx context.Context, id uuid.UUID) (Veri
 	return i, err
 }
 
-const verifySellerUserByID = `-- name: VerifySellerUserByID :one
-update users
-set user_verified = true, updated_at = current_timestamp
-where id = $1
-returning id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
-`
-
-type VerifySellerUserByIDRow struct {
-	ID            uuid.UUID     `json:"id"`
-	Name          string        `json:"name"`
-	Email         string        `json:"email"`
-	Phone         sql.NullInt64 `json:"phone"`
-	Role          string        `json:"role"`
-	IsBlocked     bool          `json:"is_blocked"`
-	EmailVerified bool          `json:"email_verified"`
-	UserVerified  bool          `json:"user_verified"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
-}
-
-func (q *Queries) VerifySellerUserByID(ctx context.Context, id uuid.UUID) (VerifySellerUserByIDRow, error) {
-	row := q.queryRow(ctx, q.verifySellerUserByIDStmt, verifySellerUserByID, id)
-	var i VerifySellerUserByIDRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Email,
-		&i.Phone,
-		&i.Role,
-		&i.IsBlocked,
-		&i.EmailVerified,
-		&i.UserVerified,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const verifyUserEmailByID = `-- name: VerifyUserEmailByID :one
+const verifyUserByID = `-- name: VerifyUserByID :one
 UPDATE users
 SET email_verified = true, user_verified = true, updated_at = current_timestamp
 WHERE id = $1
 RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
 `
 
-type VerifyUserEmailByIDRow struct {
+type VerifyUserByIDRow struct {
 	ID            uuid.UUID     `json:"id"`
 	Name          string        `json:"name"`
 	Email         string        `json:"email"`
@@ -637,9 +656,9 @@ type VerifyUserEmailByIDRow struct {
 	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
-func (q *Queries) VerifyUserEmailByID(ctx context.Context, id uuid.UUID) (VerifyUserEmailByIDRow, error) {
-	row := q.queryRow(ctx, q.verifyUserEmailByIDStmt, verifyUserEmailByID, id)
-	var i VerifyUserEmailByIDRow
+func (q *Queries) VerifyUserByID(ctx context.Context, id uuid.UUID) (VerifyUserByIDRow, error) {
+	row := q.queryRow(ctx, q.verifyUserByIDStmt, verifyUserByID, id)
+	var i VerifyUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

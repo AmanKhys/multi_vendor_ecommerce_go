@@ -10,7 +10,7 @@ INSERT INTO users
 VALUES ($1, $2, $3, $4, 'seller', $5, $6)
 RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at;
 
--- name: VerifyUserEmailByID :one
+-- name: VerifyUserByID :one
 UPDATE users
 SET email_verified = true, user_verified = true, updated_at = current_timestamp
 WHERE id = $1
@@ -22,7 +22,7 @@ SET email_verified = true, updated_at = current_timestamp
 WHERE id = $1
 RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at;
 
--- name: VerifySellerUserByID :one
+-- name: VerifySellerByID :one
 update users
 set user_verified = true, updated_at = current_timestamp
 where id = $1
@@ -70,8 +70,13 @@ SET is_blocked = false, updated_at = current_timestamp
 WHERE id = $1
 RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at;
 
--- name: GetOTPByUserID :one
-SELECT * FROM login_otps
-WHERE user_id = $1
+-- name: GetValidOTPByUserID :one
+SELECT * FROM otps
+WHERE user_id = $1 and expires_at > current_timestamp
 ORDER BY created_at DESC
 LIMIT 1;
+
+-- name: AddOTP :one
+insert into otps
+(user_id) values ($1)
+returning *;

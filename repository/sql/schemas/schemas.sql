@@ -1,3 +1,5 @@
+-- set timezone of the postgres database to indian time
+SET TIMEZONE = 'Asia/Kolkata';
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

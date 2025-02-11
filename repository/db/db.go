@@ -27,6 +27,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addCateogryStmt, err = db.PrepareContext(ctx, addCateogry); err != nil {
 		return nil, fmt.Errorf("error preparing query AddCateogry: %w", err)
 	}
+	if q.addOTPStmt, err = db.PrepareContext(ctx, addOTP); err != nil {
+		return nil, fmt.Errorf("error preparing query AddOTP: %w", err)
+	}
 	if q.addProductStmt, err = db.PrepareContext(ctx, addProduct); err != nil {
 		return nil, fmt.Errorf("error preparing query AddProduct: %w", err)
 	}
@@ -81,9 +84,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getCategoryByIDStmt, err = db.PrepareContext(ctx, getCategoryByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCategoryByID: %w", err)
 	}
-	if q.getOTPByUserIDStmt, err = db.PrepareContext(ctx, getOTPByUserID); err != nil {
-		return nil, fmt.Errorf("error preparing query GetOTPByUserID: %w", err)
-	}
 	if q.getProductByIDStmt, err = db.PrepareContext(ctx, getProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductByID: %w", err)
 	}
@@ -114,17 +114,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUsersByRoleStmt, err = db.PrepareContext(ctx, getUsersByRole); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUsersByRole: %w", err)
 	}
+	if q.getValidOTPByUserIDStmt, err = db.PrepareContext(ctx, getValidOTPByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetValidOTPByUserID: %w", err)
+	}
 	if q.unblockUserByIDStmt, err = db.PrepareContext(ctx, unblockUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query UnblockUserByID: %w", err)
+	}
+	if q.verifySellerByIDStmt, err = db.PrepareContext(ctx, verifySellerByID); err != nil {
+		return nil, fmt.Errorf("error preparing query VerifySellerByID: %w", err)
 	}
 	if q.verifySellerEmailByIDStmt, err = db.PrepareContext(ctx, verifySellerEmailByID); err != nil {
 		return nil, fmt.Errorf("error preparing query VerifySellerEmailByID: %w", err)
 	}
-	if q.verifySellerUserByIDStmt, err = db.PrepareContext(ctx, verifySellerUserByID); err != nil {
-		return nil, fmt.Errorf("error preparing query VerifySellerUserByID: %w", err)
-	}
-	if q.verifyUserEmailByIDStmt, err = db.PrepareContext(ctx, verifyUserEmailByID); err != nil {
-		return nil, fmt.Errorf("error preparing query VerifyUserEmailByID: %w", err)
+	if q.verifyUserByIDStmt, err = db.PrepareContext(ctx, verifyUserByID); err != nil {
+		return nil, fmt.Errorf("error preparing query VerifyUserByID: %w", err)
 	}
 	return &q, nil
 }
@@ -134,6 +137,11 @@ func (q *Queries) Close() error {
 	if q.addCateogryStmt != nil {
 		if cerr := q.addCateogryStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addCateogryStmt: %w", cerr)
+		}
+	}
+	if q.addOTPStmt != nil {
+		if cerr := q.addOTPStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addOTPStmt: %w", cerr)
 		}
 	}
 	if q.addProductStmt != nil {
@@ -226,11 +234,6 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getCategoryByIDStmt: %w", cerr)
 		}
 	}
-	if q.getOTPByUserIDStmt != nil {
-		if cerr := q.getOTPByUserIDStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getOTPByUserIDStmt: %w", cerr)
-		}
-	}
 	if q.getProductByIDStmt != nil {
 		if cerr := q.getProductByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getProductByIDStmt: %w", cerr)
@@ -281,9 +284,19 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getUsersByRoleStmt: %w", cerr)
 		}
 	}
+	if q.getValidOTPByUserIDStmt != nil {
+		if cerr := q.getValidOTPByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getValidOTPByUserIDStmt: %w", cerr)
+		}
+	}
 	if q.unblockUserByIDStmt != nil {
 		if cerr := q.unblockUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing unblockUserByIDStmt: %w", cerr)
+		}
+	}
+	if q.verifySellerByIDStmt != nil {
+		if cerr := q.verifySellerByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing verifySellerByIDStmt: %w", cerr)
 		}
 	}
 	if q.verifySellerEmailByIDStmt != nil {
@@ -291,14 +304,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing verifySellerEmailByIDStmt: %w", cerr)
 		}
 	}
-	if q.verifySellerUserByIDStmt != nil {
-		if cerr := q.verifySellerUserByIDStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing verifySellerUserByIDStmt: %w", cerr)
-		}
-	}
-	if q.verifyUserEmailByIDStmt != nil {
-		if cerr := q.verifyUserEmailByIDStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing verifyUserEmailByIDStmt: %w", cerr)
+	if q.verifyUserByIDStmt != nil {
+		if cerr := q.verifyUserByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing verifyUserByIDStmt: %w", cerr)
 		}
 	}
 	return err
@@ -341,6 +349,7 @@ type Queries struct {
 	db                             DBTX
 	tx                             *sql.Tx
 	addCateogryStmt                *sql.Stmt
+	addOTPStmt                     *sql.Stmt
 	addProductStmt                 *sql.Stmt
 	addSellerStmt                  *sql.Stmt
 	addSessionStmt                 *sql.Stmt
@@ -359,7 +368,6 @@ type Queries struct {
 	getAllUsersStmt                *sql.Stmt
 	getAllUsersByRoleStmt          *sql.Stmt
 	getCategoryByIDStmt            *sql.Stmt
-	getOTPByUserIDStmt             *sql.Stmt
 	getProductByIDStmt             *sql.Stmt
 	getProductsByCategoryIDStmt    *sql.Stmt
 	getProductsBySellerIDStmt      *sql.Stmt
@@ -370,10 +378,11 @@ type Queries struct {
 	getUserBySessionIDStmt         *sql.Stmt
 	getUserWithPasswordByEmailStmt *sql.Stmt
 	getUsersByRoleStmt             *sql.Stmt
+	getValidOTPByUserIDStmt        *sql.Stmt
 	unblockUserByIDStmt            *sql.Stmt
+	verifySellerByIDStmt           *sql.Stmt
 	verifySellerEmailByIDStmt      *sql.Stmt
-	verifySellerUserByIDStmt       *sql.Stmt
-	verifyUserEmailByIDStmt        *sql.Stmt
+	verifyUserByIDStmt             *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
@@ -381,6 +390,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		db:                             tx,
 		tx:                             tx,
 		addCateogryStmt:                q.addCateogryStmt,
+		addOTPStmt:                     q.addOTPStmt,
 		addProductStmt:                 q.addProductStmt,
 		addSellerStmt:                  q.addSellerStmt,
 		addSessionStmt:                 q.addSessionStmt,
@@ -399,7 +409,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAllUsersStmt:                q.getAllUsersStmt,
 		getAllUsersByRoleStmt:          q.getAllUsersByRoleStmt,
 		getCategoryByIDStmt:            q.getCategoryByIDStmt,
-		getOTPByUserIDStmt:             q.getOTPByUserIDStmt,
 		getProductByIDStmt:             q.getProductByIDStmt,
 		getProductsByCategoryIDStmt:    q.getProductsByCategoryIDStmt,
 		getProductsBySellerIDStmt:      q.getProductsBySellerIDStmt,
@@ -410,9 +419,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getUserBySessionIDStmt:         q.getUserBySessionIDStmt,
 		getUserWithPasswordByEmailStmt: q.getUserWithPasswordByEmailStmt,
 		getUsersByRoleStmt:             q.getUsersByRoleStmt,
+		getValidOTPByUserIDStmt:        q.getValidOTPByUserIDStmt,
 		unblockUserByIDStmt:            q.unblockUserByIDStmt,
+		verifySellerByIDStmt:           q.verifySellerByIDStmt,
 		verifySellerEmailByIDStmt:      q.verifySellerEmailByIDStmt,
-		verifySellerUserByIDStmt:       q.verifySellerUserByIDStmt,
-		verifyUserEmailByIDStmt:        q.verifyUserEmailByIDStmt,
+		verifyUserByIDStmt:             q.verifyUserByIDStmt,
 	}
 }
