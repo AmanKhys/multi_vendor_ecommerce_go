@@ -41,3 +41,8 @@ func ValidatePhone(phone string) bool {
 func ValidateRole(role string) bool {
 	return roleRegex.MatchString(role)
 }
+
+func ValidateOTP(otp int) bool {
+	flag := otp < 999999 && otp > 0
+	return flag
+}
