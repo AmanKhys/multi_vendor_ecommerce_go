@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
 	_ "github.com/lib/pq"
 
 	env "github.com/joho/godotenv"
@@ -15,12 +16,12 @@ func NewDBConfig() *sql.DB {
 	if err != nil {
 		log.Fatal("error loading environment vairables: ", err)
 	}
-	var dbName = envM["dbName"]
-	var dbPort = envM["dbPort"]
-	var dbDriver = envM["dbDriver"]
-	var host = envM["host"]
-	var dbUser = envM["dbUser"]
-	var pw = envM["dbPassword"]
+	var dbName = envM[string(envname.DbName)]
+	var dbPort = envM[string(envname.DbPort)]
+	var dbDriver = envM[string(envname.DbDriver)]
+	var host = envM[string(envname.DbHost)]
+	var dbUser = envM[string(envname.DbUser)]
+	var pw = envM[string(envname.DbPassword)]
 
 	var connStr = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, pw, host, dbPort, dbName)
 	db, err := sql.Open(dbDriver, connStr)

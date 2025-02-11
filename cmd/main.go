@@ -7,6 +7,7 @@ import (
 
 	"net/http"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/router"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
@@ -15,17 +16,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type EnvType string
-
-const (
-	Production  EnvType = "production"
-	Development EnvType = "development"
-	Testing     EnvType = "testing"
-)
-
 type config struct {
 	port int
-	env  EnvType
+	env  envname.EnvType
 }
 
 var dbConn = repository.NewDBConfig()
@@ -44,7 +37,7 @@ func main() {
 
 	cfg = config{
 		port: port,
-		env:  Production,
+		env:  envname.Development,
 	}
 
 	mux := router.SetupRouter()

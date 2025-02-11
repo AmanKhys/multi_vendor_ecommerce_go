@@ -5,22 +5,10 @@ import (
 	"crypto/cipher"
 	"encoding/hex"
 	"errors"
-	"os"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
 	env "github.com/joho/godotenv"
 )
-
-var envM, err = env.Read(".crypt_env")
-
-// Read secret key from environment variable
-var secretKeyString = envM["CRYPT_SECRET_KEY"]
-
-// Read IV (Initialization Vector) from environment variable (must be 16 bytes)
-var bytesString = os.Getenv("AES_IV")
-
-// Convert to byte slices
-var secretKey = []byte(secretKeyString)
-var bytes = []byte(bytesString)
 
 func encode(b []byte) string {
 	return hex.EncodeToString(b)
@@ -35,6 +23,21 @@ func decode(s string) ([]byte, error) {
 }
 
 func Encrypt(text string) (string, error) {
+	var envM, err = env.Read(".env")
+	if err != nil {
+		return "", err
+	}
+
+	// Read secret key from environment variable
+	var secretKeyString = envM[string(envname.CryptSecretKey)]
+
+	// Read IV (Initialization Vector) from environment variable (must be 16 bytes)
+	var bytesString = envM[string(envname.AesIV)]
+
+	// Convert to byte slices
+	var secretKey = []byte(secretKeyString)
+	var bytes = []byte(bytesString)
+
 	if len(secretKey) != 16 {
 		return "", errors.New("invalid key length: must be 16 bytes")
 	}
@@ -50,6 +53,21 @@ func Encrypt(text string) (string, error) {
 }
 
 func Decrypt(text string) (string, error) {
+	var envM, err = env.Read(".env")
+	if err != nil {
+		return "", err
+	}
+
+	// Read secret key from environment variable
+	var secretKeyString = envM[string(envname.CryptSecretKey)]
+
+	// Read IV (Initialization Vector) from environment variable (must be 16 bytes)
+	var bytesString = envM[string(envname.AesIV)]
+
+	// Convert to byte slices
+	var secretKey = []byte(secretKeyString)
+	var bytes = []byte(bytesString)
+
 	if len(secretKey) != 16 {
 		return "", errors.New("invalid key length: must be 16 bytes")
 	}

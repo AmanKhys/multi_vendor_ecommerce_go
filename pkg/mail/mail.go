@@ -5,6 +5,7 @@ import (
 	"net/smtp"
 	"time"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
 	env "github.com/joho/godotenv"
 )
 
@@ -13,10 +14,10 @@ func returnAuth() (smtp.Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	identity := envM["smtp_identity"]
-	smtpHost := envM["smtp_host"]
-	smtpMail := envM["smtp_mail"]
-	smtpPassword := envM["smtp_password"]
+	identity := envM[string(envname.SmtpIdentity)]
+	smtpHost := envM[string(envname.SmtpHost)]
+	smtpMail := envM[string(envname.SmtpEmail)]
+	smtpPassword := envM[string(envname.SmtpPassword)]
 	auth := smtp.PlainAuth(identity, smtpMail, smtpPassword, smtpHost)
 	return auth, nil
 }
