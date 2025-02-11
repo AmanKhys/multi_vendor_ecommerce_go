@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type Admin struct{ DB *db.Queries }
+
+var SellerRole = "seller"
 
 func (a *Admin) AdminAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var resp struct {
@@ -69,7 +72,49 @@ func (a *Admin) AdminSellersHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if !validators.ValidateEmail(req.Email) {
+		http.Error(w, "invalid email format:", http.StatusBadRequest)
+		return
+	}
 
+	user, err := a.DB.GetUserByEmail(context.TODO(), req.Email)
+	if err == sql.ErrNoRows {
+		http.Error(w, "seller does not exist.", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error fetching user by email")
+		http.Error(w, "internal server error while fetching user", http.StatusInternalServerError)
+		return
+	} else if user.Role != SellerRole {
+		http.Error(w, "the given details is not that of a seller", http.StatusBadRequest)
+		return
+	} else if user.UserVerified {
+		http.Error(w, "seller already verified", http.StatusBadRequest)
+		return
+	} else if !user.EmailVerified {
+		http.Error(w, "seller email not yet verified. visit /seller_signup_otp", http.StatusBadRequest)
+		return
+	}
+
+	respSeller, err := a.DB.VerifySellerByID(context.TODO(), user.ID)
+	if err != nil {
+		log.Warn("verify seller by id failed.")
+		http.Error(w, "internal server error while verifying seller", http.StatusInternalServerError)
+		return
+	}
+
+	var resp struct {
+		Data    db.VerifySellerByIDRow `json:"data"`
+		Message string                 `json:"message"`
+	}
+	resp.Data = respSeller
+	resp.Message = "successfully verified seller"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (a *Admin) AdminProductsHandler(w http.ResponseWriter, r *http.Request) {
