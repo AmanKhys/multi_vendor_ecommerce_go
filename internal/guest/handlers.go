@@ -2,15 +2,21 @@ package guest
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/sessions"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	log "github.com/sirupsen/logrus"
 )
+
+var RoleSeller = "seller"
+var RoleUser = "user"
 
 type Guest struct {
 	DB *db.Queries
@@ -26,23 +32,51 @@ func (g *Guest) UserSignUpHandler(w http.ResponseWriter, r *http.Request) {
 	var req db.AddUserParams
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "invalid data format", http.StatusBadRequest)
+		http.Error(w, "invalid data format:"+err.Error(), http.StatusBadRequest)
+		return
+	} else if !validators.ValidateEmail(req.Email) {
+		http.Error(w, "invalid email format:", http.StatusBadRequest)
+		return
+	} else if !validators.ValidateName(req.Name) {
+		http.Error(w, "invalid Name format:", http.StatusBadRequest)
+		return
+	} else if !validators.ValidatePassword(req.Password) {
+		http.Error(w, "invalid password format:", http.StatusBadRequest)
+		return
+	} else if req.Phone.Valid && !validators.ValidatePhone(strconv.Itoa(int(req.Phone.Int64))) {
+		http.Error(w, "invalid phone format:", http.StatusBadRequest)
+		return
+	}
+	user, _ := g.DB.GetUserByEmail(context.TODO(), req.Email)
+	if req.Email == user.Email && user.UserVerified {
+		http.Error(w, "user already exists and verified", http.StatusBadRequest)
+		return
+	} else if req.Email == user.Email && !user.UserVerified {
+		http.Error(w, "user already exists and not verified. visit /user_signup_otp and verify user", http.StatusBadRequest)
 		return
 	}
 
-	// check if the user already exists and is verified
-	u, err := g.DB.GetUserByEmail(context.TODO(), req.Email)
-	if u.Email != "" && u.EmailVerified == false {
-		http.Redirect(w, r, "/user_signup_otp", http.StatusSeeOther)
-		return
-	} else if u.Email != "" && u.UserVerified == true {
-		http.Error(w, "user already exists", http.StatusBadRequest)
+	log.Info("reached here mf")
+	hashed, err := utils.HashPassword(req.Password)
+	log.Info("reached here mf again")
+	if err != nil {
+		log.Warn("error hashing password")
+		http.Error(w, "error hashing password"+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	user, err := g.DB.AddUser(context.TODO(), req)
+	var arg = db.AddUserParams{
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: hashed,
+	}
+	if req.Phone.Valid {
+		arg.Phone = req.Phone
+	}
+	var respUser db.AddUserRow
+	respUser, err = g.DB.AddUser(context.TODO(), arg)
 	if err != nil {
-		log.Warn("error adding user.")
-		http.Error(w, "internal error to add user", http.StatusInternalServerError)
+		log.Warn("user not added")
+		http.Error(w, "internal server error"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -51,53 +85,94 @@ func (g *Guest) UserSignUpHandler(w http.ResponseWriter, r *http.Request) {
 		Message string        `json:"message"`
 	}
 	var response = resp{
-		Data:    user,
+		Data:    respUser,
 		Message: "successfully added user. Now you need to verify it",
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+	signupOTP, err := g.DB.GetOTPByUserID(context.TODO(), respUser.ID)
+	if err == sql.ErrNoRows {
+		log.Warn("otp not generated")
+		return
+	}
+	fmt.Println("testing otp: ", signupOTP)
 }
 
 func (g *Guest) SellerSignUpHandler(w http.ResponseWriter, r *http.Request) {
 	var req db.AddSellerParams
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "invalid data format", http.StatusBadRequest)
+		http.Error(w, "invalid data format:"+err.Error(), http.StatusBadRequest)
+		return
+	} else if !validators.ValidateEmail(req.Email) {
+		http.Error(w, "invalid email format:", http.StatusBadRequest)
+		return
+	} else if !validators.ValidateName(req.Name) {
+		http.Error(w, "invalid Name format:", http.StatusBadRequest)
+		return
+	} else if !validators.ValidatePassword(req.Password) {
+		http.Error(w, "invalid password format:", http.StatusBadRequest)
+		return
+	} else if !validators.ValidatePhone(strconv.Itoa(int(req.Phone.Int64))) || !req.Phone.Valid {
+		http.Error(w, "invalid phone format:", http.StatusBadRequest)
+		return
+	} else if !validators.ValidateGSTNo(req.GstNo.String) || !req.GstNo.Valid {
+		http.Error(w, "invalid gst_no format:", http.StatusBadRequest)
+		return
+	} else if req.About.Valid && req.GstNo.String == "" {
+		http.Error(w, "invalid about format: about empty", http.StatusBadRequest)
+		return
+	}
+	user, _ := g.DB.GetUserByEmail(context.TODO(), req.Email)
+	if user.Role != "" && user.Role != RoleSeller {
+		http.Error(w, "signing up on a already existing user. not allowed", http.StatusBadRequest)
+		return
+	}
+	if req.Email == user.Email && user.EmailVerified {
+		http.Error(w, "seller already exists and email verified", http.StatusBadRequest)
+		return
+	} else if req.Email == user.Email && !user.EmailVerified {
+		http.Error(w, "seller already exists and email not verified. visit /user_signup_otp and verify user", http.StatusBadRequest)
 		return
 	}
 
-	// check if the seller already exists and is verified
-	u, err := g.DB.GetUserByEmail(context.TODO(), req.Email)
-	if u.Email != "" && u.EmailVerified == false {
-		http.Redirect(w, r, "/seller_signup_otp", http.StatusSeeOther)
-		return
-	} else if u.Email != "" && u.EmailVerified == true && u.UserVerified == false {
-		w.Header().Set("Content-Type", "text/plain")
-		message := "user email verified. Waiting for admin to admit seller as a verified seller."
-		w.Write([]byte(message))
-		return
-	} else if u.Email != "" && u.UserVerified == true {
-		http.Error(w, "user already exists", http.StatusBadRequest)
-		return
-	}
-
-	user, err := g.DB.AddSeller(context.TODO(), req)
+	hashed, err := utils.HashPassword(req.Password)
 	if err != nil {
-		log.Warn("error adding user.")
-		http.Error(w, "internal error to add seller", http.StatusInternalServerError)
+		log.Warn("error hashing password")
+		http.Error(w, "error hashing password"+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	var arg = db.AddSellerParams{
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: hashed,
+		Phone:    req.Phone,
+		GstNo:    req.GstNo,
+		About:    req.About,
+	}
+	var respSeller db.AddSellerRow
+	respSeller, err = g.DB.AddSeller(context.TODO(), arg)
+	if err != nil {
+		log.Warn("user not added")
+		http.Error(w, "internal server error"+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	type resp struct {
 		Data    db.AddSellerRow `json:"data"`
 		Message string          `json:"message"`
 	}
 	var response = resp{
-		Data:    user,
+		Data:    respSeller,
 		Message: "successfully added user. Now you need to verify it",
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+	signupOTP, err := g.DB.GetOTPByUserID(context.TODO(), respSeller.ID)
+	if err == sql.ErrNoRows {
+		log.Warn("otp not generated")
+		return
+	}
+	fmt.Println("testing otp: ", signupOTP)
 }
 
 func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
