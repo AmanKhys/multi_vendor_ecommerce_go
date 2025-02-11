@@ -90,7 +90,7 @@ func (g *Guest) UserSignUpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-	signupOTP, err := g.DB.GetOTPByUserID(context.TODO(), respUser.ID)
+	signupOTP, err := g.DB.AddOTP(context.TODO(), respUser.ID)
 	if err == sql.ErrNoRows {
 		log.Warn("otp not generated")
 		return
@@ -167,7 +167,7 @@ func (g *Guest) SellerSignUpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-	signupOTP, err := g.DB.GetOTPByUserID(context.TODO(), respSeller.ID)
+	signupOTP, err := g.DB.AddOTP(context.TODO(), respSeller.ID)
 	if err == sql.ErrNoRows {
 		log.Warn("otp not generated")
 		return
@@ -176,30 +176,165 @@ func (g *Guest) SellerSignUpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
+	// get req.Body and check if it's in correct format
+	var req struct {
+		Email string `json:"email"`
+		Otp   int    `json:"otp"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if !validators.ValidateEmail(req.Email) {
+		http.Error(w, "invalid email format:", http.StatusBadRequest)
+		return
+	} else if !validators.ValidateOTP(req.Otp) {
+		http.Error(w, "invalid OTP format:", http.StatusBadRequest)
+		return
+	}
 
+	user, err := g.DB.GetUserByEmail(context.TODO(), req.Email)
+	if err != nil {
+		http.Error(w, "invalid email", http.StatusBadRequest)
+		return
+	} else if user.EmailVerified {
+		http.Error(w, "user email already verified", http.StatusBadRequest)
+		return
+	}
+
+	otp, err := g.DB.GetValidOTPByUserID(context.TODO(), user.ID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "no valid otp available. generating another otp", http.StatusBadRequest)
+		otp, err := g.DB.AddOTP(context.TODO(), user.ID)
+		if err == sql.ErrNoRows {
+			log.Warn("no otp generated")
+			return
+		}
+		log.Info("testing otp generated: ", otp) // for testing
+		return
+	} else if err != nil {
+		log.Warn("error fetching otp")
+		http.Error(w, "internal server error fetching otp", http.StatusInternalServerError)
+		return
+	}
+	if req.Otp != int(otp.Otp) {
+		http.Error(w, "invalid otp", http.StatusBadRequest)
+		return
+	}
+
+	// verify user
+	respUser, err := g.DB.VerifyUserByID(context.TODO(), user.ID)
+	if err != nil {
+		log.Warn("error verifying a valid user")
+		http.Error(w, "internal server error verifying user", http.StatusInternalServerError)
+		return
+	}
+
+	// send response
+	var resp struct {
+		Data    db.VerifyUserByIDRow `json:"data"`
+		Message string               `json:"message"`
+	}
+	resp.Data = respUser
+	resp.Message = "user verified successfully"
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (g *Guest) SellerSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
+	// get req.Body and check if it's in correct format
+	var req struct {
+		Email string `json:"email"`
+		Otp   int    `json:"otp"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if !validators.ValidateEmail(req.Email) {
+		http.Error(w, "invalid email format:", http.StatusBadRequest)
+		return
+	} else if !validators.ValidateOTP(req.Otp) {
+		http.Error(w, "invalid OTP format:", http.StatusBadRequest)
+		return
+	}
+
+	user, err := g.DB.GetUserByEmail(context.TODO(), req.Email)
+	if err != nil {
+		http.Error(w, "invalid email", http.StatusBadRequest)
+		return
+	} else if user.EmailVerified {
+		http.Error(w, "user email already verified", http.StatusBadRequest)
+		return
+	}
+
+	// validate otp
+	otp, err := g.DB.GetValidOTPByUserID(context.TODO(), user.ID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "no valid otp available. generating another otp", http.StatusBadRequest)
+		otp, err := g.DB.AddOTP(context.TODO(), user.ID)
+		if err == sql.ErrNoRows {
+			log.Warn("no otp generated")
+			return
+		}
+		log.Info("testing otp generated: ", otp) // for testing
+		return
+	} else if err != nil {
+		log.Warn("error fetching otp")
+		http.Error(w, "internal server error fetching otp", http.StatusInternalServerError)
+		return
+	}
+	if req.Otp != int(otp.Otp) {
+		http.Error(w, "invalid otp", http.StatusBadRequest)
+		return
+	}
+
+	// verify user
+	respSeller, err := g.DB.VerifySellerEmailByID(context.TODO(), user.ID)
+	if err != nil {
+		log.Warn("error verifying a valid user")
+		http.Error(w, "internal server error verifying user", http.StatusInternalServerError)
+		return
+	}
+
+	// send response
+	var resp struct {
+		Data    db.VerifySellerEmailByIDRow `json:"data"`
+		Message string                      `json:"message"`
+	}
+	resp.Data = respSeller
+	resp.Message = "seller email verified successfully. Wait for admin to verify the seller."
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 
 }
 
 func (g *Guest) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	// take request
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
+	if !validators.ValidateEmail(req.Email) {
+		http.Error(w, "invalid email format", http.StatusBadRequest)
+		return
+	} else if !validators.ValidatePassword(req.Password) {
+		http.Error(w, "invalid password format", http.StatusBadRequest)
+		return
+	}
+
+	// compare email and password
 	user, err := g.DB.GetUserWithPasswordByEmail(context.TODO(), req.Email)
 	if err != nil {
-		http.Error(w, "invalid email", http.StatusBadRequest)
+		http.Error(w, "invalid email", http.StatusUnauthorized)
 		return
 	}
 
 	err = utils.ComparePassword(req.Password, user.Password)
-	log.Info(req.Password, user.Password)
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, "wrong password", http.StatusUnauthorized)
+		return
+	} else if !user.UserVerified {
+		message := fmt.Sprintf("%s not verified", user.Role)
+		http.Error(w, message, http.StatusUnauthorized)
 		return
 	}
 
@@ -217,7 +352,6 @@ func (g *Guest) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	message := fmt.Sprintf("%s of id: %s has successfully logged in", user.Role, user.ID.String())
 	w.Write([]byte(message))
-	// http.Redirect(w, r, "/home", http.StatusSeeOther)
 }
 
 func (g *Guest) LogoutHandler(w http.ResponseWriter, r *http.Request) {
