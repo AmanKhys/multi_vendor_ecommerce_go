@@ -16,12 +16,12 @@ func NewDBConfig() *sql.DB {
 	if err != nil {
 		log.Fatal("error loading environment vairables: ", err)
 	}
-	var dbName = envM[string(envname.DbName)]
-	var dbPort = envM[string(envname.DbPort)]
-	var dbDriver = envM[string(envname.DbDriver)]
-	var host = envM[string(envname.DbHost)]
-	var dbUser = envM[string(envname.DbUser)]
-	var pw = envM[string(envname.DbPassword)]
+	var dbName = envM[envname.DbName]
+	var dbPort = envM[envname.DbPort]
+	var dbDriver = envM[envname.DbDriver]
+	var host = envM[envname.DbHost]
+	var dbUser = envM[envname.DbUser]
+	var pw = envM[envname.DbPassword]
 
 	var connStr = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, pw, host, dbPort, dbName)
 	db, err := sql.Open(dbDriver, connStr)

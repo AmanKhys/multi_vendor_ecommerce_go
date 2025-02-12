@@ -18,7 +18,7 @@ import (
 
 type config struct {
 	port int
-	env  envname.EnvType
+	env  string
 }
 
 var dbConn = repository.NewDBConfig()
