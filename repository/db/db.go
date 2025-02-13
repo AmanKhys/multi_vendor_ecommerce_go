@@ -33,6 +33,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addProductStmt, err = db.PrepareContext(ctx, addProduct); err != nil {
 		return nil, fmt.Errorf("error preparing query AddProduct: %w", err)
 	}
+	if q.addProductToCategoryByIDStmt, err = db.PrepareContext(ctx, addProductToCategoryByID); err != nil {
+		return nil, fmt.Errorf("error preparing query AddProductToCategoryByID: %w", err)
+	}
 	if q.addSellerStmt, err = db.PrepareContext(ctx, addSeller); err != nil {
 		return nil, fmt.Errorf("error preparing query AddSeller: %w", err)
 	}
@@ -47,6 +50,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.deleteCategoryByIDStmt, err = db.PrepareContext(ctx, deleteCategoryByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteCategoryByID: %w", err)
+	}
+	if q.deleteOTPByEmailStmt, err = db.PrepareContext(ctx, deleteOTPByEmail); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteOTPByEmail: %w", err)
 	}
 	if q.deleteProductByIDStmt, err = db.PrepareContext(ctx, deleteProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteProductByID: %w", err)
@@ -83,6 +89,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getCategoryByIDStmt, err = db.PrepareContext(ctx, getCategoryByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCategoryByID: %w", err)
+	}
+	if q.getCurrentTimestampStmt, err = db.PrepareContext(ctx, getCurrentTimestamp); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCurrentTimestamp: %w", err)
 	}
 	if q.getProductByIDStmt, err = db.PrepareContext(ctx, getProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductByID: %w", err)
@@ -149,6 +158,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing addProductStmt: %w", cerr)
 		}
 	}
+	if q.addProductToCategoryByIDStmt != nil {
+		if cerr := q.addProductToCategoryByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addProductToCategoryByIDStmt: %w", cerr)
+		}
+	}
 	if q.addSellerStmt != nil {
 		if cerr := q.addSellerStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addSellerStmt: %w", cerr)
@@ -172,6 +186,11 @@ func (q *Queries) Close() error {
 	if q.deleteCategoryByIDStmt != nil {
 		if cerr := q.deleteCategoryByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteCategoryByIDStmt: %w", cerr)
+		}
+	}
+	if q.deleteOTPByEmailStmt != nil {
+		if cerr := q.deleteOTPByEmailStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteOTPByEmailStmt: %w", cerr)
 		}
 	}
 	if q.deleteProductByIDStmt != nil {
@@ -232,6 +251,11 @@ func (q *Queries) Close() error {
 	if q.getCategoryByIDStmt != nil {
 		if cerr := q.getCategoryByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCategoryByIDStmt: %w", cerr)
+		}
+	}
+	if q.getCurrentTimestampStmt != nil {
+		if cerr := q.getCurrentTimestampStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCurrentTimestampStmt: %w", cerr)
 		}
 	}
 	if q.getProductByIDStmt != nil {
@@ -351,11 +375,13 @@ type Queries struct {
 	addCateogryStmt                *sql.Stmt
 	addOTPStmt                     *sql.Stmt
 	addProductStmt                 *sql.Stmt
+	addProductToCategoryByIDStmt   *sql.Stmt
 	addSellerStmt                  *sql.Stmt
 	addSessionStmt                 *sql.Stmt
 	addUserStmt                    *sql.Stmt
 	blockUserByIDStmt              *sql.Stmt
 	deleteCategoryByIDStmt         *sql.Stmt
+	deleteOTPByEmailStmt           *sql.Stmt
 	deleteProductByIDStmt          *sql.Stmt
 	deleteProductsBySellerIDStmt   *sql.Stmt
 	editCategoryNameByIDStmt       *sql.Stmt
@@ -368,6 +394,7 @@ type Queries struct {
 	getAllUsersStmt                *sql.Stmt
 	getAllUsersByRoleStmt          *sql.Stmt
 	getCategoryByIDStmt            *sql.Stmt
+	getCurrentTimestampStmt        *sql.Stmt
 	getProductByIDStmt             *sql.Stmt
 	getProductsByCategoryIDStmt    *sql.Stmt
 	getProductsBySellerIDStmt      *sql.Stmt
@@ -392,11 +419,13 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addCateogryStmt:                q.addCateogryStmt,
 		addOTPStmt:                     q.addOTPStmt,
 		addProductStmt:                 q.addProductStmt,
+		addProductToCategoryByIDStmt:   q.addProductToCategoryByIDStmt,
 		addSellerStmt:                  q.addSellerStmt,
 		addSessionStmt:                 q.addSessionStmt,
 		addUserStmt:                    q.addUserStmt,
 		blockUserByIDStmt:              q.blockUserByIDStmt,
 		deleteCategoryByIDStmt:         q.deleteCategoryByIDStmt,
+		deleteOTPByEmailStmt:           q.deleteOTPByEmailStmt,
 		deleteProductByIDStmt:          q.deleteProductByIDStmt,
 		deleteProductsBySellerIDStmt:   q.deleteProductsBySellerIDStmt,
 		editCategoryNameByIDStmt:       q.editCategoryNameByIDStmt,
@@ -409,6 +438,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAllUsersStmt:                q.getAllUsersStmt,
 		getAllUsersByRoleStmt:          q.getAllUsersByRoleStmt,
 		getCategoryByIDStmt:            q.getCategoryByIDStmt,
+		getCurrentTimestampStmt:        q.getCurrentTimestampStmt,
 		getProductByIDStmt:             q.getProductByIDStmt,
 		getProductsByCategoryIDStmt:    q.getProductsByCategoryIDStmt,
 		getProductsBySellerIDStmt:      q.getProductsBySellerIDStmt,

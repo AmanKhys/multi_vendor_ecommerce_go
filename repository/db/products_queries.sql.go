@@ -50,6 +50,32 @@ func (q *Queries) AddProduct(ctx context.Context, arg AddProductParams) (Product
 	return i, err
 }
 
+const addProductToCategoryByID = `-- name: AddProductToCategoryByID :one
+insert into category_items
+(product_id, category_id)
+values
+($1, $2)
+returning id, product_id, category_id, created_at, udpated_at
+`
+
+type AddProductToCategoryByIDParams struct {
+	ProductID  uuid.UUID `json:"product_id"`
+	CategoryID uuid.UUID `json:"category_id"`
+}
+
+func (q *Queries) AddProductToCategoryByID(ctx context.Context, arg AddProductToCategoryByIDParams) (CategoryItem, error) {
+	row := q.queryRow(ctx, q.addProductToCategoryByIDStmt, addProductToCategoryByID, arg.ProductID, arg.CategoryID)
+	var i CategoryItem
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.CategoryID,
+		&i.CreatedAt,
+		&i.UdpatedAt,
+	)
+	return i, err
+}
+
 const deleteProductByID = `-- name: DeleteProductByID :one
 update products
 set is_deleted = true, updated_at = current_timestamp

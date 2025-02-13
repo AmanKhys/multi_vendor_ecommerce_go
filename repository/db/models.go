@@ -33,6 +33,14 @@ type Category struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type CategoryItem struct {
+	ID         uuid.UUID `json:"id"`
+	ProductID  uuid.UUID `json:"product_id"`
+	CategoryID uuid.UUID `json:"category_id"`
+	CreatedAt  time.Time `json:"created_at"`
+	UdpatedAt  time.Time `json:"udpated_at"`
+}
+
 type Otp struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`

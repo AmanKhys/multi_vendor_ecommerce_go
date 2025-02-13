@@ -40,3 +40,10 @@ update products
 set is_deleted = true, updated_at = current_timestamp
 where seller_id = $1
 returning *;
+
+-- name: AddProductToCategoryByID :one
+insert into category_items
+(product_id, category_id)
+values
+($1, $2)
+returning *;

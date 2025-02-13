@@ -42,6 +42,15 @@ CREATE TABLE IF NOT EXISTS categories (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at)
 );
 
+-- Category Items Table
+CREATE TABLE IF NOT EXISTS category_items (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id uuid NOT NULL REFERENCES products(id),
+    category_id uuid NOT NULL REFERENCES categories(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    udpated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK(updated_at >= created_at)
+);
+
 -- Products Table
 CREATE TABLE IF NOT EXISTS products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -50,7 +59,6 @@ CREATE TABLE IF NOT EXISTS products (
     price NUMERIC(10,2) NOT NULL CHECK (price > 0),
     stock INTEGER NOT NULL CHECK (stock >= 0),
     seller_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at)

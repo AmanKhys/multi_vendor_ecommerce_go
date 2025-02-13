@@ -70,13 +70,6 @@ SET is_blocked = false, updated_at = current_timestamp
 WHERE id = $1
 RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at;
 
--- name: GetValidOTPByUserID :one
-SELECT * FROM otps
-WHERE user_id = $1 and expires_at > current_timestamp
-ORDER BY created_at DESC
-LIMIT 1;
 
--- name: AddOTP :one
-insert into otps
-(user_id) values ($1)
-returning *;
+-- name: GetCurrentTimestamp :one
+select current_timestamp;
