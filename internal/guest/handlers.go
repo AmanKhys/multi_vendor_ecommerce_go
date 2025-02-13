@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/mail"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/sessions"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -95,7 +98,21 @@ func (g *Guest) UserSignUpHandler(w http.ResponseWriter, r *http.Request) {
 		log.Warn("otp not generated")
 		return
 	}
-	fmt.Println("testing otp: ", signupOTP)
+	err = mail.SendOTPMail(int(signupOTP.Otp), signupOTP.ExpiresAt, respUser.Email)
+	if err != nil {
+		log.Warn("failed to send otp", err.Error())
+		result, err := g.DB.DeleteOTPByEmail(context.TODO(), respUser.Email)
+		if err != nil {
+			log.Warn("error deleting otp by email")
+		}
+		k, err := result.RowsAffected()
+		if err != nil {
+			log.Warn("error fetching the rows affected from DeleteOTPByEmail query resut")
+		}
+		if k == 0 {
+			log.Warn("no rows affected while operating DeleteOTPByEmail query")
+		}
+	}
 }
 
 func (g *Guest) SellerSignUpHandler(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +180,7 @@ func (g *Guest) SellerSignUpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var response = resp{
 		Data:    respSeller,
-		Message: "successfully added user. Now you need to verify it",
+		Message: "successfully added user. Now you need to verify it. Check email for otp.",
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -171,8 +188,26 @@ func (g *Guest) SellerSignUpHandler(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		log.Warn("otp not generated")
 		return
+	} else if err != nil {
+		log.Warn("error processing AddOTP query")
+		return
 	}
-	fmt.Println("testing otp: ", signupOTP)
+
+	err = mail.SendOTPMail(int(signupOTP.Otp), signupOTP.ExpiresAt, respSeller.Email)
+	if err != nil {
+		log.Warn("failed to send otp", err.Error())
+		result, err := g.DB.DeleteOTPByEmail(context.TODO(), respSeller.Email)
+		if err != nil {
+			log.Warn("error deleting otp by email")
+		}
+		k, err := result.RowsAffected()
+		if err != nil {
+			log.Warn("error fetching the rows affected from DeleteOTPByEmail query resut")
+		}
+		if k == 0 {
+			log.Warn("no rows affected while operating DeleteOTPByEmail query")
+		}
+	}
 }
 
 func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
@@ -207,6 +242,12 @@ func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
 			log.Warn("no otp generated")
 			return
 		}
+		err = mail.SendOTPMail(int(otp.Otp), otp.ExpiresAt, user.Email)
+		if err != nil {
+			log.Warn("error sending otp:", err.Error())
+			http.Error(w, "error sending otp:", http.StatusInternalServerError)
+			return
+		}
 		log.Info("testing otp generated: ", otp) // for testing
 		return
 	} else if err != nil {
@@ -225,6 +266,12 @@ func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
 		log.Warn("error verifying a valid user")
 		http.Error(w, "internal server error verifying user", http.StatusInternalServerError)
 		return
+	}
+	_, err = g.DB.DeleteOTPByEmail(context.TODO(), respUser.Email)
+	if err == sql.ErrNoRows {
+		log.Warn("no otp deleted after executing query:", err.Error())
+	} else if err != nil {
+		log.Warn("error deleting otp after executing DeleteOTPByEmail query:", err)
 	}
 
 	// send response
@@ -270,6 +317,22 @@ func (g *Guest) SellerSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
 		otp, err := g.DB.AddOTP(context.TODO(), user.ID)
 		if err == sql.ErrNoRows {
 			log.Warn("no otp generated")
+			return
+		}
+		err = mail.SendOTPMail(int(otp.Otp), otp.ExpiresAt, user.Email)
+		if err != nil {
+			result, err := g.DB.DeleteOTPByEmail(context.TODO(), user.Email)
+			if err != nil {
+				log.Warn("error deleting otp:", err)
+			}
+			k, err := result.RowsAffected()
+			if err != nil {
+				log.Warn("error fetching rows affected from sql.Result:", err)
+			} else if k == 0 {
+				log.Warn("no otp deleted after successful query execution")
+			}
+			log.Warn("error sending otp email to seller", err.Error())
+			http.Error(w, "error sending otp email", http.StatusInternalServerError)
 			return
 		}
 		log.Info("testing otp generated: ", otp) // for testing
@@ -350,7 +413,7 @@ func (g *Guest) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sessions.SetSessionCookie(w, session.ID.String())
 	w.Header().Set("Content-Type", "text/plain")
-	message := fmt.Sprintf("%s of id: %s has successfully logged in", user.Role, user.ID.String())
+	message := fmt.Sprintf("%s of id: %s has successfully logged in\n", user.Role, user.ID.String())
 	w.Write([]byte(message))
 }
 
@@ -362,4 +425,58 @@ func (g *Guest) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sessions.DeleteSessionCookie(w, cookie)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+	id, err := uuid.Parse(cookie.Name)
+	if err != nil {
+		http.Error(w, "sessionID not in a valid format.", http.StatusBadRequest)
+		return
+	}
+	// didn't check the result of query since there is only one matching id
+	// no need to check if it is affected for more than one rows
+	_, err = g.DB.DeleteSessionByID(context.TODO(), id)
+	if err == sql.ErrNoRows {
+		http.Error(w, "not a valid sessionID in session cookie. unable to terminate a non-existing session", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error deleting sessionByID")
+		http.Error(w, "internal error terminating session", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (g *Guest) DeleteSessionHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := sessions.GetSessionCookie(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	id, err := uuid.Parse(cookie.Name)
+	if err != nil {
+		http.Error(w, "sessionID not in a valid format.", http.StatusBadRequest)
+		return
+	}
+	session, err := g.DB.GetSessionDetailsByID(context.TODO(), id)
+	if err == sql.ErrNoRows {
+		http.Error(w, "not a valid sessionID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("internal error deleting session row by id")
+		http.Error(w, "internal error termainating session", http.StatusInternalServerError)
+		return
+	}
+	if time.Now().Compare(session.ExpiresAt) == -1 {
+		http.Error(w, "session already expired. Only authorized for a valid session.", http.StatusUnauthorized)
+		return
+	}
+	userID := session.UserID
+	_, err = g.DB.DeleteSessionsByuserID(context.TODO(), userID)
+	// no need to check errNoRows. since I would atleast have one session on
+	// if I am to get a session and the userID from it; theoretically impossible
+	if err != nil {
+		log.Warn("intenral error deleting sessions by userID in DeleteSessionHistoryHandler")
+		http.Error(w, "internal server error deleting all session history", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-Type", "text/plain")
+	message := "successfully deleted all sessions history for the user"
+	w.Write([]byte(message))
 }
