@@ -30,3 +30,11 @@ insert into sessions
 values
 ($1, $2, $3)
 returning *;
+
+-- name: DeleteSessionByID :execresult
+delete from sessions
+where id = $1;
+
+-- name: DeleteSessionsByuserID :execresult
+delete from sessions
+where user_id = $1;

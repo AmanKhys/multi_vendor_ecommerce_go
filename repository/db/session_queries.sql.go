@@ -18,7 +18,7 @@ insert into sessions
 (user_id, ip_address, user_agent )
 values
 ($1, $2, $3)
-returning id, user_id, ip_address, user_agent, created_at, expires_at, is_active
+returning id, user_id, ip_address, user_agent, created_at, expires_at
 `
 
 type AddSessionParams struct {
@@ -37,13 +37,30 @@ func (q *Queries) AddSession(ctx context.Context, arg AddSessionParams) (Session
 		&i.UserAgent,
 		&i.CreatedAt,
 		&i.ExpiresAt,
-		&i.IsActive,
 	)
 	return i, err
 }
 
+const deleteSessionByID = `-- name: DeleteSessionByID :execresult
+delete from sessions
+where id = $1
+`
+
+func (q *Queries) DeleteSessionByID(ctx context.Context, id uuid.UUID) (sql.Result, error) {
+	return q.exec(ctx, q.deleteSessionByIDStmt, deleteSessionByID, id)
+}
+
+const deleteSessionsByuserID = `-- name: DeleteSessionsByuserID :execresult
+delete from sessions
+where user_id = $1
+`
+
+func (q *Queries) DeleteSessionsByuserID(ctx context.Context, userID uuid.UUID) (sql.Result, error) {
+	return q.exec(ctx, q.deleteSessionsByuserIDStmt, deleteSessionsByuserID, userID)
+}
+
 const getAllSessionsByUserID = `-- name: GetAllSessionsByUserID :one
-select id, user_id, ip_address, user_agent, created_at, expires_at, is_active from sessions
+select id, user_id, ip_address, user_agent, created_at, expires_at from sessions
 where user_id = $1
 `
 
@@ -57,13 +74,12 @@ func (q *Queries) GetAllSessionsByUserID(ctx context.Context, userID uuid.UUID) 
 		&i.UserAgent,
 		&i.CreatedAt,
 		&i.ExpiresAt,
-		&i.IsActive,
 	)
 	return i, err
 }
 
 const getSessionDetailsByID = `-- name: GetSessionDetailsByID :one
-select id, user_id, ip_address, user_agent, created_at, expires_at, is_active from sessions
+select id, user_id, ip_address, user_agent, created_at, expires_at from sessions
 where id = $1
 `
 
@@ -77,7 +93,6 @@ func (q *Queries) GetSessionDetailsByID(ctx context.Context, id uuid.UUID) (Sess
 		&i.UserAgent,
 		&i.CreatedAt,
 		&i.ExpiresAt,
-		&i.IsActive,
 	)
 	return i, err
 }

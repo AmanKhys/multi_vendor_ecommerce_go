@@ -63,6 +63,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteProductsBySellerIDStmt, err = db.PrepareContext(ctx, deleteProductsBySellerID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteProductsBySellerID: %w", err)
 	}
+	if q.deleteSessionByIDStmt, err = db.PrepareContext(ctx, deleteSessionByID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteSessionByID: %w", err)
+	}
+	if q.deleteSessionsByuserIDStmt, err = db.PrepareContext(ctx, deleteSessionsByuserID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteSessionsByuserID: %w", err)
+	}
 	if q.editCategoryNameByIDStmt, err = db.PrepareContext(ctx, editCategoryNameByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditCategoryNameByID: %w", err)
 	}
@@ -215,6 +221,16 @@ func (q *Queries) Close() error {
 	if q.deleteProductsBySellerIDStmt != nil {
 		if cerr := q.deleteProductsBySellerIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteProductsBySellerIDStmt: %w", cerr)
+		}
+	}
+	if q.deleteSessionByIDStmt != nil {
+		if cerr := q.deleteSessionByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteSessionByIDStmt: %w", cerr)
+		}
+	}
+	if q.deleteSessionsByuserIDStmt != nil {
+		if cerr := q.deleteSessionsByuserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteSessionsByuserIDStmt: %w", cerr)
 		}
 	}
 	if q.editCategoryNameByIDStmt != nil {
@@ -409,6 +425,8 @@ type Queries struct {
 	deleteOTPByEmailStmt                   *sql.Stmt
 	deleteProductByIDStmt                  *sql.Stmt
 	deleteProductsBySellerIDStmt           *sql.Stmt
+	deleteSessionByIDStmt                  *sql.Stmt
+	deleteSessionsByuserIDStmt             *sql.Stmt
 	editCategoryNameByIDStmt               *sql.Stmt
 	editProductByIDStmt                    *sql.Stmt
 	getAllCategoriesStmt                   *sql.Stmt
@@ -456,6 +474,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteOTPByEmailStmt:                   q.deleteOTPByEmailStmt,
 		deleteProductByIDStmt:                  q.deleteProductByIDStmt,
 		deleteProductsBySellerIDStmt:           q.deleteProductsBySellerIDStmt,
+		deleteSessionByIDStmt:                  q.deleteSessionByIDStmt,
+		deleteSessionsByuserIDStmt:             q.deleteSessionsByuserIDStmt,
 		editCategoryNameByIDStmt:               q.editCategoryNameByIDStmt,
 		editProductByIDStmt:                    q.editProductByIDStmt,
 		getAllCategoriesStmt:                   q.getAllCategoriesStmt,
