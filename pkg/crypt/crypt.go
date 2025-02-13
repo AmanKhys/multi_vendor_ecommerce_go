@@ -29,10 +29,10 @@ func Encrypt(text string) (string, error) {
 	}
 
 	// Read secret key from environment variable
-	var secretKeyString = envM[string(envname.CryptSecretKey)]
+	var secretKeyString = envM[envname.CryptSecretKey]
 
 	// Read IV (Initialization Vector) from environment variable (must be 16 bytes)
-	var bytesString = envM[string(envname.AesIV)]
+	var bytesString = envM[envname.AesIV]
 
 	// Convert to byte slices
 	var secretKey = []byte(secretKeyString)
