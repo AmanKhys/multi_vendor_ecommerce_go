@@ -288,7 +288,7 @@ func (a *Admin) EditCategoryHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *Admin) DeleteCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		CategoryID uuid.UUID `json:"id"`
+		CategoryName string `json:"name"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -296,13 +296,12 @@ func (a *Admin) DeleteCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	category, err := a.DB.DeleteCategoryByID(context.TODO(), req.CategoryID)
+	category, err := a.DB.DeleteCategoryByName(context.TODO(), req.CategoryName)
 	if err != nil {
-		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed to delete category: %w", err).Error(), http.StatusBadRequest)
 		return
 	}
-	log.Infof("deleted category: %s", req.CategoryID.String())
+	log.Infof("deleted category: %s", category.Name)
 	w.Header().Set("Content-Type", "application/json")
 	message := fmt.Sprintf("category: %s deleted", category.Name)
 	w.Write([]byte(message))
