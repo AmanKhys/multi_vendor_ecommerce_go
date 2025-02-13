@@ -22,8 +22,9 @@ func NewDBConfig() *sql.DB {
 	var host = envM[envname.DbHost]
 	var dbUser = envM[envname.DbUser]
 	var pw = envM[envname.DbPassword]
+	var timezone = envM[envname.DbTimeZone]
 
-	var connStr = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, pw, host, dbPort, dbName)
+	var connStr = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&TimeZone=%s", dbUser, pw, host, dbPort, dbName, timezone)
 	db, err := sql.Open(dbDriver, connStr)
 	if err != nil {
 		log.Fatal("error connecting to database: ", err)

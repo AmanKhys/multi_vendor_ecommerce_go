@@ -13,6 +13,7 @@ const DbUser = "db_user"
 const DbPassword = "db_password"
 const DbPort = "db_port"
 const DbHost = "db_host"
+const DbTimeZone = "db_time_zone"
 
 const SmtpServer = "smtp_server"
 const SmtpEmail = "smtp_email"
