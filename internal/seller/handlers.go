@@ -161,7 +161,6 @@ func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 	var productID = req.ProductID
 	seller, err := s.DB.GetSellerByProductID(context.TODO(), productID)
 	if err == sql.ErrNoRows {
-		log.Info(seller)
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -190,4 +189,80 @@ func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Seller) GetAllCategoriesHandler(w http.ResponseWriter, r *http.Request) {
+	categories, err := s.DB.GetAllCategories(context.TODO())
+	if err != nil {
+		log.Warn("error fetching all categories for seller:", err)
+		http.Error(w, "internal error fetching cateogries", http.StatusInternalServerError)
+		return
+	}
+	var resp struct {
+		Data    []db.Category `json:"data"`
+		Message string        `json:"message"`
+	}
+	resp.Data = categories
+	resp.Message = "successfully fetched all categories"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Seller) AddProductToCategoryHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
+	if !ok {
+		log.Warn("unable to fetch user from the request context after passing it from Auth Middleware")
+		http.Error(w, "internal error fetching user by sessionID", http.StatusInternalServerError)
+		return
+	}
+	var req struct {
+		ProductID    uuid.UUID `json:"product_id"`
+		CategoryName string    `json:"category_name"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "wrong request body format", http.StatusBadRequest)
+		return
+	}
+	product, err := s.DB.GetProductByID(context.TODO(), req.ProductID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid product id", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error fetching product from productID:", err.Error())
+		http.Error(w, "internal server error fetching product from productID", http.StatusInternalServerError)
+		return
+	} else if product.SellerID != user.ID {
+		http.Error(w, "user not authorized to add product to category, not user's product", http.StatusUnauthorized)
+		return
+	}
+	category, err := s.DB.GetCategoryByName(context.TODO(), req.CategoryName)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid category", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error fetching category by name query")
+		http.Error(w, "internal error fetching category", http.StatusInternalServerError)
+		return
+	}
+
+	var arg db.AddProductToCategoryByCategoryNameParams
+	arg.CategoryName = req.CategoryName
+	arg.ProductID = req.ProductID
+	_, err = s.DB.AddProductToCategoryByCategoryName(context.TODO(), arg)
+	if err != nil {
+		log.Warn("error adding product to category items")
+		http.Error(w, "internal error adding product to category items"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var resp struct {
+		Product      db.Product `json:"product"`
+		CategoryName string     `json:"category_name"`
+		Message      string     `json:"message"`
+	}
+	resp.Product = product
+	resp.CategoryName = category.Name
+	resp.Message = "successfully added product to category items"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
