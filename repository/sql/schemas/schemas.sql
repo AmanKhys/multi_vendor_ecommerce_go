@@ -48,13 +48,13 @@ CREATE TABLE IF NOT EXISTS category_items (
     product_id uuid NOT NULL REFERENCES products(id),
     category_id uuid NOT NULL REFERENCES categories(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    udpated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK(updated_at >= created_at)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK(updated_at >= created_at)
 );
 
 -- Products Table
 CREATE TABLE IF NOT EXISTS products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL CHECK (name ~* '^[a-zA-Z]{3,}[a-zA-Z ]*$'),
+    name TEXT NOT NULL CHECK (name ~* '^[a-zA-Z0-9]{3,}[a-zA-Z0-9 ]*$'),
     description TEXT NOT NULL,
     price NUMERIC(10,2) NOT NULL CHECK (price > 0),
     stock INTEGER NOT NULL CHECK (stock >= 0),

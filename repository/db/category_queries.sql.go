@@ -30,15 +30,15 @@ func (q *Queries) AddCateogry(ctx context.Context, name string) (Category, error
 	return i, err
 }
 
-const deleteCategoryByID = `-- name: DeleteCategoryByID :one
+const deleteCategoryByName = `-- name: DeleteCategoryByName :one
 update categories
 set is_deleted = true, updated_at = current_timestamp
-where id = $1
+where name = $1
 returning id, name, is_deleted, created_at, updated_at
 `
 
-func (q *Queries) DeleteCategoryByID(ctx context.Context, id uuid.UUID) (Category, error) {
-	row := q.queryRow(ctx, q.deleteCategoryByIDStmt, deleteCategoryByID, id)
+func (q *Queries) DeleteCategoryByName(ctx context.Context, name string) (Category, error) {
+	row := q.queryRow(ctx, q.deleteCategoryByNameStmt, deleteCategoryByName, name)
 	var i Category
 	err := row.Scan(
 		&i.ID,
@@ -149,6 +149,24 @@ where id = $1 and is_deleted = false
 
 func (q *Queries) GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error) {
 	row := q.queryRow(ctx, q.getCategoryByIDStmt, getCategoryByID, id)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCategoryByName = `-- name: GetCategoryByName :one
+select id, name, is_deleted, created_at, updated_at from categories
+where name = $1 and is_deleted = false
+`
+
+func (q *Queries) GetCategoryByName(ctx context.Context, name string) (Category, error) {
+	row := q.queryRow(ctx, q.getCategoryByNameStmt, getCategoryByName, name)
 	var i Category
 	err := row.Scan(
 		&i.ID,

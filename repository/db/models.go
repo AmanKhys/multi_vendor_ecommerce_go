@@ -38,7 +38,7 @@ type CategoryItem struct {
 	ProductID  uuid.UUID `json:"product_id"`
 	CategoryID uuid.UUID `json:"category_id"`
 	CreatedAt  time.Time `json:"created_at"`
-	UdpatedAt  time.Time `json:"udpated_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type Otp struct {
@@ -50,16 +50,15 @@ type Otp struct {
 }
 
 type Product struct {
-	ID          uuid.UUID     `json:"id"`
-	Name        string        `json:"name"`
-	Description string        `json:"description"`
-	Price       string        `json:"price"`
-	Stock       int32         `json:"stock"`
-	SellerID    uuid.UUID     `json:"seller_id"`
-	CategoryID  uuid.NullUUID `json:"category_id"`
-	IsDeleted   bool          `json:"is_deleted"`
-	CreatedAt   time.Time     `json:"created_at"`
-	UpdatedAt   time.Time     `json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       string    `json:"price"`
+	Stock       int32     `json:"stock"`
+	SellerID    uuid.UUID `json:"seller_id"`
+	IsDeleted   bool      `json:"is_deleted"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type ProductImage struct {

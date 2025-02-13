@@ -15,9 +15,12 @@ where id = $1 and is_deleted = false;
 select * from products
 where is_deleted = false;
 
--- name: GetProductsByCategoryID :many
-select * from products
-where category_id = $1;
+-- name: GetProductsByCategoryName :many
+select p.* from category_items ci
+inner join categories c
+on ci.category_id = c.id
+inner join products p
+on ci.product_id = p.id;
 
 -- name: GetProductsBySellerID :many
 select * from products
@@ -47,3 +50,19 @@ insert into category_items
 values
 ($1, $2)
 returning *;
+
+-- name: AddProductToCategoryByCategoryName :one
+insert into category_items
+(product_id, category_id)
+values
+(@product_id, (select id from categories where name = @category_name))
+returning *;
+
+-- name: GetProductAndCategoryNameByID :one
+select p.*, c.name as category_name
+from category_items ci
+inner join products p
+on ci.product_id = p.id
+inner join categories c
+on ci.category_id = c.id
+where p.id = $1;

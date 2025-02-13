@@ -9,15 +9,19 @@ where is_deleted = false;
 select * from categories
 where id = $1 and is_deleted = false;
 
+-- name: GetCategoryByName :one
+select * from categories
+where name = $1 and is_deleted = false;
+
 -- name: AddCateogry :one
 insert into categories
 (name) values ($1)
 returning *;
 
--- name: DeleteCategoryByID :one
+-- name: DeleteCategoryByName :one
 update categories
 set is_deleted = true, updated_at = current_timestamp
-where id = $1
+where name = $1
 returning *;
 
 -- name: EditCategoryNameByID :one
