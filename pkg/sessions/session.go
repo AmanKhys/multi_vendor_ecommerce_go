@@ -3,8 +3,6 @@ package sessions
 import (
 	"net/http"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 const sessionCookieName string = "session_id"
@@ -30,8 +28,4 @@ func DeleteSessionCookie(w http.ResponseWriter, cookie *http.Cookie) {
 
 func GetSessionCookie(r *http.Request) (*http.Cookie, error) {
 	return r.Cookie(sessionCookieName)
-}
-
-func GenerateSessionID() uuid.UUID {
-	return uuid.New()
 }
