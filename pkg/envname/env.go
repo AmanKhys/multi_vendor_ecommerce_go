@@ -23,3 +23,7 @@ const SmtpIdentity = "smtp_identity"
 
 const CryptSecretKey = "crypt_secret_key"
 const AesIV = "aes_iv"
+
+// google auth keys
+const GoogleClientID = "google_client_id"
+const GoogleSecretKey = "google_secret_key"
