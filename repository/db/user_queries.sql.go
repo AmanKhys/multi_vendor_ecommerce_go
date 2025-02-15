@@ -13,6 +13,48 @@ import (
 	"github.com/google/uuid"
 )
 
+const addAndVerifyUser = `-- name: AddAndVerifyUser :one
+insert into users
+(name, email, password, role, email_verified, user_verified)
+values  ($1, $2, $3, 'user', true, true)
+returning id, name, email, role, is_blocked, email_verified, user_verified, created_at, updated_at
+`
+
+type AddAndVerifyUserParams struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AddAndVerifyUserRow struct {
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Email         string    `json:"email"`
+	Role          string    `json:"role"`
+	IsBlocked     bool      `json:"is_blocked"`
+	EmailVerified bool      `json:"email_verified"`
+	UserVerified  bool      `json:"user_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (q *Queries) AddAndVerifyUser(ctx context.Context, arg AddAndVerifyUserParams) (AddAndVerifyUserRow, error) {
+	row := q.queryRow(ctx, q.addAndVerifyUserStmt, addAndVerifyUser, arg.Name, arg.Email, arg.Password)
+	var i AddAndVerifyUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Role,
+		&i.IsBlocked,
+		&i.EmailVerified,
+		&i.UserVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const addSeller = `-- name: AddSeller :one
 INSERT INTO users
 (name, email, phone, password, role, gst_no, about)

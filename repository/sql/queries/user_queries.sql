@@ -4,6 +4,12 @@ INSERT INTO users
 VALUES ($1, $2, $3, $4, 'user')
 RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at;
 
+-- name: AddAndVerifyUser :one
+insert into users
+(name, email, password, role, email_verified, user_verified, updated_at)
+values  ($1, $2, $3, 'user', true, true, current_timestamp)
+returning id, name, email, role, is_blocked, email_verified, user_verified, created_at, updated_at;
+
 -- name: AddSeller :one
 INSERT INTO users
 (name, email, phone, password, role, gst_no, about)

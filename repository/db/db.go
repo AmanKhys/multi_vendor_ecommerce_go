@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.addAndVerifyUserStmt, err = db.PrepareContext(ctx, addAndVerifyUser); err != nil {
+		return nil, fmt.Errorf("error preparing query AddAndVerifyUser: %w", err)
+	}
 	if q.addCateogryStmt, err = db.PrepareContext(ctx, addCateogry); err != nil {
 		return nil, fmt.Errorf("error preparing query AddCateogry: %w", err)
 	}
@@ -158,6 +161,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.addAndVerifyUserStmt != nil {
+		if cerr := q.addAndVerifyUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addAndVerifyUserStmt: %w", cerr)
+		}
+	}
 	if q.addCateogryStmt != nil {
 		if cerr := q.addCateogryStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addCateogryStmt: %w", cerr)
@@ -412,6 +420,7 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                                     DBTX
 	tx                                     *sql.Tx
+	addAndVerifyUserStmt                   *sql.Stmt
 	addCateogryStmt                        *sql.Stmt
 	addOTPStmt                             *sql.Stmt
 	addProductStmt                         *sql.Stmt
@@ -461,6 +470,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                                     tx,
 		tx:                                     tx,
+		addAndVerifyUserStmt:                   q.addAndVerifyUserStmt,
 		addCateogryStmt:                        q.addCateogryStmt,
 		addOTPStmt:                             q.addOTPStmt,
 		addProductStmt:                         q.addProductStmt,
