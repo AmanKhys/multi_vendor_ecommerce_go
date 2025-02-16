@@ -246,9 +246,18 @@ func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Warn("error sending otp:", err.Error())
 			http.Error(w, "error sending otp:", http.StatusInternalServerError)
+			result, dbErr := g.DB.DeleteOTPByEmail(context.TODO(), req.Email)
+			if dbErr != nil {
+				log.Warn("internal error deleting otp by email after a failed attempt to send otp as email.")
+			}
+			k, err := result.RowsAffected()
+			if err != nil {
+				log.Warn("error fetching affected rows from db for deleted otp sql result")
+			} else if k == 0 {
+				log.Warn("no rows deleted after successful DeleteOTPByEmail query")
+			}
 			return
 		}
-		log.Info("testing otp generated: ", otp) // for testing
 		return
 	} else if err != nil {
 		log.Warn("error fetching otp")
@@ -335,7 +344,6 @@ func (g *Guest) SellerSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "error sending otp email", http.StatusInternalServerError)
 			return
 		}
-		log.Info("testing otp generated: ", otp) // for testing
 		return
 	} else if err != nil {
 		log.Warn("error fetching otp")
@@ -612,5 +620,150 @@ func (g *Guest) OauthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	resp.Data = user
 	resp.Message = "user logged in successfully and added session cookie."
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (g *Guest) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "wrong request body format", http.StatusBadRequest)
+		return
+	} else if !validators.ValidateEmail(req.Email) {
+		http.Error(w, "email in wrong format", http.StatusBadRequest)
+		return
+	}
+
+	user, err := g.DB.GetUserByEmail(context.TODO(), req.Email)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid email; no user with this email", http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		log.Warn("error fetching user with email:", err.Error())
+		http.Error(w, "internal error fetching user with email", http.StatusInternalServerError)
+		return
+	} else if !user.UserVerified {
+		http.Error(w, "user not verified to change password", http.StatusBadRequest)
+		return
+	}
+
+	forgotOTP, err := g.DB.AddForgotOTPByUserID(context.TODO(), user.ID)
+	if err != nil {
+		log.Warn("internal error adding forgot_otp by userID:", err.Error())
+		http.Error(w, "internal error adding forgot_otp by userID", http.StatusInternalServerError)
+		return
+	}
+	err = mail.SendForgotOTPMail(int(forgotOTP.Otp), forgotOTP.ExpiresAt, user.Email)
+	if err != nil {
+		log.Warn("internal error sending email to valid user for forgotten password:", err.Error())
+		http.Error(w, "internal error sending forgotten password otp mail", http.StatusInternalServerError)
+		err := g.DB.DeleteForgotOTPByEmail(context.TODO(), user.Email)
+		if err == sql.ErrNoRows {
+			log.Warn("interna error no rows deleted in forgotOTP:", err.Error())
+		} else if err != nil {
+			log.Warn("internal error deleting forgotOTPByEmail:", err.Error())
+		}
+		return
+	}
+
+	var resp struct {
+		Message string `json:"message"`
+	}
+	resp.Message = fmt.Sprintf("successfully send otp mail to %s.\nNow send the email, otp and the new password in the url /forgot_otp", user.Email)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (g *Guest) ForgotOTPHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email    string `json:"email"`
+		Otp      int    `json:"otp"`
+		Password string `json:"password"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "invalid request body format", http.StatusBadRequest)
+		return
+	} else if !validators.ValidateEmail(req.Email) {
+		http.Error(w, "invalid  email format", http.StatusBadRequest)
+		return
+	} else if !validators.ValidateOTP(req.Otp) {
+		http.Error(w, "invalid otp format", http.StatusBadRequest)
+		return
+	} else if !validators.ValidatePassword(req.Password) {
+		http.Error(w, "invalid password format", http.StatusBadRequest)
+		return
+	}
+
+	user, err := g.DB.GetUserByEmail(context.TODO(), req.Email)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid email", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		http.Error(w, "internal error fetching user by email", http.StatusInternalServerError)
+		return
+	} else if !user.UserVerified {
+		http.Error(w, "user not verified to change the password", http.StatusBadRequest)
+		return
+	}
+
+	forgotOtp, err := g.DB.GetValidForgotOTPByUserID(context.TODO(), user.ID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "no valid forgot otps. generating a valid otp.", http.StatusBadRequest)
+		addedOtp, err := g.DB.AddForgotOTPByUserID(context.TODO(), user.ID)
+		if err != nil {
+			log.Warn("error adding otp")
+		}
+		err = mail.SendForgotOTPMail(int(addedOtp.Otp), addedOtp.ExpiresAt, user.Email)
+		if err != nil {
+			log.Warn("error sending forgot otp mail:", err.Error())
+			err := g.DB.DeleteForgotOTPByEmail(context.TODO(), user.Email)
+			if err != nil {
+				log.Warn("error deleting unsent forgot otp:", err.Error())
+			}
+		}
+
+		var resp struct {
+			Message string `json:"message"`
+		}
+		resp.Message = "successfully sent a forgot password otp to mail. try again with the new otp."
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return
+	} else if err != nil {
+		log.Warn("internal error fetching valid forgotOtp from db", err.Error())
+		http.Error(w, "internal server error fetching otp from db", http.StatusInternalServerError)
+		return
+	} else if int(forgotOtp.Otp) != req.Otp {
+		http.Error(w, "incorrect otp", http.StatusBadRequest)
+		return
+	}
+
+	// set password after confirming correct user and  valid otp
+	hash, err := utils.HashPassword(req.Password)
+	if err != nil {
+		log.Warn("intenral error hashing password while changing password")
+		http.Error(w, "unable to hash and  change password. internal server error", http.StatusInternalServerError)
+		return
+	}
+	var arg db.ChangePasswordByUserIDParams
+	arg.ID = user.ID
+	arg.Password = hash
+	err = g.DB.ChangePasswordByUserID(context.TODO(), arg)
+	if err != nil {
+		log.Warn("internal error changing password in db")
+		http.Error(w, "unable to save the hashed password in db. Changing password failed", http.StatusInternalServerError)
+		return
+	}
+
+	// send response after successfully changing password
+	var resp struct {
+		Message string `json:"message"`
+	}
+	resp.Message = fmt.Sprintf("successfully changed the password of the user: %s with email: %s", user.Name, user.Email)
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }

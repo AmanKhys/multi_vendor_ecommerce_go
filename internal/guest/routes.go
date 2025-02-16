@@ -40,6 +40,9 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /user_signup_otp", g.UserSignUpOTPHandler)
 	mux.HandleFunc("POST /seller_signup_otp", g.SellerSignUpOTPHandler)
 
+	mux.HandleFunc("POST /forgot_password", g.ForgotPasswordHandler)
+	mux.HandleFunc("POST /forgot_otp", g.ForgotOTPHandler)
+
 	mux.HandleFunc("GET /auth/login", g.OauthHandler)
 	mux.HandleFunc("GET /auth/callback", g.OauthCallbackHandler)
 
