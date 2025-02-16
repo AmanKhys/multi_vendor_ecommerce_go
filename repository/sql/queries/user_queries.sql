@@ -79,3 +79,13 @@ RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verifie
 
 -- name: GetCurrentTimestamp :one
 select current_timestamp;
+
+-- name: ChangePasswordByUserID :exec
+update users
+set password = $2
+where id = $1;
+
+-- name: ChangeNameByUserID :exec
+update users
+set name = $2
+where id = $1;

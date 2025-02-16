@@ -41,6 +41,14 @@ type CategoryItem struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+type ForgotOtp struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Otp       int32     `json:"otp"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
 type Otp struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`

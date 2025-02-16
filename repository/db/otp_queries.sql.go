@@ -12,6 +12,25 @@ import (
 	"github.com/google/uuid"
 )
 
+const addForgotOTPByUserID = `-- name: AddForgotOTPByUserID :one
+insert into forgot_otps 
+(user_id) values ($1)
+returning id, user_id, otp, created_at, expires_at
+`
+
+func (q *Queries) AddForgotOTPByUserID(ctx context.Context, userID uuid.UUID) (ForgotOtp, error) {
+	row := q.queryRow(ctx, q.addForgotOTPByUserIDStmt, addForgotOTPByUserID, userID)
+	var i ForgotOtp
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Otp,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const addOTP = `-- name: AddOTP :one
 insert into otps
 (user_id) values ($1)
@@ -31,6 +50,16 @@ func (q *Queries) AddOTP(ctx context.Context, userID uuid.UUID) (Otp, error) {
 	return i, err
 }
 
+const deleteForgotOTPByEmail = `-- name: DeleteForgotOTPByEmail :exec
+delete from forgot_otps
+where user_id = (select user_id from users where email = $1)
+`
+
+func (q *Queries) DeleteForgotOTPByEmail(ctx context.Context, email string) error {
+	_, err := q.exec(ctx, q.deleteForgotOTPByEmailStmt, deleteForgotOTPByEmail, email)
+	return err
+}
+
 const deleteOTPByEmail = `-- name: DeleteOTPByEmail :execresult
 delete from otps
 where user_id = (select user_id from users where email = $1)
@@ -38,6 +67,24 @@ where user_id = (select user_id from users where email = $1)
 
 func (q *Queries) DeleteOTPByEmail(ctx context.Context, email string) (sql.Result, error) {
 	return q.exec(ctx, q.deleteOTPByEmailStmt, deleteOTPByEmail, email)
+}
+
+const getValidForgotOTPByUserID = `-- name: GetValidForgotOTPByUserID :one
+select id, user_id, otp, created_at, expires_at from forgot_otps
+where user_id  = $1 and expires_at > current_timestamp
+`
+
+func (q *Queries) GetValidForgotOTPByUserID(ctx context.Context, userID uuid.UUID) (ForgotOtp, error) {
+	row := q.queryRow(ctx, q.getValidForgotOTPByUserIDStmt, getValidForgotOTPByUserID, userID)
+	var i ForgotOtp
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Otp,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
 
 const getValidOTPByUserID = `-- name: GetValidOTPByUserID :one

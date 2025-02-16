@@ -30,6 +30,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addCateogryStmt, err = db.PrepareContext(ctx, addCateogry); err != nil {
 		return nil, fmt.Errorf("error preparing query AddCateogry: %w", err)
 	}
+	if q.addForgotOTPByUserIDStmt, err = db.PrepareContext(ctx, addForgotOTPByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query AddForgotOTPByUserID: %w", err)
+	}
 	if q.addOTPStmt, err = db.PrepareContext(ctx, addOTP); err != nil {
 		return nil, fmt.Errorf("error preparing query AddOTP: %w", err)
 	}
@@ -54,8 +57,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.blockUserByIDStmt, err = db.PrepareContext(ctx, blockUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query BlockUserByID: %w", err)
 	}
+	if q.changeNameByUserIDStmt, err = db.PrepareContext(ctx, changeNameByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query ChangeNameByUserID: %w", err)
+	}
+	if q.changePasswordByUserIDStmt, err = db.PrepareContext(ctx, changePasswordByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query ChangePasswordByUserID: %w", err)
+	}
 	if q.deleteCategoryByNameStmt, err = db.PrepareContext(ctx, deleteCategoryByName); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteCategoryByName: %w", err)
+	}
+	if q.deleteForgotOTPByEmailStmt, err = db.PrepareContext(ctx, deleteForgotOTPByEmail); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteForgotOTPByEmail: %w", err)
 	}
 	if q.deleteOTPByEmailStmt, err = db.PrepareContext(ctx, deleteOTPByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteOTPByEmail: %w", err)
@@ -141,6 +153,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUsersByRoleStmt, err = db.PrepareContext(ctx, getUsersByRole); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUsersByRole: %w", err)
 	}
+	if q.getValidForgotOTPByUserIDStmt, err = db.PrepareContext(ctx, getValidForgotOTPByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetValidForgotOTPByUserID: %w", err)
+	}
 	if q.getValidOTPByUserIDStmt, err = db.PrepareContext(ctx, getValidOTPByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetValidOTPByUserID: %w", err)
 	}
@@ -169,6 +184,11 @@ func (q *Queries) Close() error {
 	if q.addCateogryStmt != nil {
 		if cerr := q.addCateogryStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addCateogryStmt: %w", cerr)
+		}
+	}
+	if q.addForgotOTPByUserIDStmt != nil {
+		if cerr := q.addForgotOTPByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addForgotOTPByUserIDStmt: %w", cerr)
 		}
 	}
 	if q.addOTPStmt != nil {
@@ -211,9 +231,24 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing blockUserByIDStmt: %w", cerr)
 		}
 	}
+	if q.changeNameByUserIDStmt != nil {
+		if cerr := q.changeNameByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing changeNameByUserIDStmt: %w", cerr)
+		}
+	}
+	if q.changePasswordByUserIDStmt != nil {
+		if cerr := q.changePasswordByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing changePasswordByUserIDStmt: %w", cerr)
+		}
+	}
 	if q.deleteCategoryByNameStmt != nil {
 		if cerr := q.deleteCategoryByNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteCategoryByNameStmt: %w", cerr)
+		}
+	}
+	if q.deleteForgotOTPByEmailStmt != nil {
+		if cerr := q.deleteForgotOTPByEmailStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteForgotOTPByEmailStmt: %w", cerr)
 		}
 	}
 	if q.deleteOTPByEmailStmt != nil {
@@ -356,6 +391,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getUsersByRoleStmt: %w", cerr)
 		}
 	}
+	if q.getValidForgotOTPByUserIDStmt != nil {
+		if cerr := q.getValidForgotOTPByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getValidForgotOTPByUserIDStmt: %w", cerr)
+		}
+	}
 	if q.getValidOTPByUserIDStmt != nil {
 		if cerr := q.getValidOTPByUserIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getValidOTPByUserIDStmt: %w", cerr)
@@ -422,6 +462,7 @@ type Queries struct {
 	tx                                     *sql.Tx
 	addAndVerifyUserStmt                   *sql.Stmt
 	addCateogryStmt                        *sql.Stmt
+	addForgotOTPByUserIDStmt               *sql.Stmt
 	addOTPStmt                             *sql.Stmt
 	addProductStmt                         *sql.Stmt
 	addProductToCategoryByCategoryNameStmt *sql.Stmt
@@ -430,7 +471,10 @@ type Queries struct {
 	addSessionStmt                         *sql.Stmt
 	addUserStmt                            *sql.Stmt
 	blockUserByIDStmt                      *sql.Stmt
+	changeNameByUserIDStmt                 *sql.Stmt
+	changePasswordByUserIDStmt             *sql.Stmt
 	deleteCategoryByNameStmt               *sql.Stmt
+	deleteForgotOTPByEmailStmt             *sql.Stmt
 	deleteOTPByEmailStmt                   *sql.Stmt
 	deleteProductByIDStmt                  *sql.Stmt
 	deleteProductsBySellerIDStmt           *sql.Stmt
@@ -459,6 +503,7 @@ type Queries struct {
 	getUserBySessionIDStmt                 *sql.Stmt
 	getUserWithPasswordByEmailStmt         *sql.Stmt
 	getUsersByRoleStmt                     *sql.Stmt
+	getValidForgotOTPByUserIDStmt          *sql.Stmt
 	getValidOTPByUserIDStmt                *sql.Stmt
 	unblockUserByIDStmt                    *sql.Stmt
 	verifySellerByIDStmt                   *sql.Stmt
@@ -472,6 +517,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		tx:                                     tx,
 		addAndVerifyUserStmt:                   q.addAndVerifyUserStmt,
 		addCateogryStmt:                        q.addCateogryStmt,
+		addForgotOTPByUserIDStmt:               q.addForgotOTPByUserIDStmt,
 		addOTPStmt:                             q.addOTPStmt,
 		addProductStmt:                         q.addProductStmt,
 		addProductToCategoryByCategoryNameStmt: q.addProductToCategoryByCategoryNameStmt,
@@ -480,7 +526,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addSessionStmt:                         q.addSessionStmt,
 		addUserStmt:                            q.addUserStmt,
 		blockUserByIDStmt:                      q.blockUserByIDStmt,
+		changeNameByUserIDStmt:                 q.changeNameByUserIDStmt,
+		changePasswordByUserIDStmt:             q.changePasswordByUserIDStmt,
 		deleteCategoryByNameStmt:               q.deleteCategoryByNameStmt,
+		deleteForgotOTPByEmailStmt:             q.deleteForgotOTPByEmailStmt,
 		deleteOTPByEmailStmt:                   q.deleteOTPByEmailStmt,
 		deleteProductByIDStmt:                  q.deleteProductByIDStmt,
 		deleteProductsBySellerIDStmt:           q.deleteProductsBySellerIDStmt,
@@ -509,6 +558,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getUserBySessionIDStmt:                 q.getUserBySessionIDStmt,
 		getUserWithPasswordByEmailStmt:         q.getUserWithPasswordByEmailStmt,
 		getUsersByRoleStmt:                     q.getUsersByRoleStmt,
+		getValidForgotOTPByUserIDStmt:          q.getValidForgotOTPByUserIDStmt,
 		getValidOTPByUserIDStmt:                q.getValidOTPByUserIDStmt,
 		unblockUserByIDStmt:                    q.unblockUserByIDStmt,
 		verifySellerByIDStmt:                   q.verifySellerByIDStmt,

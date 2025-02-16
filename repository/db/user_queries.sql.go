@@ -15,8 +15,8 @@ import (
 
 const addAndVerifyUser = `-- name: AddAndVerifyUser :one
 insert into users
-(name, email, password, role, email_verified, user_verified)
-values  ($1, $2, $3, 'user', true, true)
+(name, email, password, role, email_verified, user_verified, updated_at)
+values  ($1, $2, $3, 'user', true, true, current_timestamp)
 returning id, name, email, role, is_blocked, email_verified, user_verified, created_at, updated_at
 `
 
@@ -203,6 +203,38 @@ func (q *Queries) BlockUserByID(ctx context.Context, id uuid.UUID) (BlockUserByI
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const changeNameByUserID = `-- name: ChangeNameByUserID :exec
+update users
+set name = $2
+where id = $1
+`
+
+type ChangeNameByUserIDParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+func (q *Queries) ChangeNameByUserID(ctx context.Context, arg ChangeNameByUserIDParams) error {
+	_, err := q.exec(ctx, q.changeNameByUserIDStmt, changeNameByUserID, arg.ID, arg.Name)
+	return err
+}
+
+const changePasswordByUserID = `-- name: ChangePasswordByUserID :exec
+update users
+set password = $2
+where id = $1
+`
+
+type ChangePasswordByUserIDParams struct {
+	ID       uuid.UUID `json:"id"`
+	Password string    `json:"password"`
+}
+
+func (q *Queries) ChangePasswordByUserID(ctx context.Context, arg ChangePasswordByUserIDParams) error {
+	_, err := q.exec(ctx, q.changePasswordByUserIDStmt, changePasswordByUserID, arg.ID, arg.Password)
+	return err
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
