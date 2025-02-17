@@ -38,12 +38,12 @@ where product_id = $1;
 select c.name from category_items ci
 inner join categories c
 on ci.category_id = c.id
-where ci.product_id = $1;
+where ci.product_id = $1 and c.is_deleted = false;
 
 -- name: GetProductsByCategoryName :many
-select p.* from category_items ci
+select p.id, p.name, p.description, p.price, p.stock, p.seller_id, p.created_at, p.updated_at from category_items ci
 inner join products p
 on ci.product_id = p.id
 inner join categories c
 on ci.category_id = c.id
-where c.name = $1;
+where c.name = $1 and c.is_deleted = false and p.is_deleted = false;

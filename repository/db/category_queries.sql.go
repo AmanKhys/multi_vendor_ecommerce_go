@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -192,7 +193,7 @@ const getCategoryNamesOfProductByID = `-- name: GetCategoryNamesOfProductByID :m
 select c.name from category_items ci
 inner join categories c
 on ci.category_id = c.id
-where ci.product_id = $1
+where ci.product_id = $1 and c.is_deleted = false
 `
 
 func (q *Queries) GetCategoryNamesOfProductByID(ctx context.Context, productID uuid.UUID) ([]string, error) {
@@ -219,23 +220,34 @@ func (q *Queries) GetCategoryNamesOfProductByID(ctx context.Context, productID u
 }
 
 const getProductsByCategoryName = `-- name: GetProductsByCategoryName :many
-select p.id, p.name, p.description, p.price, p.stock, p.seller_id, p.is_deleted, p.created_at, p.updated_at from category_items ci
+select p.id, p.name, p.description, p.price, p.stock, p.seller_id, p.created_at, p.updated_at from category_items ci
 inner join products p
 on ci.product_id = p.id
 inner join categories c
 on ci.category_id = c.id
-where c.name = $1
+where c.name = $1 and c.is_deleted = false and p.is_deleted = false
 `
 
-func (q *Queries) GetProductsByCategoryName(ctx context.Context, name string) ([]Product, error) {
+type GetProductsByCategoryNameRow struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       float64   `json:"price"`
+	Stock       int32     `json:"stock"`
+	SellerID    uuid.UUID `json:"seller_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetProductsByCategoryName(ctx context.Context, name string) ([]GetProductsByCategoryNameRow, error) {
 	rows, err := q.query(ctx, q.getProductsByCategoryNameStmt, getProductsByCategoryName, name)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Product{}
+	items := []GetProductsByCategoryNameRow{}
 	for rows.Next() {
-		var i Product
+		var i GetProductsByCategoryNameRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -243,7 +255,6 @@ func (q *Queries) GetProductsByCategoryName(ctx context.Context, name string) ([
 			&i.Price,
 			&i.Stock,
 			&i.SellerID,
-			&i.IsDeleted,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
