@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 
@@ -46,5 +47,30 @@ func (u *User) ProductHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	resp := Response{Data: product}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (u *User) CategoryHandler(w http.ResponseWriter, r *http.Request) {
+	queryParams := r.URL.Query()
+	categoryName := queryParams.Get("category_name")
+
+	products, err := u.DB.GetProductsByCategoryName(r.Context(), categoryName)
+	if err == sql.ErrNoRows {
+		w.Header().Set("Content-Type", "text/plain")
+		message := "no available products by the cateogry:" + categoryName
+		w.Write([]byte(message))
+	} else if err != nil {
+		log.Warn("error fetching products by category name:", err.Error())
+		http.Error(w, "internal error fetching products by category name", http.StatusBadRequest)
+		return
+	}
+
+	var resp struct {
+		Data    []db.GetProductsByCategoryNameRow `json:"data"`
+		Message string                            `json:"message"`
+	}
+	resp.Data = products
+	resp.Message = "successfully fetched products from category:" + categoryName
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }

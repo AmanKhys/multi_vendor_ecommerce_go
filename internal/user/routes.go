@@ -14,4 +14,5 @@ var u = User{DB: DB}
 func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /user/products", u.ProductsHandler)
 	mux.HandleFunc("GET /user/product", u.ProductHandler)
+	mux.HandleFunc("GET /user/category", u.CategoryHandler)
 }
