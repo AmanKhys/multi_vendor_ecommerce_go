@@ -109,8 +109,8 @@ func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return
 	}
-	if !(validators.ValidateProductName(arg.Name) ||
-		validators.ValidateProductPrice(arg.Price) ||
+	if !(validators.ValidateProductName(arg.Name) &&
+		validators.ValidateProductPrice(arg.Price) &&
 		validators.ValidateProductStock(arg.Stock)) {
 		http.Error(w, "invalid data values", http.StatusBadRequest)
 		return
@@ -174,8 +174,8 @@ func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "wrong request format", http.StatusBadRequest)
 		return
-	} else if !(validators.ValidateProductName(req.Name) ||
-		validators.ValidateProductPrice(req.Price) ||
+	} else if !(validators.ValidateProductName(req.Name) &&
+		validators.ValidateProductPrice(req.Price) &&
 		validators.ValidateProductStock(req.Stock)) {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return
