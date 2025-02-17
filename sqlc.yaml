@@ -12,17 +12,35 @@ sql:
         emit_empty_slices: true
         json_tags_case_style: "snake"
         overrides:
-          - db_type: "text"
-            go_type: "string"
-          - db_type: "varchar"
-            go_type: "string"
-          - db_type: "integer"
+          # Integer types mapped to Go's `int`
+          - db_type: "pg_catalog.smallint"
             go_type: "int"
-          - db_type: "bigint"
+          - db_type: "pg_catalog.integer"
             go_type: "int"
-          - db_type: "integer"
+          - db_type: "pg_catalog.bigint"
+            go_type: "int"
+          
+          # Decimal/numeric types mapped to Go's `float64`
+          - db_type: "pg_catalog.decimal"
+            go_type: "float64"
+          - db_type: "pg_catalog.numeric"
+            go_type: "float64"
+          
+          # Nullable integer overrides
+          - db_type: "pg_catalog.smallint"
+            go_type: "int"
             nullable: true
-            go_type: "database/sql.NullInt64"
-          - db_type: "bigint"
+          - db_type: "pg_catalog.integer"
+            go_type: "int"
             nullable: true
-            go_type: "database/sql.NullInt64"
+          - db_type: "pg_catalog.bigint"
+            go_type: "int"
+            nullable: true
+          
+          # Nullable decimal/numeric overrides
+          - db_type: "pg_catalog.decimal"
+            go_type: "float64"
+            nullable: true
+          - db_type: "pg_catalog.numeric"
+            go_type: "float64"
+            nullable: true
