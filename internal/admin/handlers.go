@@ -23,7 +23,11 @@ func (a *Admin) AdminAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 		Message string              `json:"message"`
 	}
 	data, err := a.DB.GetAllUsers(context.TODO())
-	if err != nil {
+	if err == sql.ErrNoRows {
+		message := "no current users available to display"
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(message))
+	} else if err != nil {
 		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed : %w", err).Error(), http.StatusBadRequest)
 		return
@@ -41,7 +45,11 @@ func (a *Admin) AdminUsersHandler(w http.ResponseWriter, r *http.Request) {
 		Message string                    `json:"message"`
 	}
 	data, err := a.DB.GetAllUsersByRole(context.TODO(), "user")
-	if err != nil {
+	if err == sql.ErrNoRows {
+		w.Header().Set("Content-Type", "text/plain")
+		message := "no current users available"
+		w.Write([]byte(message))
+	} else if err != nil {
 		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed : %w", err).Error(), http.StatusBadRequest)
 		return
@@ -59,7 +67,11 @@ func (a *Admin) AdminSellersHandler(w http.ResponseWriter, r *http.Request) {
 		Message string                    `json:"message"`
 	}
 	data, err := a.DB.GetAllUsersByRole(context.TODO(), "seller")
-	if err != nil {
+	if err == sql.ErrNoRows {
+		w.Header().Set("Content-Type", "text/plain")
+		message := "no sellers available"
+		w.Write([]byte(message))
+	} else if err != nil {
 		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed : %w", err).Error(), http.StatusBadRequest)
 		return
@@ -75,8 +87,11 @@ func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
-	if !validators.ValidateEmail(req.Email) {
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "invalid request format", http.StatusBadRequest)
+		return
+	} else if !validators.ValidateEmail(req.Email) {
 		http.Error(w, "invalid email format:", http.StatusBadRequest)
 		return
 	}
@@ -96,13 +111,13 @@ func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "seller already verified", http.StatusBadRequest)
 		return
 	} else if !user.EmailVerified {
-		http.Error(w, "seller email not yet verified. visit /seller_signup_otp", http.StatusBadRequest)
+		http.Error(w, "seller email not yet verified.", http.StatusUnauthorized)
 		return
 	}
 
-	respSeller, err := a.DB.VerifySellerByID(context.TODO(), user.ID)
+	seller, err := a.DB.VerifySellerByID(context.TODO(), user.ID)
 	if err != nil {
-		log.Warn("verify seller by id failed.")
+		log.Warn("verify seller by id failed for a valid seller.")
 		http.Error(w, "internal server error while verifying seller", http.StatusInternalServerError)
 		return
 	}
@@ -111,7 +126,7 @@ func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
 		Data    db.VerifySellerByIDRow `json:"data"`
 		Message string                 `json:"message"`
 	}
-	resp.Data = respSeller
+	resp.Data = seller
 	resp.Message = "successfully verified seller"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -168,27 +183,25 @@ func (a *Admin) BlockUserHandler(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid userID", http.StatusBadRequest)
 		return
-	}
-	if err != nil {
+	} else if err != nil {
 		log.Warn("error taking user from db: ", err)
 		http.Error(w, "error fetching user", http.StatusInternalServerError)
 		return
-	}
-	if user.Role == AdminRole {
+	} else if user.IsBlocked {
+		http.Error(w, "user already blocked", http.StatusBadRequest)
+		return
+	} else if user.Role == AdminRole {
 		http.Error(w, "trying to block admin: invalid request", http.StatusBadRequest)
 		return
 	}
+
 	blockedUser, err := a.DB.BlockUserByID(context.TODO(), req.UserID)
-	if err == sql.ErrNoRows {
-		http.Error(w, "invalid user data", http.StatusBadRequest)
-		return
-	}
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, "error blocking user", http.StatusInternalServerError)
 		return
 	}
-	log.Infof("blocked user: %s", blockedUser.ID.String())
+	log.Infof("blocked user: %s", blockedUser.Email)
 	message := fmt.Sprintf("succesfully blocked user: %s", blockedUser.ID.String())
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(message))
@@ -208,8 +221,7 @@ func (a *Admin) UnblockUserHandler(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid user data", http.StatusBadRequest)
 		return
-	}
-	if err != nil {
+	} else if err != nil {
 		log.Warn(err)
 		http.Error(w, "error unblocking user", http.StatusInternalServerError)
 		return
@@ -232,10 +244,9 @@ func (a *Admin) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 
 	product, err := a.DB.DeleteProductByID(context.TODO(), req.ProductID)
 	if err == sql.ErrNoRows {
-		http.Error(w, "invalid user data", http.StatusBadRequest)
+		http.Error(w, "invalid productID", http.StatusBadRequest)
 		return
-	}
-	if err != nil {
+	} else if err != nil {
 		log.Warn(err)
 		http.Error(w, "error deleting product", http.StatusInternalServerError)
 		return
@@ -262,26 +273,26 @@ func (a *Admin) AddCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Infof("added category: %s", category.Name)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain")
 	message := fmt.Sprintf("category: %s added", category.Name)
 	w.Write([]byte(message))
 }
 
 func (a *Admin) EditCategoryHandler(w http.ResponseWriter, r *http.Request) {
-	var req db.EditCategoryNameByIDParams
+	var req db.EditCategoryNameByNameParams
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return
 	}
-	category, err := a.DB.EditCategoryNameByID(context.TODO(), req)
+	category, err := a.DB.EditCategoryNameByName(context.TODO(), req)
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed to rename cateogry: %w", err).Error(), http.StatusBadRequest)
 		return
 	}
 	log.Infof("renamed category: %s", category.Name)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain")
 	message := fmt.Sprintf("category: %s modified", category.Name)
 	w.Write([]byte(message))
 }
@@ -297,12 +308,15 @@ func (a *Admin) DeleteCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	category, err := a.DB.DeleteCategoryByName(context.TODO(), req.CategoryName)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid category name", http.StatusBadRequest)
+		return
+	} else if err != nil {
 		http.Error(w, fmt.Errorf("failed to delete category: %w", err).Error(), http.StatusBadRequest)
 		return
 	}
 	log.Infof("deleted category: %s", category.Name)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain")
 	message := fmt.Sprintf("category: %s deleted", category.Name)
 	w.Write([]byte(message))
 }
