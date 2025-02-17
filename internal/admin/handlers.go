@@ -293,7 +293,7 @@ func (a *Admin) EditCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Infof("renamed category: %s", category.Name)
 	w.Header().Set("Content-Type", "text/plain")
-	message := fmt.Sprintf("category: %s modified", category.Name)
+	message := fmt.Sprintf("category: %s renamed to %s", req.Name, category.Name)
 	w.Write([]byte(message))
 }
 
