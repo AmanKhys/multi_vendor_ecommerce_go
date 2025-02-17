@@ -9,8 +9,6 @@ import (
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/router"
-	"github.com/amankhys/multi_vendor_ecommerce_go/repository"
-	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 
 	env "github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
@@ -21,8 +19,8 @@ type config struct {
 	env  string
 }
 
-var dbConn = repository.NewDBConfig()
-var DB = db.New(dbConn)
+// var dbConn = repository.NewDBConfig()
+// var DB = db.New(dbConn)
 
 func main() {
 	var cfg config
