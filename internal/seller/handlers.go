@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -23,37 +24,63 @@ func (s *Seller) OwnProductsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "user not found in reqeust context", http.StatusInternalServerError)
 		return
 	}
+
+	var Err []string
 	products, err := s.DB.GetProductsBySellerID(context.TODO(), user.ID)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		Err = append(Err, "no products available for the seller yet.")
+	} else if err != nil {
 		log.Warn("error fetching products for seller: ", user.ID, ":", err)
 		http.Error(w, "unable to fetch seller products", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	type Response struct {
+	var resp struct {
 		Data []db.Product `json:"data"`
+		Err  []string     `json:"errors"`
 	}
-	resp := Response{Data: products}
+	resp.Data = products
+	resp.Err = Err
 	json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	type req struct {
-		ProductID uuid.UUID `json:"id"`
+	var req struct {
+		ProductID uuid.UUID `json:"product_id"`
 	}
-	var request req
-	json.NewDecoder(r.Body).Decode(&request)
-	product, err := s.DB.GetProductByID(context.TODO(), request.ProductID)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		log.Warn("error fetching product from seller")
+		http.Error(w, "invalid request format", http.StatusBadRequest)
+		return
+	}
+	product, err := s.DB.GetProductByID(context.TODO(), req.ProductID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "not a valid productID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error fetching product from seller", err.Error())
 		http.Error(w, "error fetching product", http.StatusInternalServerError)
 		return
 	}
-	type response struct {
-		Data db.Product `json:"data"`
+
+	var Err []string
+	categories, err := s.DB.GetCategoryNamesOfProductByID(context.TODO(), product.ID)
+	if err == sql.ErrNoRows {
+		Err = append(Err, "no categories added for product yet.")
+	} else if err != nil {
+		Err = append(Err, "error fetching categories for product")
 	}
-	resp := response{Data: product}
+	var resp struct {
+		Data       db.Product `json:"data"`
+		Message    string     `json:"message"`
+		Categories []string   `json:"categories"`
+		Err        []string   `json:"errors"`
+	}
+	resp.Data = product
+	resp.Categories = categories
+	resp.Err = Err
+	resp.Message = "successfully fetched product"
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
@@ -70,24 +97,62 @@ func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "user not found in request context", http.StatusInternalServerError)
 		return
 	}
-	var arg db.AddProductParams
-	json.NewDecoder(r.Body).Decode(&arg)
-	arg.SellerID = user.ID
-	product, err := s.DB.AddProduct(context.TODO(), arg)
+	var arg struct {
+		Name        string   `json:"name"`
+		Description string   `json:"description"`
+		Price       float64  `json:"price"`
+		Stock       int      `json:"stock"`
+		Categories  []string `json:"categories"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&arg)
 	if err != nil {
-		log.Info("product", arg)
+		http.Error(w, "invalid data format", http.StatusBadRequest)
+		return
+	}
+	if !(validators.ValidateProductName(arg.Name) ||
+		validators.ValidateProductPrice(arg.Price) ||
+		validators.ValidateProductStock(arg.Stock)) {
+		http.Error(w, "invalid data values", http.StatusBadRequest)
+		return
+	}
+	var productArg db.AddProductParams
+	productArg.SellerID = user.ID
+	productArg.Name = arg.Name
+	productArg.Description = arg.Description
+	productArg.Price = arg.Price
+	productArg.Stock = int32(arg.Stock)
+	product, err := s.DB.AddProduct(context.TODO(), productArg)
+	if err != nil {
 		log.Warnf("error adding product from sellerID: %s", user.ID)
 		log.Warn(err)
 		http.Error(w, "internal error while adding product", http.StatusInternalServerError)
 		return
 	}
-	type resp struct {
-		Data    db.Product `json:"data"`
-		Message string     `json:"message"`
+	var Err []string
+	var CategoriesAdded []string
+	for _, v := range arg.Categories {
+		var catArg db.AddProductToCategoryByCategoryNameParams
+		catArg.CategoryName = v
+		catArg.ProductID = product.ID
+		_, err = s.DB.AddProductToCategoryByCategoryName(context.TODO(), catArg)
+		if err != nil {
+			Err = append(Err, "error adding product to category:"+v)
+		} else {
+			CategoriesAdded = append(CategoriesAdded, v)
+		}
 	}
-	var response = resp{Data: product, Message: "product added successfully"}
+	var resp struct {
+		Data            db.Product `json:"data"`
+		Message         string     `json:"message"`
+		CategoriesAdded []string   `json:"categories_added"`
+		Err             []string   `json:"error"`
+	}
+	resp.Data = product
+	resp.Message = "product added successfully"
+	resp.CategoriesAdded = CategoriesAdded
+	resp.Err = Err
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
@@ -97,24 +162,47 @@ func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "user not found in request context", http.StatusInternalServerError)
 		return
 	}
-	var arg = db.EditProductByIDParams{}
-	json.NewDecoder(r.Body).Decode(&arg)
-	var productID = arg.ID
-	seller, err := s.DB.GetSellerByProductID(context.TODO(), productID)
+	var req struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int       `json:"stock"`
+		Categories  []string  `json:"categories"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "wrong request format", http.StatusBadRequest)
+		return
+	} else if !(validators.ValidateProductName(req.Name) ||
+		validators.ValidateProductPrice(req.Price) ||
+		validators.ValidateProductStock(req.Stock)) {
+		http.Error(w, "invalid data format", http.StatusBadRequest)
+		return
+	}
 
+	var productID = req.ID
+	seller, err := s.DB.GetSellerByProductID(context.TODO(), productID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 	if err != nil {
 		log.Warn("error fetching sellerID from database")
-	}
-	if seller.ID != user.ID {
+		http.Error(w, "internal server error adding the product; database error", http.StatusInternalServerError)
+		return
+	} else if seller.ID != user.ID {
 		http.Error(w, "trying to edit products not owned by you", http.StatusBadRequest)
 		return
 	}
 
 	// logic
+	var arg db.EditProductByIDParams
+	arg.ID = req.ID
+	arg.Name = req.Name
+	arg.Description = req.Description
+	arg.Price = req.Price
+	arg.Stock = int32(req.Stock)
 	product, err := s.DB.EditProductByID(context.TODO(), arg)
 	if err == sql.ErrNoRows {
 		http.Error(w, "no product with the specified id", http.StatusBadRequest)
@@ -125,16 +213,37 @@ func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type resp struct {
-		Data    db.Product `json:"data"`
-		Message string     `json:"message"`
+	var Err []string
+	var CategoriesAdded []string
+	err = s.DB.DeleteAllCategoriesForProductByID(context.TODO(), productID)
+	if err != nil {
+		Err = append(Err, "error removing all the previous categories attached to the product:"+product.Name)
+		log.Warn("error removing all the previous categories attached to the product on DeleteAllCategoriesForProductByID:", err.Error())
 	}
-	var response = resp{
-		Data:    product,
-		Message: "successfully updated product",
+	for _, v := range req.Categories {
+		var CatArg db.AddProductToCategoryByCategoryNameParams
+		CatArg.ProductID = productID
+		CatArg.CategoryName = v
+		_, err = s.DB.AddProductToCategoryByCategoryName(context.TODO(), CatArg)
+		if err != nil {
+			Err = append(Err, "error adding product to category:"+v)
+		} else {
+			CategoriesAdded = append(CategoriesAdded, v)
+		}
 	}
+
+	var resp struct {
+		Data            db.Product `json:"data"`
+		Message         string     `json:"message"`
+		Err             []string   `json:"error"`
+		CategoriesAdded []string   `json:"categories_added"`
+	}
+	resp.Err = Err
+	resp.CategoriesAdded = CategoriesAdded
+	resp.Data = product
+	resp.Message = "updated product details"
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +257,7 @@ func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 
 	// arguemnt struct to unmarshall from r.Body
 	var req struct {
-		ProductID uuid.UUID `json:"id"`
+		ProductID uuid.UUID `json:"product_id"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -161,13 +270,13 @@ func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 	var productID = req.ProductID
 	seller, err := s.DB.GetSellerByProductID(context.TODO(), productID)
 	if err == sql.ErrNoRows {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		http.Error(w, "invalid product_id", http.StatusBadRequest)
 		return
-	}
-	if err != nil {
+	} else if err != nil {
 		log.Warn("error fetching sellerID from database")
-	}
-	if seller.ID != user.ID {
+		http.Error(w, "internal server error adding the product; database error", http.StatusInternalServerError)
+		return
+	} else if seller.ID != user.ID {
 		http.Error(w, "trying to edit products not owned by you", http.StatusBadRequest)
 		return
 	}
@@ -179,16 +288,14 @@ func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error deleting product", http.StatusInternalServerError)
 		return
 	}
-	type resp struct {
+	var resp struct {
 		Product db.Product `json:"product"`
 		Message string     `json:"message"`
 	}
-	var response = resp{
-		Product: product,
-		Message: "successfully deleted product",
-	}
+	resp.Product = product
+	resp.Message = "successfully deleted product"
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Seller) GetAllCategoriesHandler(w http.ResponseWriter, r *http.Request) {
