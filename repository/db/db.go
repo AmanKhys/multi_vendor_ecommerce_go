@@ -63,6 +63,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.changePasswordByUserIDStmt, err = db.PrepareContext(ctx, changePasswordByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query ChangePasswordByUserID: %w", err)
 	}
+	if q.deleteAllCategoriesForProductByIDStmt, err = db.PrepareContext(ctx, deleteAllCategoriesForProductByID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteAllCategoriesForProductByID: %w", err)
+	}
 	if q.deleteCategoryByNameStmt, err = db.PrepareContext(ctx, deleteCategoryByName); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteCategoryByName: %w", err)
 	}
@@ -84,8 +87,8 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteSessionsByuserIDStmt, err = db.PrepareContext(ctx, deleteSessionsByuserID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteSessionsByuserID: %w", err)
 	}
-	if q.editCategoryNameByIDStmt, err = db.PrepareContext(ctx, editCategoryNameByID); err != nil {
-		return nil, fmt.Errorf("error preparing query EditCategoryNameByID: %w", err)
+	if q.editCategoryNameByNameStmt, err = db.PrepareContext(ctx, editCategoryNameByName); err != nil {
+		return nil, fmt.Errorf("error preparing query EditCategoryNameByName: %w", err)
 	}
 	if q.editProductByIDStmt, err = db.PrepareContext(ctx, editProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditProductByID: %w", err)
@@ -116,6 +119,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getCategoryByNameStmt, err = db.PrepareContext(ctx, getCategoryByName); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCategoryByName: %w", err)
+	}
+	if q.getCategoryNamesOfProductByIDStmt, err = db.PrepareContext(ctx, getCategoryNamesOfProductByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCategoryNamesOfProductByID: %w", err)
 	}
 	if q.getCurrentTimestampStmt, err = db.PrepareContext(ctx, getCurrentTimestamp); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCurrentTimestamp: %w", err)
@@ -241,6 +247,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing changePasswordByUserIDStmt: %w", cerr)
 		}
 	}
+	if q.deleteAllCategoriesForProductByIDStmt != nil {
+		if cerr := q.deleteAllCategoriesForProductByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteAllCategoriesForProductByIDStmt: %w", cerr)
+		}
+	}
 	if q.deleteCategoryByNameStmt != nil {
 		if cerr := q.deleteCategoryByNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteCategoryByNameStmt: %w", cerr)
@@ -276,9 +287,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteSessionsByuserIDStmt: %w", cerr)
 		}
 	}
-	if q.editCategoryNameByIDStmt != nil {
-		if cerr := q.editCategoryNameByIDStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing editCategoryNameByIDStmt: %w", cerr)
+	if q.editCategoryNameByNameStmt != nil {
+		if cerr := q.editCategoryNameByNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editCategoryNameByNameStmt: %w", cerr)
 		}
 	}
 	if q.editProductByIDStmt != nil {
@@ -329,6 +340,11 @@ func (q *Queries) Close() error {
 	if q.getCategoryByNameStmt != nil {
 		if cerr := q.getCategoryByNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCategoryByNameStmt: %w", cerr)
+		}
+	}
+	if q.getCategoryNamesOfProductByIDStmt != nil {
+		if cerr := q.getCategoryNamesOfProductByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCategoryNamesOfProductByIDStmt: %w", cerr)
 		}
 	}
 	if q.getCurrentTimestampStmt != nil {
@@ -473,6 +489,7 @@ type Queries struct {
 	blockUserByIDStmt                      *sql.Stmt
 	changeNameByUserIDStmt                 *sql.Stmt
 	changePasswordByUserIDStmt             *sql.Stmt
+	deleteAllCategoriesForProductByIDStmt  *sql.Stmt
 	deleteCategoryByNameStmt               *sql.Stmt
 	deleteForgotOTPByEmailStmt             *sql.Stmt
 	deleteOTPByEmailStmt                   *sql.Stmt
@@ -480,7 +497,7 @@ type Queries struct {
 	deleteProductsBySellerIDStmt           *sql.Stmt
 	deleteSessionByIDStmt                  *sql.Stmt
 	deleteSessionsByuserIDStmt             *sql.Stmt
-	editCategoryNameByIDStmt               *sql.Stmt
+	editCategoryNameByNameStmt             *sql.Stmt
 	editProductByIDStmt                    *sql.Stmt
 	getAllCategoriesStmt                   *sql.Stmt
 	getAllCategoriesForAdminStmt           *sql.Stmt
@@ -491,6 +508,7 @@ type Queries struct {
 	getAllUsersByRoleStmt                  *sql.Stmt
 	getCategoryByIDStmt                    *sql.Stmt
 	getCategoryByNameStmt                  *sql.Stmt
+	getCategoryNamesOfProductByIDStmt      *sql.Stmt
 	getCurrentTimestampStmt                *sql.Stmt
 	getProductAndCategoryNameByIDStmt      *sql.Stmt
 	getProductByIDStmt                     *sql.Stmt
@@ -528,6 +546,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		blockUserByIDStmt:                      q.blockUserByIDStmt,
 		changeNameByUserIDStmt:                 q.changeNameByUserIDStmt,
 		changePasswordByUserIDStmt:             q.changePasswordByUserIDStmt,
+		deleteAllCategoriesForProductByIDStmt:  q.deleteAllCategoriesForProductByIDStmt,
 		deleteCategoryByNameStmt:               q.deleteCategoryByNameStmt,
 		deleteForgotOTPByEmailStmt:             q.deleteForgotOTPByEmailStmt,
 		deleteOTPByEmailStmt:                   q.deleteOTPByEmailStmt,
@@ -535,7 +554,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteProductsBySellerIDStmt:           q.deleteProductsBySellerIDStmt,
 		deleteSessionByIDStmt:                  q.deleteSessionByIDStmt,
 		deleteSessionsByuserIDStmt:             q.deleteSessionsByuserIDStmt,
-		editCategoryNameByIDStmt:               q.editCategoryNameByIDStmt,
+		editCategoryNameByNameStmt:             q.editCategoryNameByNameStmt,
 		editProductByIDStmt:                    q.editProductByIDStmt,
 		getAllCategoriesStmt:                   q.getAllCategoriesStmt,
 		getAllCategoriesForAdminStmt:           q.getAllCategoriesForAdminStmt,
@@ -546,6 +565,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAllUsersByRoleStmt:                  q.getAllUsersByRoleStmt,
 		getCategoryByIDStmt:                    q.getCategoryByIDStmt,
 		getCategoryByNameStmt:                  q.getCategoryByNameStmt,
+		getCategoryNamesOfProductByIDStmt:      q.getCategoryNamesOfProductByIDStmt,
 		getCurrentTimestampStmt:                q.getCurrentTimestampStmt,
 		getProductAndCategoryNameByIDStmt:      q.getProductAndCategoryNameByIDStmt,
 		getProductByIDStmt:                     q.getProductByIDStmt,

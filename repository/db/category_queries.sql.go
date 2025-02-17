@@ -30,6 +30,16 @@ func (q *Queries) AddCateogry(ctx context.Context, name string) (Category, error
 	return i, err
 }
 
+const deleteAllCategoriesForProductByID = `-- name: DeleteAllCategoriesForProductByID :exec
+delete from category_items
+where product_id = $1
+`
+
+func (q *Queries) DeleteAllCategoriesForProductByID(ctx context.Context, productID uuid.UUID) error {
+	_, err := q.exec(ctx, q.deleteAllCategoriesForProductByIDStmt, deleteAllCategoriesForProductByID, productID)
+	return err
+}
+
 const deleteCategoryByName = `-- name: DeleteCategoryByName :one
 update categories
 set is_deleted = true, updated_at = current_timestamp
@@ -50,20 +60,20 @@ func (q *Queries) DeleteCategoryByName(ctx context.Context, name string) (Catego
 	return i, err
 }
 
-const editCategoryNameByID = `-- name: EditCategoryNameByID :one
+const editCategoryNameByName = `-- name: EditCategoryNameByName :one
 update categories
-set name = $2, updated_at = current_timestamp
-where id = $1
+set name = $1, updated_at = current_timestamp
+where name = $2 and is_deleted = false
 returning id, name, is_deleted, created_at, updated_at
 `
 
-type EditCategoryNameByIDParams struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
+type EditCategoryNameByNameParams struct {
+	NewName string `json:"new_name"`
+	Name    string `json:"name"`
 }
 
-func (q *Queries) EditCategoryNameByID(ctx context.Context, arg EditCategoryNameByIDParams) (Category, error) {
-	row := q.queryRow(ctx, q.editCategoryNameByIDStmt, editCategoryNameByID, arg.ID, arg.Name)
+func (q *Queries) EditCategoryNameByName(ctx context.Context, arg EditCategoryNameByNameParams) (Category, error) {
+	row := q.queryRow(ctx, q.editCategoryNameByNameStmt, editCategoryNameByName, arg.NewName, arg.Name)
 	var i Category
 	err := row.Scan(
 		&i.ID,
@@ -176,4 +186,76 @@ func (q *Queries) GetCategoryByName(ctx context.Context, name string) (Category,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getCategoryNamesOfProductByID = `-- name: GetCategoryNamesOfProductByID :many
+select c.name from category_items ci
+inner join categories c
+on ci.category_id = c.id
+where ci.product_id = $1
+`
+
+func (q *Queries) GetCategoryNamesOfProductByID(ctx context.Context, productID uuid.UUID) ([]string, error) {
+	rows, err := q.query(ctx, q.getCategoryNamesOfProductByIDStmt, getCategoryNamesOfProductByID, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsByCategoryName = `-- name: GetProductsByCategoryName :many
+select p.id, p.name, p.description, p.price, p.stock, p.seller_id, p.is_deleted, p.created_at, p.updated_at from category_items ci
+inner join products p
+on ci.product_id = p.id
+inner join categories c
+on ci.category_id = c.id
+where c.name = $1
+`
+
+func (q *Queries) GetProductsByCategoryName(ctx context.Context, name string) ([]Product, error) {
+	rows, err := q.query(ctx, q.getProductsByCategoryNameStmt, getProductsByCategoryName, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Product{}
+	for rows.Next() {
+		var i Product
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Price,
+			&i.Stock,
+			&i.SellerID,
+			&i.IsDeleted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

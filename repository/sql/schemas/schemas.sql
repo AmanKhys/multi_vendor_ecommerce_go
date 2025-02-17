@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS category_items (
     product_id uuid NOT NULL REFERENCES products(id),
     category_id uuid NOT NULL REFERENCES categories(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK(updated_at >= created_at)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK(updated_at >= created_at),
+    CONSTRAINT category_items_product_category_unique UNIQUE (product_id, category_id)
 );
 
 -- Products Table

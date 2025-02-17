@@ -22,7 +22,7 @@ returning id, name, description, price, stock, seller_id, is_deleted, created_at
 type AddProductParams struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Price       string    `json:"price"`
+	Price       float64   `json:"price"`
 	Stock       int32     `json:"stock"`
 	SellerID    uuid.UUID `json:"seller_id"`
 }
@@ -177,7 +177,7 @@ type EditProductByIDParams struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Price       string    `json:"price"`
+	Price       float64   `json:"price"`
 	Stock       int32     `json:"stock"`
 }
 
@@ -293,7 +293,7 @@ type GetProductAndCategoryNameByIDRow struct {
 	ID           uuid.UUID `json:"id"`
 	Name         string    `json:"name"`
 	Description  string    `json:"description"`
-	Price        string    `json:"price"`
+	Price        float64   `json:"price"`
 	Stock        int32     `json:"stock"`
 	SellerID     uuid.UUID `json:"seller_id"`
 	IsDeleted    bool      `json:"is_deleted"`
@@ -340,47 +340,6 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const getProductsByCategoryName = `-- name: GetProductsByCategoryName :many
-select p.id, p.name, p.description, p.price, p.stock, p.seller_id, p.is_deleted, p.created_at, p.updated_at from category_items ci
-inner join categories c
-on ci.category_id = c.id
-inner join products p
-on ci.product_id = p.id
-`
-
-func (q *Queries) GetProductsByCategoryName(ctx context.Context) ([]Product, error) {
-	rows, err := q.query(ctx, q.getProductsByCategoryNameStmt, getProductsByCategoryName)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Product{}
-	for rows.Next() {
-		var i Product
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.Price,
-			&i.Stock,
-			&i.SellerID,
-			&i.IsDeleted,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const getProductsBySellerID = `-- name: GetProductsBySellerID :many

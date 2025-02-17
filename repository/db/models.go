@@ -61,7 +61,7 @@ type Product struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Price       string    `json:"price"`
+	Price       float64   `json:"price"`
 	Stock       int32     `json:"stock"`
 	SellerID    uuid.UUID `json:"seller_id"`
 	IsDeleted   bool      `json:"is_deleted"`

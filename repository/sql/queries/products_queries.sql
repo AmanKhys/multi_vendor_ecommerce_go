@@ -15,13 +15,6 @@ where id = $1 and is_deleted = false;
 select * from products
 where is_deleted = false;
 
--- name: GetProductsByCategoryName :many
-select p.* from category_items ci
-inner join categories c
-on ci.category_id = c.id
-inner join products p
-on ci.product_id = p.id;
-
 -- name: GetProductsBySellerID :many
 select * from products
 where seller_id = $1 and is_deleted = false;
