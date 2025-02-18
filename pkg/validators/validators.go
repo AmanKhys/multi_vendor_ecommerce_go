@@ -14,6 +14,8 @@ var (
 	roleRegex           = regexp.MustCompile(`^(user|seller|admin)$`)
 
 	productNameRegex = regexp.MustCompile(`^[a-zA-Z0-9]{3,}[a-zA-Z0-9 ]*$`)
+
+	addressRegex = regexp.MustCompile(`^[a-zA-Z0-9]{3,}[a-zA-Z0-9' ]*$`)
 )
 
 func ValidateEmail(email string) bool {
@@ -49,6 +51,7 @@ func ValidateOTP(otp int) bool {
 	return flag
 }
 
+// product validators
 func ValidateProductName(name string) bool {
 	return productNameRegex.MatchString(name)
 }
@@ -59,4 +62,13 @@ func ValidateProductPrice(price float64) bool {
 
 func ValidateProductStock(stock int) bool {
 	return stock >= 0
+}
+
+// address validators
+func ValidateAddress(address string) bool {
+	return addressRegex.MatchString(address)
+}
+
+func ValidatePincode(pincode int) bool {
+	return (pincode >= 100000 && pincode <= 999999)
 }
