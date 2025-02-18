@@ -121,6 +121,26 @@ func (u *User) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cartItems, err := u.DB.GetCartItemsByUserID(r.Context(), user.ID)
+	if err == sql.ErrNoRows {
+		w.Header().Set("Content-Type", "application/json")
+		message := "no cart items added for user"
+		w.Write([]byte(message))
+		return
+	} else if err != nil {
+		log.Warn("error fetching cart items:", err.Error())
+		http.Error(w, "internal server error fetching cart items", http.StatusInternalServerError)
+		return
+	}
+
+	var resp struct {
+		Data    []db.GetCartItemsByUserIDRow `json:"data"`
+		Message string                       `json:"message"`
+	}
+	resp.Data = cartItems
+	resp.Message = "successfully fetched cart items"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +148,92 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 	if user.ID == uuid.Nil {
 		return
 	}
+	var req struct {
+		ProductID uuid.UUID `json:"product_id"`
+		Quantity  int       `json:"quantity"`
+	}
+	type respCartItem struct {
+		ProductName string `json:"product_name"`
+		Quantity    int    `json:"quantity"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "invalid request data format", http.StatusBadRequest)
+		return
+	}
 
+	product, err := u.DB.GetProductByID(context.TODO(), req.ProductID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid productID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		http.Error(w, "internal server erro fetching product", http.StatusInternalServerError)
+		return
+	} else if req.Quantity <= 0 {
+		http.Error(w, "invalid quantity", http.StatusBadRequest)
+		return
+	}
+
+	var getArg db.GetCartItemByUserIDAndProductIDParams
+	getArg.ProductID = product.ID
+	getArg.UserID = user.ID
+	cartItem, err := u.DB.GetCartItemByUserIDAndProductID(context.TODO(), getArg)
+	// add cartItem if carts doesn't already have the particular combination of cartItem
+	if err == sql.ErrNoRows {
+		var arg db.AddCartItemParams
+		arg.UserID = user.ID
+		arg.ProductID = req.ProductID
+		arg.Quantity = int32(req.Quantity)
+		arg.ProductID = product.ID
+		arg.UserID = user.ID
+		item, err := u.DB.AddCartItem(context.TODO(), arg)
+		if err != nil {
+			log.Warn("internal error adding cartItem:", err.Error())
+			http.Error(w, "internal error adding cartItem", http.StatusInternalServerError)
+			return
+		}
+		var respItem = respCartItem{
+			ProductName: product.Name,
+			Quantity:    int(item.Quantity),
+		}
+		var resp struct {
+			Data    respCartItem `json:"data"`
+			Message string       `json:"message"`
+		}
+		resp.Data = respItem
+		resp.Message = "successfully added cart item"
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return // make sure to return after sending the response
+	} else if err != nil {
+		log.Error(w, "internal error fetching cartItem to check before AddCart:", err.Error())
+		http.Error(w, "internal error fetching cartItem to check before AddCart", http.StatusInternalServerError)
+		return
+	}
+
+	// update existing cartItem if there is a valid cartItem that is fetched from the database
+	var editArg db.EditCartItemByIDParams
+	editArg.ID = cartItem.ID
+	editArg.Quantity = cartItem.Quantity + 1
+	editItem, err := u.DB.EditCartItemByID(context.TODO(), editArg)
+	if err != nil {
+		log.Warn("internal error editing cartItem on adding cartItem on already existing item", err.Error())
+		http.Error(w, "internal error updating cartItem on adding the cartItem again.", http.StatusInternalServerError)
+		return
+	}
+
+	var respEditITem respCartItem
+	respEditITem.ProductName = product.Name
+	respEditITem.Quantity = int(editItem.Quantity)
+	var resp struct {
+		Data    respCartItem `json:"data"`
+		Message string       `json:"message"`
+	}
+	resp.Data = respEditITem
+	resp.Message = "successfully updated cart item on adding the cart item on already existing cart item"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
