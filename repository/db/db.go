@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.addAddressByUserIDStmt, err = db.PrepareContext(ctx, addAddressByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query AddAddressByUserID: %w", err)
+	}
 	if q.addAndVerifyUserStmt, err = db.PrepareContext(ctx, addAndVerifyUser); err != nil {
 		return nil, fmt.Errorf("error preparing query AddAndVerifyUser: %w", err)
 	}
@@ -63,6 +66,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.changePasswordByUserIDStmt, err = db.PrepareContext(ctx, changePasswordByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query ChangePasswordByUserID: %w", err)
 	}
+	if q.deleteAddressByIDStmt, err = db.PrepareContext(ctx, deleteAddressByID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteAddressByID: %w", err)
+	}
+	if q.deleteAddressesByUserIDStmt, err = db.PrepareContext(ctx, deleteAddressesByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteAddressesByUserID: %w", err)
+	}
 	if q.deleteAllCategoriesForProductByIDStmt, err = db.PrepareContext(ctx, deleteAllCategoriesForProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteAllCategoriesForProductByID: %w", err)
 	}
@@ -87,11 +96,20 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteSessionsByuserIDStmt, err = db.PrepareContext(ctx, deleteSessionsByuserID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteSessionsByuserID: %w", err)
 	}
+	if q.editAddressByIDStmt, err = db.PrepareContext(ctx, editAddressByID); err != nil {
+		return nil, fmt.Errorf("error preparing query EditAddressByID: %w", err)
+	}
 	if q.editCategoryNameByNameStmt, err = db.PrepareContext(ctx, editCategoryNameByName); err != nil {
 		return nil, fmt.Errorf("error preparing query EditCategoryNameByName: %w", err)
 	}
 	if q.editProductByIDStmt, err = db.PrepareContext(ctx, editProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditProductByID: %w", err)
+	}
+	if q.getAddressByIDStmt, err = db.PrepareContext(ctx, getAddressByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAddressByID: %w", err)
+	}
+	if q.getAddressesByUserIDStmt, err = db.PrepareContext(ctx, getAddressesByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAddressesByUserID: %w", err)
 	}
 	if q.getAllCategoriesStmt, err = db.PrepareContext(ctx, getAllCategories); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllCategories: %w", err)
@@ -182,6 +200,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.addAddressByUserIDStmt != nil {
+		if cerr := q.addAddressByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addAddressByUserIDStmt: %w", cerr)
+		}
+	}
 	if q.addAndVerifyUserStmt != nil {
 		if cerr := q.addAndVerifyUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addAndVerifyUserStmt: %w", cerr)
@@ -247,6 +270,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing changePasswordByUserIDStmt: %w", cerr)
 		}
 	}
+	if q.deleteAddressByIDStmt != nil {
+		if cerr := q.deleteAddressByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteAddressByIDStmt: %w", cerr)
+		}
+	}
+	if q.deleteAddressesByUserIDStmt != nil {
+		if cerr := q.deleteAddressesByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteAddressesByUserIDStmt: %w", cerr)
+		}
+	}
 	if q.deleteAllCategoriesForProductByIDStmt != nil {
 		if cerr := q.deleteAllCategoriesForProductByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteAllCategoriesForProductByIDStmt: %w", cerr)
@@ -287,6 +320,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteSessionsByuserIDStmt: %w", cerr)
 		}
 	}
+	if q.editAddressByIDStmt != nil {
+		if cerr := q.editAddressByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editAddressByIDStmt: %w", cerr)
+		}
+	}
 	if q.editCategoryNameByNameStmt != nil {
 		if cerr := q.editCategoryNameByNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing editCategoryNameByNameStmt: %w", cerr)
@@ -295,6 +333,16 @@ func (q *Queries) Close() error {
 	if q.editProductByIDStmt != nil {
 		if cerr := q.editProductByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing editProductByIDStmt: %w", cerr)
+		}
+	}
+	if q.getAddressByIDStmt != nil {
+		if cerr := q.getAddressByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAddressByIDStmt: %w", cerr)
+		}
+	}
+	if q.getAddressesByUserIDStmt != nil {
+		if cerr := q.getAddressesByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAddressesByUserIDStmt: %w", cerr)
 		}
 	}
 	if q.getAllCategoriesStmt != nil {
@@ -476,6 +524,7 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                                     DBTX
 	tx                                     *sql.Tx
+	addAddressByUserIDStmt                 *sql.Stmt
 	addAndVerifyUserStmt                   *sql.Stmt
 	addCateogryStmt                        *sql.Stmt
 	addForgotOTPByUserIDStmt               *sql.Stmt
@@ -489,6 +538,8 @@ type Queries struct {
 	blockUserByIDStmt                      *sql.Stmt
 	changeNameByUserIDStmt                 *sql.Stmt
 	changePasswordByUserIDStmt             *sql.Stmt
+	deleteAddressByIDStmt                  *sql.Stmt
+	deleteAddressesByUserIDStmt            *sql.Stmt
 	deleteAllCategoriesForProductByIDStmt  *sql.Stmt
 	deleteCategoryByNameStmt               *sql.Stmt
 	deleteForgotOTPByEmailStmt             *sql.Stmt
@@ -497,8 +548,11 @@ type Queries struct {
 	deleteProductsBySellerIDStmt           *sql.Stmt
 	deleteSessionByIDStmt                  *sql.Stmt
 	deleteSessionsByuserIDStmt             *sql.Stmt
+	editAddressByIDStmt                    *sql.Stmt
 	editCategoryNameByNameStmt             *sql.Stmt
 	editProductByIDStmt                    *sql.Stmt
+	getAddressByIDStmt                     *sql.Stmt
+	getAddressesByUserIDStmt               *sql.Stmt
 	getAllCategoriesStmt                   *sql.Stmt
 	getAllCategoriesForAdminStmt           *sql.Stmt
 	getAllProductsStmt                     *sql.Stmt
@@ -533,6 +587,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                                     tx,
 		tx:                                     tx,
+		addAddressByUserIDStmt:                 q.addAddressByUserIDStmt,
 		addAndVerifyUserStmt:                   q.addAndVerifyUserStmt,
 		addCateogryStmt:                        q.addCateogryStmt,
 		addForgotOTPByUserIDStmt:               q.addForgotOTPByUserIDStmt,
@@ -546,6 +601,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		blockUserByIDStmt:                      q.blockUserByIDStmt,
 		changeNameByUserIDStmt:                 q.changeNameByUserIDStmt,
 		changePasswordByUserIDStmt:             q.changePasswordByUserIDStmt,
+		deleteAddressByIDStmt:                  q.deleteAddressByIDStmt,
+		deleteAddressesByUserIDStmt:            q.deleteAddressesByUserIDStmt,
 		deleteAllCategoriesForProductByIDStmt:  q.deleteAllCategoriesForProductByIDStmt,
 		deleteCategoryByNameStmt:               q.deleteCategoryByNameStmt,
 		deleteForgotOTPByEmailStmt:             q.deleteForgotOTPByEmailStmt,
@@ -554,8 +611,11 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteProductsBySellerIDStmt:           q.deleteProductsBySellerIDStmt,
 		deleteSessionByIDStmt:                  q.deleteSessionByIDStmt,
 		deleteSessionsByuserIDStmt:             q.deleteSessionsByuserIDStmt,
+		editAddressByIDStmt:                    q.editAddressByIDStmt,
 		editCategoryNameByNameStmt:             q.editCategoryNameByNameStmt,
 		editProductByIDStmt:                    q.editProductByIDStmt,
+		getAddressByIDStmt:                     q.getAddressByIDStmt,
+		getAddressesByUserIDStmt:               q.getAddressesByUserIDStmt,
 		getAllCategoriesStmt:                   q.getAllCategoriesStmt,
 		getAllCategoriesForAdminStmt:           q.getAllCategoriesForAdminStmt,
 		getAllProductsStmt:                     q.getAllProductsStmt,

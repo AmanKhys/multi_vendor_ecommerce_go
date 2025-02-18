@@ -29,8 +29,7 @@ CREATE TABLE IF NOT EXISTS addresses (
     state TEXT NOT NULL,
     pincode INTEGER NOT NULL CHECK (pincode >= 100000 AND pincode <= 999999),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at),
-    UNIQUE (user_id, type)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at)
 );
 
 -- Categories Table
