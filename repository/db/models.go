@@ -25,6 +25,15 @@ type Address struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+type Cart struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	ProductID uuid.UUID `json:"product_id"`
+	Quantity  int32     `json:"quantity"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type Category struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
@@ -47,6 +56,25 @@ type ForgotOtp struct {
 	Otp       int32     `json:"otp"`
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type Order struct {
+	ID              uuid.UUID `json:"id"`
+	UserID          uuid.UUID `json:"user_id"`
+	ShippingAddress uuid.UUID `json:"shipping_address"`
+	PaymentID       uuid.UUID `json:"payment_id"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type OrderItem struct {
+	ID        uuid.UUID `json:"id"`
+	OrderID   uuid.UUID `json:"order_id"`
+	ProductID uuid.UUID `json:"product_id"`
+	Price     float64   `json:"price"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type Otp struct {
