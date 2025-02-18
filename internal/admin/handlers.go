@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
@@ -14,8 +15,6 @@ import (
 )
 
 type Admin struct{ DB *db.Queries }
-
-var SellerRole = "seller"
 
 func (a *Admin) AdminAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var resp struct {
@@ -104,7 +103,7 @@ func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
 		log.Warn("error fetching user by email")
 		http.Error(w, "internal server error while fetching user", http.StatusInternalServerError)
 		return
-	} else if user.Role != SellerRole {
+	} else if user.Role != utils.SellerRole {
 		http.Error(w, "the given details is not that of a seller", http.StatusBadRequest)
 		return
 	} else if user.UserVerified {
@@ -190,7 +189,7 @@ func (a *Admin) BlockUserHandler(w http.ResponseWriter, r *http.Request) {
 	} else if user.IsBlocked {
 		http.Error(w, "user already blocked", http.StatusBadRequest)
 		return
-	} else if user.Role == AdminRole {
+	} else if user.Role == utils.AdminRole {
 		http.Error(w, "trying to block admin: invalid request", http.StatusBadRequest)
 		return
 	}

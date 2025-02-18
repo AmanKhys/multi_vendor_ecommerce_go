@@ -18,10 +18,8 @@ type Seller struct {
 }
 
 func (s *Seller) OwnProductsHandler(w http.ResponseWriter, r *http.Request) {
-	var user, ok = r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
-	if !ok {
-		log.Warn("user not found in request context")
-		http.Error(w, "user not found in reqeust context", http.StatusInternalServerError)
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
 		return
 	}
 
@@ -91,10 +89,8 @@ func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
-	var user, ok = r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
-	if !ok {
-		log.Warn("user not found in request context")
-		http.Error(w, "user not found in request context", http.StatusInternalServerError)
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
 		return
 	}
 	var arg struct {
@@ -156,10 +152,8 @@ func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
-	var user, ok = r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
-	if !ok {
-		log.Warn("user not found in request context")
-		http.Error(w, "user not found in request context", http.StatusInternalServerError)
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
 		return
 	}
 	var req struct {
@@ -248,10 +242,8 @@ func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 	// take user from r context written by AuthenticateUserMiddleware
-	var user, ok = r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
-	if !ok {
-		log.Warn("user not found in request context")
-		http.Error(w, "user not found in request context", http.StatusInternalServerError)
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
 		return
 	}
 
@@ -372,4 +364,35 @@ func (s *Seller) AddProductToCategoryHandler(w http.ResponseWriter, r *http.Requ
 	resp.Message = "successfully added product to category items"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func (u *Seller) GetAddressesHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	helper.GetAddressesHelper(w, r, user)
+}
+func (u *Seller) AddAddressHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	helper.AddAddressHelper(w, r, user)
+}
+
+func (u *Seller) EditAddressHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	helper.EditAddressHelper(w, r, user)
+}
+
+func (u *Seller) DeleteAddressHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	helper.DeleteAddressHelper(w, r, user)
 }
