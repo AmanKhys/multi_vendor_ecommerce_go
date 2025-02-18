@@ -15,6 +15,9 @@ type User struct {
 	DB *db.Queries
 }
 
+// //////////////////////////////////
+// product handlers
+
 func (u *User) ProductsHandler(w http.ResponseWriter, r *http.Request) {
 	type Response struct {
 		Data []db.Product `json:"data"`
@@ -75,6 +78,9 @@ func (u *User) CategoryHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// ///////////////////////////////
+// address handlers
+
 func (u *User) GetAddressesHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)
 	if user.ID == uuid.Nil {
@@ -104,4 +110,39 @@ func (u *User) DeleteAddressHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	helper.DeleteAddressHelper(w, r, user)
+}
+
+// /////////////////////////////////////
+// cart handlers
+
+func (u *User) GetCartHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+}
+
+func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+}
+
+func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+}
+
+func (u *User) DeleteCartHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
 }
