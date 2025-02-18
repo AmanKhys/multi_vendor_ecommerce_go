@@ -2,6 +2,8 @@ package validators
 
 import (
 	"regexp"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -18,6 +20,10 @@ var (
 	addressRegex = regexp.MustCompile(`^[a-zA-Z0-9]{3,}[a-zA-Z0-9' ]*$`)
 )
 
+func ValidateUUIDStr(uuidStr string) bool {
+	_, err := uuid.Parse(uuidStr)
+	return err == nil
+}
 func ValidateEmail(email string) bool {
 	return emailRegex.MatchString(email)
 }
