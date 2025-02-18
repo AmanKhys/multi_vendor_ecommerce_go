@@ -23,6 +23,7 @@ func (u *Helper) GetAddressesHelper(w http.ResponseWriter, r *http.Request, user
 		message := "no addresses added yet for the user."
 		w.Write([]byte(message))
 	} else if err != nil {
+		log.Warn("internal server erro fetching address by userID:", err.Error())
 		http.Error(w, "internal server error fetching addresses by userID", http.StatusInternalServerError)
 		return
 	}
@@ -44,6 +45,7 @@ func (u *Helper) AddAddressHelper(w http.ResponseWriter, r *http.Request, user d
 		return
 	}
 	arg.UserID = user.ID
+	arg.Type = user.Role
 	address, err := u.DB.AddAddressByUserID(context.TODO(), arg)
 	if err != nil {
 		log.Warn("error adding valid user address", err.Error())
