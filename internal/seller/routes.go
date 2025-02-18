@@ -27,8 +27,8 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /seller/categories", middleware.AuthenticateUserMiddleware(s.GetAllCategoriesHandler, utils.SellerRole))
 	mux.HandleFunc("POST /seller/category/add", middleware.AuthenticateUserMiddleware(s.AddProductToCategoryHandler, utils.SellerRole))
 
-	mux.HandleFunc("GET /seller/address", middleware.AuthenticateUserMiddleware(s.GetAddressesHandler, utils.UserRole))
-	mux.HandleFunc("POST /seller/address/add", middleware.AuthenticateUserMiddleware(s.AddAddressHandler, utils.UserRole))
-	mux.HandleFunc("PUT /seller/address/edit", middleware.AuthenticateUserMiddleware(s.EditAddressHandler, utils.UserRole))
-	mux.HandleFunc("DELETE /seller/address/delete", middleware.AuthenticateUserMiddleware(s.DeleteAddressHandler, utils.UserRole))
+	mux.HandleFunc("GET /seller/address", middleware.AuthenticateUserMiddleware(s.GetAddressesHandler, utils.SellerRole))
+	mux.HandleFunc("POST /seller/address/add", middleware.AuthenticateUserMiddleware(s.AddAddressHandler, utils.SellerRole))
+	mux.HandleFunc("PUT /seller/address/edit", middleware.AuthenticateUserMiddleware(s.EditAddressHandler, utils.SellerRole))
+	mux.HandleFunc("DELETE /seller/address/delete", middleware.AuthenticateUserMiddleware(s.DeleteAddressHandler, utils.SellerRole))
 }
