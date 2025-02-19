@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
@@ -153,8 +154,10 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 		Quantity  int       `json:"quantity"`
 	}
 	type respCartItem struct {
-		ProductName string `json:"product_name"`
-		Quantity    int    `json:"quantity"`
+		CartID      uuid.UUID `json:"cart_id"`
+		ProductID   uuid.UUID `json:"product_id"`
+		ProductName string    `json:"product_name"`
+		Quantity    int       `json:"quantity"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -193,6 +196,8 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var respItem = respCartItem{
+			CartID:      cartItem.ID,
+			ProductID:   product.ID,
 			ProductName: product.Name,
 			Quantity:    int(item.Quantity),
 		}
@@ -241,7 +246,98 @@ func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
 	if user.ID == uuid.Nil {
 		return
 	}
+	var req struct {
+		ProductID uuid.UUID `json:"product_id"`
+		Quantity  int       `json:"quantity"`
+	}
+	type respCartItem struct {
+		CartID      uuid.UUID `json:"cart_id"`
+		ProductID   uuid.UUID `json:"product_id"`
+		ProductName string    `json:"product_name"`
+		Quantity    int       `json:"quantity"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "invalid request data format", http.StatusBadRequest)
+		return
+	}
 
+	product, err := u.DB.GetProductByID(context.TODO(), req.ProductID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid productID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("internal error fetching product from cartID:", err.Error())
+		http.Error(w, "internal server error fetching product from cartID", http.StatusInternalServerError)
+		return
+	}
+
+	var getArg db.GetCartItemByUserIDAndProductIDParams
+	getArg.ProductID = product.ID
+	getArg.UserID = user.ID
+	cartItem, err := u.DB.GetCartItemByUserIDAndProductID(context.TODO(), getArg)
+	// add product if the product is not in carts;
+	if err == sql.ErrNoRows {
+		var arg db.AddCartItemParams
+		arg.UserID = user.ID
+		arg.ProductID = req.ProductID
+		arg.Quantity = int32(req.Quantity)
+		arg.ProductID = product.ID
+		arg.UserID = user.ID
+		item, err := u.DB.AddCartItem(context.TODO(), arg)
+		if err != nil {
+			log.Warn("internal error adding cartItem:", err.Error())
+			http.Error(w, "internal error adding cartItem", http.StatusInternalServerError)
+			return
+		}
+		var respItem = respCartItem{
+			CartID:      item.ID,
+			ProductID:   product.ID,
+			ProductName: product.Name,
+			Quantity:    int(item.Quantity),
+		}
+		var resp struct {
+			Data    respCartItem `json:"data"`
+			Message string       `json:"message"`
+		}
+		resp.Data = respItem
+		resp.Message = "successfully added cart item since already didn't exist."
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return
+
+	} else if err != nil {
+		log.Warn("error fetching cartItem before editing cartItem using GetCartItemByID:", err.Error())
+		http.Error(w, "internal error fetching cart item before editing", http.StatusInternalServerError)
+		return
+	}
+
+	// edit cart item when there is an existing cart item for the product
+	var editArg db.EditCartItemByIDParams
+	editArg.ID = cartItem.ID
+	editArg.Quantity = int32(req.Quantity)
+	editedItem, err := u.DB.EditCartItemByID(context.TODO(), editArg)
+	if err != nil {
+		log.Warn("internal error editing cartItem:", err.Error())
+		http.Error(w, "internal error editing cartItem", http.StatusInternalServerError)
+		return
+	}
+
+	// give back response on successful editing of cartItem
+	var respItem respCartItem
+	respItem.CartID = cartItem.ID
+	respItem.ProductID = product.ID
+	respItem.ProductName = product.Name
+	respItem.Quantity = int(editedItem.Quantity)
+	var resp struct {
+		Data    respCartItem `json:"data"`
+		Message string       `json:"message"`
+	}
+	resp.Data = respItem
+	resp.Message = "successfully edited cartItem"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (u *User) DeleteCartHandler(w http.ResponseWriter, r *http.Request) {
@@ -249,5 +345,40 @@ func (u *User) DeleteCartHandler(w http.ResponseWriter, r *http.Request) {
 	if user.ID == uuid.Nil {
 		return
 	}
+	var req struct {
+		ProductID uuid.UUID `json:"product_id"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "invalid request data", http.StatusBadRequest)
+		return
+	}
+	product, err := u.DB.GetProductByID(context.TODO(), req.ProductID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid productID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("internal erro fetching product to delete it from cart:", err.Error())
+		http.Error(w, "internal error fetching product to delete it from cart", http.StatusInternalServerError)
+		return
+	}
+	var deleteArg db.DeleteCartItemByUserIDAndProductIDParams
+	deleteArg.ProductID = product.ID
+	deleteArg.UserID = user.ID
+	k, err := u.DB.DeleteCartItemByUserIDAndProductID(context.TODO(), deleteArg)
+	if err != nil {
+		log.Warn("internal error deleting cartItem with valid productID:", err.Error())
+		http.Error(w, "internal error deleting cartItem", http.StatusInternalServerError)
+		return
+	} else if k == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "text/plain")
+		message := "there was no cartItem with the said productID. No cartItem deleted"
+		w.Write([]byte(message))
+		return
+	}
 
+	w.Header().Set("Content-Type", "text/plain")
+	message := fmt.Sprintf("product: %s deleted successfully from cartItems", product.Name)
+	w.Write([]byte(message))
 }
