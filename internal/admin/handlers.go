@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
@@ -240,7 +241,6 @@ func (a *Admin) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return
 	}
-
 	product, err := a.DB.DeleteProductByID(context.TODO(), req.ProductID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid productID", http.StatusBadRequest)
@@ -265,6 +265,7 @@ func (a *Admin) AddCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return
 	}
+	req.Name = strings.ToLower(req.Name)
 	category, err := a.DB.AddCateogry(context.TODO(), req.Name)
 	if err != nil {
 		log.Warn(err)
@@ -284,6 +285,8 @@ func (a *Admin) EditCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return
 	}
+	req.Name = strings.ToLower(req.Name)
+	req.NewName = strings.ToLower(req.NewName)
 	category, err := a.DB.EditCategoryNameByName(context.TODO(), req)
 	if err != nil {
 		log.Warn(err)
@@ -305,7 +308,7 @@ func (a *Admin) DeleteCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return
 	}
-
+	req.CategoryName = strings.ToLower(req.CategoryName)
 	category, err := a.DB.DeleteCategoryByName(context.TODO(), req.CategoryName)
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid category name", http.StatusBadRequest)
