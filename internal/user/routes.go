@@ -31,4 +31,10 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /user/cart/add", middleware.AuthenticateUserMiddleware(u.AddCartHandler, utils.UserRole))
 	mux.HandleFunc("PUT /user/cart/edit", middleware.AuthenticateUserMiddleware(u.EditCartHandler, utils.UserRole))
 	mux.HandleFunc("DELETE /user/cart/delete", middleware.AuthenticateUserMiddleware(u.DeleteCartHandler, utils.UserRole))
+
+	mux.HandleFunc("GET /user/orders", middleware.AuthenticateUserMiddleware(u.GetOrdersHandler, utils.UserRole))
+	mux.HandleFunc("POST /user/orders/addcart", middleware.AuthenticateUserMiddleware(u.AddCartToOrderHandler, utils.UserRole))
+	mux.HandleFunc("POST /user/orders/add", middleware.AuthenticateUserMiddleware(u.AddProductToOrderHandler, utils.UserRole))
+	mux.HandleFunc("PUT /user/orders/cancel", middleware.AuthenticateUserMiddleware(u.CancelOrderHandler, utils.UserRole))
+	mux.HandleFunc("PUT /user/orders/return", middleware.AuthenticateUserMiddleware(u.ReturnOrderHandler, utils.UserRole))
 }

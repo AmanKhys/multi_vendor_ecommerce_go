@@ -125,11 +125,41 @@ CREATE TABLE IF NOT EXISTS carts (
     CONSTRAINT cart_user_id_product_id_unique UNIQUE(user_id, product_id)
 );
 
+CREATE TABLE IF NOT EXISTS wallets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    savings NUMERIC(10,2) NOT NULL CHECK (savings>0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at>= created_at)
+);
+
+CREATE TABLE IF NOT EXISTS payments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id UUID NOT NULL REFERENCES orders(id),
+    method TEXT NOT NULL CHECK (method in ('upi', 'razorpay', 'cod')),
+    status TEXT NOT NULL CHECK (status in ('processing', 'successful', 'failed', 'returned')),
+    total_amount NUMERIC(10,2) NOT NULL CHECK(total_amount>0),
+    transaction_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK( updated_at>= created_at)
+);
+
+CREATE TABLE IF NOT EXISTS shipping_address (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id UUID NOT NULL REFERENCES orders(id),
+    house_name TEXT NOT NULL,
+    street_name TEXT NOT NULL,
+    town TEXT NOT NULL,
+    district TEXT NOT NULL,
+    state TEXT NOT NULL,
+    pincode INTEGER NOT NULL CHECK (pincode >= 100000 AND pincode <= 999999),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at)
+);
+
 CREATE TABLE IF NOT EXISTS orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    shipping_address UUID NOT NULL REFERENCES addresses(id),
-    payment_id UUID NOT NULL REFERENCES payments(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at>=created_at)    
 );
@@ -138,6 +168,7 @@ CREATE TABLE IF NOT EXISTS order_items (
     id UUID NOT NULL DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES orders(id),
     product_id UUID NOT NULL REFERENCES products(id),
+    quantity INT NOT NULL CHECK (quantity>0),
     price NUMERIC(10, 2) NOT NULL CHECK (price >0),
     status TEXT NOT NULL CHECK (status in ('pending', 'processing', 'shippeed', 'delivered', 'cancelled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

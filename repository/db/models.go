@@ -59,12 +59,12 @@ type ForgotOtp struct {
 }
 
 type Order struct {
-	ID              uuid.UUID `json:"id"`
-	UserID          uuid.UUID `json:"user_id"`
-	ShippingAddress uuid.UUID `json:"shipping_address"`
-	PaymentID       uuid.UUID `json:"payment_id"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID                uuid.UUID `json:"id"`
+	UserID            uuid.UUID `json:"user_id"`
+	ShippingAddressID uuid.UUID `json:"shipping_address_id"`
+	PaymentID         uuid.UUID `json:"payment_id"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 type OrderItem struct {
@@ -83,6 +83,17 @@ type Otp struct {
 	Otp       int32     `json:"otp"`
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type Payment struct {
+	ID            uuid.UUID      `json:"id"`
+	UserID        uuid.UUID      `json:"user_id"`
+	Method        string         `json:"method"`
+	Status        string         `json:"status"`
+	TotalAmount   float64        `json:"total_amount"`
+	TransactionID sql.NullString `json:"transaction_id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 type Product struct {
@@ -140,4 +151,12 @@ type User struct {
 	About         sql.NullString `json:"about"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
+}
+
+type Wallet struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Savings   float64   `json:"savings"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

@@ -382,3 +382,46 @@ func (u *User) DeleteCartHandler(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("product: %s deleted successfully from cartItems", product.Name)
 	w.Write([]byte(message))
 }
+
+// //////////////////////////
+// order handlers
+
+func (u *User) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+}
+
+func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+}
+
+func (u *User) AddProductToOrderHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+}
+
+func (u *User) CancelOrderHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+}
+
+func (u *User) ReturnOrderHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+}

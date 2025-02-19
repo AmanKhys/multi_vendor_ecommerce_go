@@ -366,14 +366,14 @@ func (s *Seller) AddProductToCategoryHandler(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(resp)
 }
 
-func (u *Seller) GetAddressesHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Seller) GetAddressesHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)
 	if user.ID == uuid.Nil {
 		return
 	}
 	helper.GetAddressesHelper(w, r, user)
 }
-func (u *Seller) AddAddressHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Seller) AddAddressHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)
 	if user.ID == uuid.Nil {
 		return
@@ -381,7 +381,7 @@ func (u *Seller) AddAddressHandler(w http.ResponseWriter, r *http.Request) {
 	helper.AddAddressHelper(w, r, user)
 }
 
-func (u *Seller) EditAddressHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Seller) EditAddressHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)
 	if user.ID == uuid.Nil {
 		return
@@ -389,10 +389,21 @@ func (u *Seller) EditAddressHandler(w http.ResponseWriter, r *http.Request) {
 	helper.EditAddressHelper(w, r, user)
 }
 
-func (u *Seller) DeleteAddressHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Seller) DeleteAddressHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)
 	if user.ID == uuid.Nil {
 		return
 	}
 	helper.DeleteAddressHelper(w, r, user)
+}
+
+// /////////////////////////////////
+// order handler
+
+func (s *Seller) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
 }

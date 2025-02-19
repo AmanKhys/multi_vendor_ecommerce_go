@@ -1,0 +1,12 @@
+make middleware to fetch the user from the r.Context
+make a centralized roles for User, Seller, Admin that is shared and used like contextKey UserKey
+error check ... err =  json.NewEncoder(w).Encode(resp) at the end of each handler
+do not send unwanted data to user;
+validate requests on each handler before passing it onto database layer.
+
+add/edit/delete/get address...done
+add/edit/delete/get cart_items... done
+add/edit/get orders...
+searching with price min,max/category/name
+
+make notifications table that send messages on each update for any of the above;

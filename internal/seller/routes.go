@@ -31,4 +31,6 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /seller/address/add", middleware.AuthenticateUserMiddleware(s.AddAddressHandler, utils.SellerRole))
 	mux.HandleFunc("PUT /seller/address/edit", middleware.AuthenticateUserMiddleware(s.EditAddressHandler, utils.SellerRole))
 	mux.HandleFunc("DELETE /seller/address/delete", middleware.AuthenticateUserMiddleware(s.DeleteAddressHandler, utils.SellerRole))
+
+	mux.HandleFunc("GET /seller/orders", middleware.AuthenticateUserMiddleware(s.GetOrdersHandler, utils.SellerRole))
 }
