@@ -39,7 +39,7 @@ func (q *Queries) AddCartItem(ctx context.Context, arg AddCartItemParams) (Cart,
 	return i, err
 }
 
-const deleteCartItemByUserIDAndProductID = `-- name: DeleteCartItemByUserIDAndProductID :exec
+const deleteCartItemByUserIDAndProductID = `-- name: DeleteCartItemByUserIDAndProductID :execrows
 delete from carts
 where user_id = $1 and product_id = $2
 `
@@ -49,9 +49,12 @@ type DeleteCartItemByUserIDAndProductIDParams struct {
 	ProductID uuid.UUID `json:"product_id"`
 }
 
-func (q *Queries) DeleteCartItemByUserIDAndProductID(ctx context.Context, arg DeleteCartItemByUserIDAndProductIDParams) error {
-	_, err := q.exec(ctx, q.deleteCartItemByUserIDAndProductIDStmt, deleteCartItemByUserIDAndProductID, arg.UserID, arg.ProductID)
-	return err
+func (q *Queries) DeleteCartItemByUserIDAndProductID(ctx context.Context, arg DeleteCartItemByUserIDAndProductIDParams) (int64, error) {
+	result, err := q.exec(ctx, q.deleteCartItemByUserIDAndProductIDStmt, deleteCartItemByUserIDAndProductID, arg.UserID, arg.ProductID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const editCartItemByID = `-- name: EditCartItemByID :one
@@ -68,6 +71,25 @@ type EditCartItemByIDParams struct {
 
 func (q *Queries) EditCartItemByID(ctx context.Context, arg EditCartItemByIDParams) (Cart, error) {
 	row := q.queryRow(ctx, q.editCartItemByIDStmt, editCartItemByID, arg.ID, arg.Quantity)
+	var i Cart
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProductID,
+		&i.Quantity,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCartItemByID = `-- name: GetCartItemByID :one
+select id, user_id, product_id, quantity, created_at, updated_at from carts
+where id = $1
+`
+
+func (q *Queries) GetCartItemByID(ctx context.Context, id uuid.UUID) (Cart, error) {
+	row := q.queryRow(ctx, q.getCartItemByIDStmt, getCartItemByID, id)
 	var i Cart
 	err := row.Scan(
 		&i.ID,
@@ -105,15 +127,17 @@ func (q *Queries) GetCartItemByUserIDAndProductID(ctx context.Context, arg GetCa
 }
 
 const getCartItemsByUserID = `-- name: GetCartItemsByUserID :many
-select p.name as product_name, c.quantity from carts c
+select c.id as cart_id, p.id as product_id, p.name as product_name, c.quantity from carts c
 inner join products p
 on c.product_id = p.id
 where user_id = $1
 `
 
 type GetCartItemsByUserIDRow struct {
-	ProductName string `json:"product_name"`
-	Quantity    int32  `json:"quantity"`
+	CartID      uuid.UUID `json:"cart_id"`
+	ProductID   uuid.UUID `json:"product_id"`
+	ProductName string    `json:"product_name"`
+	Quantity    int32     `json:"quantity"`
 }
 
 func (q *Queries) GetCartItemsByUserID(ctx context.Context, userID uuid.UUID) ([]GetCartItemsByUserIDRow, error) {
@@ -125,7 +149,12 @@ func (q *Queries) GetCartItemsByUserID(ctx context.Context, userID uuid.UUID) ([
 	items := []GetCartItemsByUserIDRow{}
 	for rows.Next() {
 		var i GetCartItemsByUserIDRow
-		if err := rows.Scan(&i.ProductName, &i.Quantity); err != nil {
+		if err := rows.Scan(
+			&i.CartID,
+			&i.ProductID,
+			&i.ProductName,
+			&i.Quantity,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -137,6 +166,30 @@ func (q *Queries) GetCartItemsByUserID(ctx context.Context, userID uuid.UUID) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const getProductFromCartByID = `-- name: GetProductFromCartByID :one
+select p.id, p.name, p.description, p.price, p.stock, p.seller_id, p.is_deleted, p.created_at, p.updated_at from carts c
+inner join products p
+on c.product_id = p.id
+where c.id = $1
+`
+
+func (q *Queries) GetProductFromCartByID(ctx context.Context, id uuid.UUID) (Product, error) {
+	row := q.queryRow(ctx, q.getProductFromCartByIDStmt, getProductFromCartByID, id)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Price,
+		&i.Stock,
+		&i.SellerID,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getProductNameAndQuantityFromCartsByID = `-- name: GetProductNameAndQuantityFromCartsByID :one

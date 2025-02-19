@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS addresses (
 -- Categories Table
 CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL UNIQUE CHECK (name ~* '^[a-z0-9]+$'),
+    name TEXT NOT NULL UNIQUE CHECK (name ~* '^[a-z0-9]+[a-z0-9 ]*$'),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at)

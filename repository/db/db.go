@@ -141,6 +141,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAllUsersByRoleStmt, err = db.PrepareContext(ctx, getAllUsersByRole); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllUsersByRole: %w", err)
 	}
+	if q.getCartItemByIDStmt, err = db.PrepareContext(ctx, getCartItemByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCartItemByID: %w", err)
+	}
 	if q.getCartItemByUserIDAndProductIDStmt, err = db.PrepareContext(ctx, getCartItemByUserIDAndProductID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCartItemByUserIDAndProductID: %w", err)
 	}
@@ -164,6 +167,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getProductByIDStmt, err = db.PrepareContext(ctx, getProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductByID: %w", err)
+	}
+	if q.getProductFromCartByIDStmt, err = db.PrepareContext(ctx, getProductFromCartByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetProductFromCartByID: %w", err)
 	}
 	if q.getProductNameAndQuantityFromCartsByIDStmt, err = db.PrepareContext(ctx, getProductNameAndQuantityFromCartsByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductNameAndQuantityFromCartsByID: %w", err)
@@ -413,6 +419,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getAllUsersByRoleStmt: %w", cerr)
 		}
 	}
+	if q.getCartItemByIDStmt != nil {
+		if cerr := q.getCartItemByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCartItemByIDStmt: %w", cerr)
+		}
+	}
 	if q.getCartItemByUserIDAndProductIDStmt != nil {
 		if cerr := q.getCartItemByUserIDAndProductIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCartItemByUserIDAndProductIDStmt: %w", cerr)
@@ -451,6 +462,11 @@ func (q *Queries) Close() error {
 	if q.getProductByIDStmt != nil {
 		if cerr := q.getProductByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getProductByIDStmt: %w", cerr)
+		}
+	}
+	if q.getProductFromCartByIDStmt != nil {
+		if cerr := q.getProductFromCartByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getProductFromCartByIDStmt: %w", cerr)
 		}
 	}
 	if q.getProductNameAndQuantityFromCartsByIDStmt != nil {
@@ -611,6 +627,7 @@ type Queries struct {
 	getAllSessionsByUserIDStmt                 *sql.Stmt
 	getAllUsersStmt                            *sql.Stmt
 	getAllUsersByRoleStmt                      *sql.Stmt
+	getCartItemByIDStmt                        *sql.Stmt
 	getCartItemByUserIDAndProductIDStmt        *sql.Stmt
 	getCartItemsByUserIDStmt                   *sql.Stmt
 	getCategoryByIDStmt                        *sql.Stmt
@@ -619,6 +636,7 @@ type Queries struct {
 	getCurrentTimestampStmt                    *sql.Stmt
 	getProductAndCategoryNameByIDStmt          *sql.Stmt
 	getProductByIDStmt                         *sql.Stmt
+	getProductFromCartByIDStmt                 *sql.Stmt
 	getProductNameAndQuantityFromCartsByIDStmt *sql.Stmt
 	getProductsByCategoryNameStmt              *sql.Stmt
 	getProductsBySellerIDStmt                  *sql.Stmt
@@ -680,6 +698,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAllSessionsByUserIDStmt:                 q.getAllSessionsByUserIDStmt,
 		getAllUsersStmt:                            q.getAllUsersStmt,
 		getAllUsersByRoleStmt:                      q.getAllUsersByRoleStmt,
+		getCartItemByIDStmt:                        q.getCartItemByIDStmt,
 		getCartItemByUserIDAndProductIDStmt:        q.getCartItemByUserIDAndProductIDStmt,
 		getCartItemsByUserIDStmt:                   q.getCartItemsByUserIDStmt,
 		getCategoryByIDStmt:                        q.getCategoryByIDStmt,
@@ -688,6 +707,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getCurrentTimestampStmt:                    q.getCurrentTimestampStmt,
 		getProductAndCategoryNameByIDStmt:          q.getProductAndCategoryNameByIDStmt,
 		getProductByIDStmt:                         q.getProductByIDStmt,
+		getProductFromCartByIDStmt:                 q.getProductFromCartByIDStmt,
 		getProductNameAndQuantityFromCartsByIDStmt: q.getProductNameAndQuantityFromCartsByIDStmt,
 		getProductsByCategoryNameStmt:              q.getProductsByCategoryNameStmt,
 		getProductsBySellerIDStmt:                  q.getProductsBySellerIDStmt,
