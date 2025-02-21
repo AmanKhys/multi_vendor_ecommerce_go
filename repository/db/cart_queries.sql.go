@@ -57,6 +57,16 @@ func (q *Queries) DeleteCartItemByUserIDAndProductID(ctx context.Context, arg De
 	return result.RowsAffected()
 }
 
+const deleteCartItemsByUserID = `-- name: DeleteCartItemsByUserID :exec
+delete from carts
+where user_id = $1
+`
+
+func (q *Queries) DeleteCartItemsByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.exec(ctx, q.deleteCartItemsByUserIDStmt, deleteCartItemsByUserID, userID)
+	return err
+}
+
 const editCartItemByID = `-- name: EditCartItemByID :one
 update carts
 set quantity = $2, updated_at = current_timestamp
@@ -127,7 +137,8 @@ func (q *Queries) GetCartItemByUserIDAndProductID(ctx context.Context, arg GetCa
 }
 
 const getCartItemsByUserID = `-- name: GetCartItemsByUserID :many
-select c.id as cart_id, p.id as product_id, p.name as product_name, c.quantity from carts c
+select c.id as cart_id, p.id as product_id, p.name as product_name, c.quantity, (p.price * c.quantity)::numeric(10,2) as total_amount
+from carts c
 inner join products p
 on c.product_id = p.id
 where user_id = $1
@@ -138,6 +149,7 @@ type GetCartItemsByUserIDRow struct {
 	ProductID   uuid.UUID `json:"product_id"`
 	ProductName string    `json:"product_name"`
 	Quantity    int32     `json:"quantity"`
+	TotalAmount float64   `json:"total_amount"`
 }
 
 func (q *Queries) GetCartItemsByUserID(ctx context.Context, userID uuid.UUID) ([]GetCartItemsByUserIDRow, error) {
@@ -154,6 +166,7 @@ func (q *Queries) GetCartItemsByUserID(ctx context.Context, userID uuid.UUID) ([
 			&i.ProductID,
 			&i.ProductName,
 			&i.Quantity,
+			&i.TotalAmount,
 		); err != nil {
 			return nil, err
 		}

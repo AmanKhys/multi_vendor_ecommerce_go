@@ -59,22 +59,21 @@ type ForgotOtp struct {
 }
 
 type Order struct {
-	ID                uuid.UUID `json:"id"`
-	UserID            uuid.UUID `json:"user_id"`
-	ShippingAddressID uuid.UUID `json:"shipping_address_id"`
-	PaymentID         uuid.UUID `json:"payment_id"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type OrderItem struct {
-	ID        uuid.UUID `json:"id"`
-	OrderID   uuid.UUID `json:"order_id"`
-	ProductID uuid.UUID `json:"product_id"`
-	Price     float64   `json:"price"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	OrderID     uuid.UUID `json:"order_id"`
+	ProductID   uuid.UUID `json:"product_id"`
+	Quantity    int32     `json:"quantity"`
+	TotalAmount float64   `json:"total_amount"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type Otp struct {
@@ -87,7 +86,7 @@ type Otp struct {
 
 type Payment struct {
 	ID            uuid.UUID      `json:"id"`
-	UserID        uuid.UUID      `json:"user_id"`
+	OrderID       uuid.UUID      `json:"order_id"`
 	Method        string         `json:"method"`
 	Status        string         `json:"status"`
 	TotalAmount   float64        `json:"total_amount"`
@@ -135,6 +134,19 @@ type Session struct {
 	UserAgent string    `json:"user_agent"`
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type ShippingAddress struct {
+	ID         uuid.UUID `json:"id"`
+	OrderID    uuid.UUID `json:"order_id"`
+	HouseName  string    `json:"house_name"`
+	StreetName string    `json:"street_name"`
+	Town       string    `json:"town"`
+	District   string    `json:"district"`
+	State      string    `json:"state"`
+	Pincode    int32     `json:"pincode"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type User struct {

@@ -127,11 +127,19 @@ CREATE TABLE IF NOT EXISTS carts (
 
 CREATE TABLE IF NOT EXISTS wallets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    savings NUMERIC(10,2) NOT NULL CHECK (savings>0),
+    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    savings NUMERIC(10,2) NOT NULL CHECK (savings>=0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at>= created_at)
 );
+
+CREATE TABLE IF NOT EXISTS orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at>=created_at)    
+);
+
 
 CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -157,20 +165,13 @@ CREATE TABLE IF NOT EXISTS shipping_address (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at)
 );
 
-CREATE TABLE IF NOT EXISTS orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at>=created_at)    
-);
-
 CREATE TABLE IF NOT EXISTS order_items (
     id UUID NOT NULL DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES orders(id),
     product_id UUID NOT NULL REFERENCES products(id),
     quantity INT NOT NULL CHECK (quantity>0),
-    price NUMERIC(10, 2) NOT NULL CHECK (price >0),
-    status TEXT NOT NULL CHECK (status in ('pending', 'processing', 'shippeed', 'delivered', 'cancelled')),
+    total_amount NUMERIC(10, 2) NOT NULL CHECK (total_amount >0),
+    status TEXT NOT NULL CHECK (status in ('pending', 'processing', 'shippeed', 'delivered', 'cancelled')) DEFAULT 'pending',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK(updated_at>=created_at)
 );

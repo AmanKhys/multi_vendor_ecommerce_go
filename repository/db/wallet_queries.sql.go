@@ -38,8 +38,8 @@ func (q *Queries) AddSavingsToWalletByUserID(ctx context.Context, arg AddSavings
 
 const addWalletByUserID = `-- name: AddWalletByUserID :one
 insert into wallets
-(user_id)
-values ($1)
+(user_id, savings)
+values ($1, 0)
 returning id, user_id, savings, created_at, updated_at
 `
 

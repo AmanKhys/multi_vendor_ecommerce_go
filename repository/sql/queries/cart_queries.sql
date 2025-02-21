@@ -3,7 +3,8 @@ select * from carts
 where id = $1;
 
 -- name: GetCartItemsByUserID :many
-select c.id as cart_id, p.id as product_id, p.name as product_name, c.quantity from carts c
+select c.id as cart_id, p.id as product_id, p.name as product_name, c.quantity, (p.price * c.quantity)::numeric(10,2) as total_amount
+from carts c
 inner join products p
 on c.product_id = p.id
 where user_id = $1;
@@ -41,3 +42,7 @@ returning *;
 -- name: DeleteCartItemByUserIDAndProductID :execrows
 delete from carts
 where user_id = $1 and product_id = $2;
+
+-- name: DeleteCartItemsByUserID :exec
+delete from carts
+where user_id = $1;

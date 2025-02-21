@@ -16,7 +16,7 @@ insert into addresses
 (user_id, type, building_name, street_name, town, district, state, pincode)
 values
 ($1, $2, $3, $4, $5, $6, $7, $8)
-returning id, user_id, type, building_name, street_name, town, district, state, pincode, created_at, updated_at
+returning id, building_name, street_name, town, district, state, pincode
 `
 
 type AddAddressByUserIDParams struct {
@@ -30,7 +30,17 @@ type AddAddressByUserIDParams struct {
 	Pincode      int32     `json:"pincode"`
 }
 
-func (q *Queries) AddAddressByUserID(ctx context.Context, arg AddAddressByUserIDParams) (Address, error) {
+type AddAddressByUserIDRow struct {
+	ID           uuid.UUID `json:"id"`
+	BuildingName string    `json:"building_name"`
+	StreetName   string    `json:"street_name"`
+	Town         string    `json:"town"`
+	District     string    `json:"district"`
+	State        string    `json:"state"`
+	Pincode      int32     `json:"pincode"`
+}
+
+func (q *Queries) AddAddressByUserID(ctx context.Context, arg AddAddressByUserIDParams) (AddAddressByUserIDRow, error) {
 	row := q.queryRow(ctx, q.addAddressByUserIDStmt, addAddressByUserID,
 		arg.UserID,
 		arg.Type,
@@ -41,19 +51,15 @@ func (q *Queries) AddAddressByUserID(ctx context.Context, arg AddAddressByUserID
 		arg.State,
 		arg.Pincode,
 	)
-	var i Address
+	var i AddAddressByUserIDRow
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
-		&i.Type,
 		&i.BuildingName,
 		&i.StreetName,
 		&i.Town,
 		&i.District,
 		&i.State,
 		&i.Pincode,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -82,7 +88,7 @@ const editAddressByID = `-- name: EditAddressByID :one
 update addresses
 set building_name = $2, street_name = $3, town = $4, district = $5, state = $6, pincode = $7, updated_at = current_timestamp
 where id = $1
-returning id, user_id, type, building_name, street_name, town, district, state, pincode, created_at, updated_at
+returning id, building_name, street_name, town, district, state, pincode
 `
 
 type EditAddressByIDParams struct {
@@ -95,7 +101,17 @@ type EditAddressByIDParams struct {
 	Pincode      int32     `json:"pincode"`
 }
 
-func (q *Queries) EditAddressByID(ctx context.Context, arg EditAddressByIDParams) (Address, error) {
+type EditAddressByIDRow struct {
+	ID           uuid.UUID `json:"id"`
+	BuildingName string    `json:"building_name"`
+	StreetName   string    `json:"street_name"`
+	Town         string    `json:"town"`
+	District     string    `json:"district"`
+	State        string    `json:"state"`
+	Pincode      int32     `json:"pincode"`
+}
+
+func (q *Queries) EditAddressByID(ctx context.Context, arg EditAddressByIDParams) (EditAddressByIDRow, error) {
 	row := q.queryRow(ctx, q.editAddressByIDStmt, editAddressByID,
 		arg.ID,
 		arg.BuildingName,
@@ -105,19 +121,15 @@ func (q *Queries) EditAddressByID(ctx context.Context, arg EditAddressByIDParams
 		arg.State,
 		arg.Pincode,
 	)
-	var i Address
+	var i EditAddressByIDRow
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
-		&i.Type,
 		&i.BuildingName,
 		&i.StreetName,
 		&i.Town,
 		&i.District,
 		&i.State,
 		&i.Pincode,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -147,31 +159,37 @@ func (q *Queries) GetAddressByID(ctx context.Context, id uuid.UUID) (Address, er
 }
 
 const getAddressesByUserID = `-- name: GetAddressesByUserID :many
-select id, user_id, type, building_name, street_name, town, district, state, pincode, created_at, updated_at from addresses
+select id, building_name, street_name, town, district, state, pincode from addresses
 where user_id = $1
 `
 
-func (q *Queries) GetAddressesByUserID(ctx context.Context, userID uuid.UUID) ([]Address, error) {
+type GetAddressesByUserIDRow struct {
+	ID           uuid.UUID `json:"id"`
+	BuildingName string    `json:"building_name"`
+	StreetName   string    `json:"street_name"`
+	Town         string    `json:"town"`
+	District     string    `json:"district"`
+	State        string    `json:"state"`
+	Pincode      int32     `json:"pincode"`
+}
+
+func (q *Queries) GetAddressesByUserID(ctx context.Context, userID uuid.UUID) ([]GetAddressesByUserIDRow, error) {
 	rows, err := q.query(ctx, q.getAddressesByUserIDStmt, getAddressesByUserID, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Address{}
+	items := []GetAddressesByUserIDRow{}
 	for rows.Next() {
-		var i Address
+		var i GetAddressesByUserIDRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
-			&i.Type,
 			&i.BuildingName,
 			&i.StreetName,
 			&i.Town,
 			&i.District,
 			&i.State,
 			&i.Pincode,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

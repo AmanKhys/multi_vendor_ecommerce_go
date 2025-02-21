@@ -25,6 +25,18 @@ set name = $2, description = $3, price = $4, stock = $5, updated_at = current_ti
 where id = $1 and is_deleted = false
 returning *;
 
+-- name: DecProductStockByID :one
+update products
+set stock = stock - $2, updated_at = current_timestamp
+where id = $1
+returning *;
+
+-- name: IncProductStockByID :one
+update products
+set stock = stock + $2, updated_at = current_timestamp
+where id = $1
+returning *;
+
 -- name: DeleteProductByID :one
 update products
 set is_deleted = true, updated_at = current_timestamp
