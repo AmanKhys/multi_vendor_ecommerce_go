@@ -100,7 +100,7 @@ func (g *Guest) UserSignUpHandler(w http.ResponseWriter, r *http.Request) {
 		Message string        `json:"message"`
 	}
 	resp.Data = addUser
-	resp.Message = "successfully added user. Now you need to verify it"
+	resp.Message = "Successfully added user. Now you need to verify it. Check email for otp."
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 
@@ -774,7 +774,7 @@ func (g *Guest) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	var resp struct {
 		Message string `json:"message"`
 	}
-	resp.Message = fmt.Sprintf("successfully send otp mail to %s.\nNow send the email, otp and the new password in the url /forgot_otp", user.Email)
+	resp.Message = fmt.Sprintf("successfully send otp mail to %s. Now send the email, otp and the new password in the url /forgot_otp", user.Email)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }

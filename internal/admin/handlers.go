@@ -41,10 +41,10 @@ func (a *Admin) AdminAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *Admin) AdminUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var resp struct {
-		Data    []db.GetAllUsersByRoleRow `json:"data"`
-		Message string                    `json:"message"`
+		Data    []db.GetAllUsersByRoleUserRow `json:"data"`
+		Message string                        `json:"message"`
 	}
-	data, err := a.DB.GetAllUsersByRole(context.TODO(), "user")
+	data, err := a.DB.GetAllUsersByRoleUser(context.TODO(), "user")
 	if err == sql.ErrNoRows {
 		w.Header().Set("Content-Type", "text/plain")
 		message := "no current users available"
@@ -63,10 +63,10 @@ func (a *Admin) AdminUsersHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *Admin) AdminSellersHandler(w http.ResponseWriter, r *http.Request) {
 	var resp struct {
-		Data    []db.GetAllUsersByRoleRow `json:"data"`
-		Message string                    `json:"message"`
+		Data    []db.GetAllUsersByRoleSellerRow `json:"data"`
+		Message string                          `json:"message"`
 	}
-	data, err := a.DB.GetAllUsersByRole(context.TODO(), "seller")
+	data, err := a.DB.GetAllUsersByRoleSeller(context.TODO(), "seller")
 	if err == sql.ErrNoRows {
 		w.Header().Set("Content-Type", "text/plain")
 		message := "no sellers available"
@@ -84,6 +84,7 @@ func (a *Admin) AdminSellersHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
+	// check if the request is in correct format
 	var req struct {
 		Email string `json:"email"`
 	}
@@ -96,6 +97,7 @@ func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// check if the seller exists and is not verified
 	user, err := a.DB.GetUserByEmail(context.TODO(), req.Email)
 	if err == sql.ErrNoRows {
 		http.Error(w, "seller does not exist.", http.StatusBadRequest)
@@ -115,19 +117,33 @@ func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// verify seller
 	seller, err := a.DB.VerifySellerByID(context.TODO(), user.ID)
 	if err != nil {
 		log.Warn("verify seller by id failed for a valid seller.")
 		http.Error(w, "internal server error while verifying seller", http.StatusInternalServerError)
 		return
 	}
-
+	// make errors and messages slice for the response
+	var Err []string
+	var Messages []string
+	// add wallet for the seller
+	wallet, err := a.DB.AddWalletByUserID(context.TODO(), seller.ID)
+	if err != nil {
+		log.Warn("error adding wallet for seller after verifying account:", err.Error())
+		Err = append(Err, "error adding wallet for seller after verifying account")
+	} else {
+		Messages = append(Messages, "successfully added wallet for seller")
+		Messages = append(Messages, "walletID:", wallet.ID.String(), fmt.Sprintf("savings: %v", wallet.Savings))
+	}
 	var resp struct {
-		Data    db.VerifySellerByIDRow `json:"data"`
-		Message string                 `json:"message"`
+		Data     db.VerifySellerByIDRow `json:"data"`
+		Messages []string               `json:"message"`
+		Err      []string               `json:"errors"`
 	}
 	resp.Data = seller
-	resp.Message = "successfully verified seller"
+	resp.Messages = append(Messages, "successfully verified seller")
+	resp.Err = Err
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
