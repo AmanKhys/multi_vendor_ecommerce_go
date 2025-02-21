@@ -28,7 +28,7 @@ returning *;
 -- name: DecProductStockByID :one
 update products
 set stock = stock - $2, updated_at = current_timestamp
-where id = $1
+where id = $1 and stock >= $2
 returning *;
 
 -- name: IncProductStockByID :one

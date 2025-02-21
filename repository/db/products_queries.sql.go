@@ -105,7 +105,7 @@ func (q *Queries) AddProductToCategoryByID(ctx context.Context, arg AddProductTo
 const decProductStockByID = `-- name: DecProductStockByID :one
 update products
 set stock = stock - $2, updated_at = current_timestamp
-where id = $1
+where id = $1 and stock >= $2
 returning id, name, description, price, stock, seller_id, is_deleted, created_at, updated_at
 `
 
