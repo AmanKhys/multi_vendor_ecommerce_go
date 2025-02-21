@@ -15,7 +15,7 @@ const addSavingsToWalletByUserID = `-- name: AddSavingsToWalletByUserID :one
 update wallets
 set savings = savings + $2, updated_at = current_timestamp
 where user_id = $1
-returning id, user_id, savings, created_at, updated_at
+returning id, savings
 `
 
 type AddSavingsToWalletByUserIDParams struct {
@@ -23,16 +23,15 @@ type AddSavingsToWalletByUserIDParams struct {
 	Savings float64   `json:"savings"`
 }
 
-func (q *Queries) AddSavingsToWalletByUserID(ctx context.Context, arg AddSavingsToWalletByUserIDParams) (Wallet, error) {
+type AddSavingsToWalletByUserIDRow struct {
+	ID      uuid.UUID `json:"id"`
+	Savings float64   `json:"savings"`
+}
+
+func (q *Queries) AddSavingsToWalletByUserID(ctx context.Context, arg AddSavingsToWalletByUserIDParams) (AddSavingsToWalletByUserIDRow, error) {
 	row := q.queryRow(ctx, q.addSavingsToWalletByUserIDStmt, addSavingsToWalletByUserID, arg.UserID, arg.Savings)
-	var i Wallet
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Savings,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
+	var i AddSavingsToWalletByUserIDRow
+	err := row.Scan(&i.ID, &i.Savings)
 	return i, err
 }
 
@@ -40,37 +39,35 @@ const addWalletByUserID = `-- name: AddWalletByUserID :one
 insert into wallets
 (user_id, savings)
 values ($1, 0)
-returning id, user_id, savings, created_at, updated_at
+returning id, savings
 `
 
-func (q *Queries) AddWalletByUserID(ctx context.Context, userID uuid.UUID) (Wallet, error) {
+type AddWalletByUserIDRow struct {
+	ID      uuid.UUID `json:"id"`
+	Savings float64   `json:"savings"`
+}
+
+func (q *Queries) AddWalletByUserID(ctx context.Context, userID uuid.UUID) (AddWalletByUserIDRow, error) {
 	row := q.queryRow(ctx, q.addWalletByUserIDStmt, addWalletByUserID, userID)
-	var i Wallet
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Savings,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
+	var i AddWalletByUserIDRow
+	err := row.Scan(&i.ID, &i.Savings)
 	return i, err
 }
 
 const getWalletByUserID = `-- name: GetWalletByUserID :one
-select id, user_id, savings, created_at, updated_at from wallets
+select id, savings from wallets
 where user_id = $1
 `
 
-func (q *Queries) GetWalletByUserID(ctx context.Context, userID uuid.UUID) (Wallet, error) {
+type GetWalletByUserIDRow struct {
+	ID      uuid.UUID `json:"id"`
+	Savings float64   `json:"savings"`
+}
+
+func (q *Queries) GetWalletByUserID(ctx context.Context, userID uuid.UUID) (GetWalletByUserIDRow, error) {
 	row := q.queryRow(ctx, q.getWalletByUserIDStmt, getWalletByUserID, userID)
-	var i Wallet
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Savings,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
+	var i GetWalletByUserIDRow
+	err := row.Scan(&i.ID, &i.Savings)
 	return i, err
 }
 
@@ -78,7 +75,7 @@ const retractSavingsFromWalletByUserID = `-- name: RetractSavingsFromWalletByUse
 update wallets
 set savings = savings - $2, updated_at = current_timestamp
 where user_id = $1
-returning id, user_id, savings, created_at, updated_at
+returning id, savings
 `
 
 type RetractSavingsFromWalletByUserIDParams struct {
@@ -86,15 +83,14 @@ type RetractSavingsFromWalletByUserIDParams struct {
 	Savings float64   `json:"savings"`
 }
 
-func (q *Queries) RetractSavingsFromWalletByUserID(ctx context.Context, arg RetractSavingsFromWalletByUserIDParams) (Wallet, error) {
+type RetractSavingsFromWalletByUserIDRow struct {
+	ID      uuid.UUID `json:"id"`
+	Savings float64   `json:"savings"`
+}
+
+func (q *Queries) RetractSavingsFromWalletByUserID(ctx context.Context, arg RetractSavingsFromWalletByUserIDParams) (RetractSavingsFromWalletByUserIDRow, error) {
 	row := q.queryRow(ctx, q.retractSavingsFromWalletByUserIDStmt, retractSavingsFromWalletByUserID, arg.UserID, arg.Savings)
-	var i Wallet
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Savings,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
+	var i RetractSavingsFromWalletByUserIDRow
+	err := row.Scan(&i.ID, &i.Savings)
 	return i, err
 }
