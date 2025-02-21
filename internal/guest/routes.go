@@ -11,13 +11,16 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
+// get db connection and get the *db.Queries()
 var dbConn = repository.NewDBConfig()
 var DB = db.New(dbConn)
 
+// load the env for clientID and clientSecret for googelAuthConfig
 var envM, _ = env.Read(".env")
 var clientId = envM[envname.GoogleClientID]
 var clientSecret = envM[envname.GoogleSecretKey]
 
+// set the config for google auth and give it the guest struct object
 var conf = &oauth2.Config{
 	ClientID:     clientId,
 	ClientSecret: clientSecret,
@@ -26,11 +29,13 @@ var conf = &oauth2.Config{
 	Endpoint:     google.Endpoint,
 }
 
+// set the guest object from the guest Struct
 var g = Guest{
 	DB:     DB,
 	config: conf,
 }
 
+// register the routes for the guest
 func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /home", g.HomeHandler)
 

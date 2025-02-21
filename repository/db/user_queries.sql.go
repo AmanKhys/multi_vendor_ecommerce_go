@@ -8,7 +8,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -17,7 +16,7 @@ const addAndVerifyUser = `-- name: AddAndVerifyUser :one
 insert into users
 (name, email, password, role, email_verified, user_verified, updated_at)
 values  ($1, $2, $3, 'user', true, true, current_timestamp)
-returning id, name, email, role, is_blocked, email_verified, user_verified, created_at, updated_at
+returning id, name, email, role, is_blocked, email_verified, user_verified
 `
 
 type AddAndVerifyUserParams struct {
@@ -34,8 +33,6 @@ type AddAndVerifyUserRow struct {
 	IsBlocked     bool      `json:"is_blocked"`
 	EmailVerified bool      `json:"email_verified"`
 	UserVerified  bool      `json:"user_verified"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func (q *Queries) AddAndVerifyUser(ctx context.Context, arg AddAndVerifyUserParams) (AddAndVerifyUserRow, error) {
@@ -49,8 +46,6 @@ func (q *Queries) AddAndVerifyUser(ctx context.Context, arg AddAndVerifyUserPara
 		&i.IsBlocked,
 		&i.EmailVerified,
 		&i.UserVerified,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -59,7 +54,7 @@ const addSeller = `-- name: AddSeller :one
 INSERT INTO users
 (name, email, phone, password, role, gst_no, about)
 VALUES ($1, $2, $3, $4, 'seller', $5, $6)
-RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about
 `
 
 type AddSellerParams struct {
@@ -82,8 +77,6 @@ type AddSellerRow struct {
 	UserVerified  bool           `json:"user_verified"`
 	GstNo         sql.NullString `json:"gst_no"`
 	About         sql.NullString `json:"about"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) AddSeller(ctx context.Context, arg AddSellerParams) (AddSellerRow, error) {
@@ -107,8 +100,6 @@ func (q *Queries) AddSeller(ctx context.Context, arg AddSellerParams) (AddSeller
 		&i.UserVerified,
 		&i.GstNo,
 		&i.About,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -117,7 +108,7 @@ const addUser = `-- name: AddUser :one
 INSERT INTO users
 (name, email, phone, password, role)
 VALUES ($1, $2, $3, $4, 'user')
-RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified
 `
 
 type AddUserParams struct {
@@ -136,8 +127,6 @@ type AddUserRow struct {
 	IsBlocked     bool          `json:"is_blocked"`
 	EmailVerified bool          `json:"email_verified"`
 	UserVerified  bool          `json:"user_verified"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, error) {
@@ -157,8 +146,6 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, e
 		&i.IsBlocked,
 		&i.EmailVerified,
 		&i.UserVerified,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -167,22 +154,16 @@ const blockUserByID = `-- name: BlockUserByID :one
 UPDATE users
 SET is_blocked = true, updated_at = current_timestamp
 WHERE id = $1
-RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at
+RETURNING id, name, email, phone, role, is_blocked
 `
 
 type BlockUserByIDRow struct {
-	ID            uuid.UUID      `json:"id"`
-	Name          string         `json:"name"`
-	Email         string         `json:"email"`
-	Phone         sql.NullInt64  `json:"phone"`
-	Role          string         `json:"role"`
-	IsBlocked     bool           `json:"is_blocked"`
-	EmailVerified bool           `json:"email_verified"`
-	UserVerified  bool           `json:"user_verified"`
-	GstNo         sql.NullString `json:"gst_no"`
-	About         sql.NullString `json:"about"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID        uuid.UUID     `json:"id"`
+	Name      string        `json:"name"`
+	Email     string        `json:"email"`
+	Phone     sql.NullInt64 `json:"phone"`
+	Role      string        `json:"role"`
+	IsBlocked bool          `json:"is_blocked"`
 }
 
 func (q *Queries) BlockUserByID(ctx context.Context, id uuid.UUID) (BlockUserByIDRow, error) {
@@ -195,12 +176,6 @@ func (q *Queries) BlockUserByID(ctx context.Context, id uuid.UUID) (BlockUserByI
 		&i.Phone,
 		&i.Role,
 		&i.IsBlocked,
-		&i.EmailVerified,
-		&i.UserVerified,
-		&i.GstNo,
-		&i.About,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -238,7 +213,7 @@ func (q *Queries) ChangePasswordByUserID(ctx context.Context, arg ChangePassword
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about FROM users
 `
 
 type GetAllUsersRow struct {
@@ -252,8 +227,6 @@ type GetAllUsersRow struct {
 	UserVerified  bool           `json:"user_verified"`
 	GstNo         sql.NullString `json:"gst_no"`
 	About         sql.NullString `json:"about"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]GetAllUsersRow, error) {
@@ -276,8 +249,6 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]GetAllUsersRow, error) {
 			&i.UserVerified,
 			&i.GstNo,
 			&i.About,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -292,12 +263,12 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]GetAllUsersRow, error) {
 	return items, nil
 }
 
-const getAllUsersByRole = `-- name: GetAllUsersByRole :many
-SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+const getAllUsersByRoleSeller = `-- name: GetAllUsersByRoleSeller :many
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, about, gst_no FROM users
 WHERE role = $1
 `
 
-type GetAllUsersByRoleRow struct {
+type GetAllUsersByRoleSellerRow struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Email         string         `json:"email"`
@@ -306,21 +277,19 @@ type GetAllUsersByRoleRow struct {
 	IsBlocked     bool           `json:"is_blocked"`
 	EmailVerified bool           `json:"email_verified"`
 	UserVerified  bool           `json:"user_verified"`
-	GstNo         sql.NullString `json:"gst_no"`
 	About         sql.NullString `json:"about"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	GstNo         sql.NullString `json:"gst_no"`
 }
 
-func (q *Queries) GetAllUsersByRole(ctx context.Context, role string) ([]GetAllUsersByRoleRow, error) {
-	rows, err := q.query(ctx, q.getAllUsersByRoleStmt, getAllUsersByRole, role)
+func (q *Queries) GetAllUsersByRoleSeller(ctx context.Context, role string) ([]GetAllUsersByRoleSellerRow, error) {
+	rows, err := q.query(ctx, q.getAllUsersByRoleSellerStmt, getAllUsersByRoleSeller, role)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetAllUsersByRoleRow{}
+	items := []GetAllUsersByRoleSellerRow{}
 	for rows.Next() {
-		var i GetAllUsersByRoleRow
+		var i GetAllUsersByRoleSellerRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -330,10 +299,8 @@ func (q *Queries) GetAllUsersByRole(ctx context.Context, role string) ([]GetAllU
 			&i.IsBlocked,
 			&i.EmailVerified,
 			&i.UserVerified,
-			&i.GstNo,
 			&i.About,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.GstNo,
 		); err != nil {
 			return nil, err
 		}
@@ -348,19 +315,56 @@ func (q *Queries) GetAllUsersByRole(ctx context.Context, role string) ([]GetAllU
 	return items, nil
 }
 
-const getCurrentTimestamp = `-- name: GetCurrentTimestamp :one
-select current_timestamp
+const getAllUsersByRoleUser = `-- name: GetAllUsersByRoleUser :many
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified FROM users
+WHERE role = $1
 `
 
-func (q *Queries) GetCurrentTimestamp(ctx context.Context) (interface{}, error) {
-	row := q.queryRow(ctx, q.getCurrentTimestampStmt, getCurrentTimestamp)
-	var column_1 interface{}
-	err := row.Scan(&column_1)
-	return column_1, err
+type GetAllUsersByRoleUserRow struct {
+	ID            uuid.UUID     `json:"id"`
+	Name          string        `json:"name"`
+	Email         string        `json:"email"`
+	Phone         sql.NullInt64 `json:"phone"`
+	Role          string        `json:"role"`
+	IsBlocked     bool          `json:"is_blocked"`
+	EmailVerified bool          `json:"email_verified"`
+	UserVerified  bool          `json:"user_verified"`
+}
+
+func (q *Queries) GetAllUsersByRoleUser(ctx context.Context, role string) ([]GetAllUsersByRoleUserRow, error) {
+	rows, err := q.query(ctx, q.getAllUsersByRoleUserStmt, getAllUsersByRoleUser, role)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAllUsersByRoleUserRow{}
+	for rows.Next() {
+		var i GetAllUsersByRoleUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.Phone,
+			&i.Role,
+			&i.IsBlocked,
+			&i.EmailVerified,
+			&i.UserVerified,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getSellerByProductID = `-- name: GetSellerByProductID :one
-SELECT u.id, u.name, u.email, u.phone, u.role, u.is_blocked, u.email_verified, u.user_verified, u.gst_no, u.about, u.created_at, u.updated_at
+SELECT u.id, u.name, u.email, u.phone, u.role, u.is_blocked, u.email_verified, u.user_verified, u.gst_no, u.about
 FROM  products p
 INNER JOIN  users u
 on p.seller_id = u.id and u.role = 'seller' and p.is_deleted = false
@@ -378,8 +382,6 @@ type GetSellerByProductIDRow struct {
 	UserVerified  bool           `json:"user_verified"`
 	GstNo         sql.NullString `json:"gst_no"`
 	About         sql.NullString `json:"about"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) GetSellerByProductID(ctx context.Context, id uuid.UUID) (GetSellerByProductIDRow, error) {
@@ -396,14 +398,12 @@ func (q *Queries) GetSellerByProductID(ctx context.Context, id uuid.UUID) (GetSe
 		&i.UserVerified,
 		&i.GstNo,
 		&i.About,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about FROM users
 WHERE email = $1
 `
 
@@ -418,8 +418,6 @@ type GetUserByEmailRow struct {
 	UserVerified  bool           `json:"user_verified"`
 	GstNo         sql.NullString `json:"gst_no"`
 	About         sql.NullString `json:"about"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
@@ -436,14 +434,12 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 		&i.UserVerified,
 		&i.GstNo,
 		&i.About,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
+SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about FROM users
 WHERE id = $1
 `
 
@@ -458,8 +454,6 @@ type GetUserByIdRow struct {
 	UserVerified  bool           `json:"user_verified"`
 	GstNo         sql.NullString `json:"gst_no"`
 	About         sql.NullString `json:"about"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (GetUserByIdRow, error) {
@@ -476,8 +470,6 @@ func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (GetUserByIdRow
 		&i.UserVerified,
 		&i.GstNo,
 		&i.About,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -508,82 +500,20 @@ func (q *Queries) GetUserWithPasswordByEmail(ctx context.Context, email string) 
 	return i, err
 }
 
-const getUsersByRole = `-- name: GetUsersByRole :many
-SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at FROM users
-WHERE role = $1
-`
-
-type GetUsersByRoleRow struct {
-	ID            uuid.UUID      `json:"id"`
-	Name          string         `json:"name"`
-	Email         string         `json:"email"`
-	Phone         sql.NullInt64  `json:"phone"`
-	Role          string         `json:"role"`
-	IsBlocked     bool           `json:"is_blocked"`
-	EmailVerified bool           `json:"email_verified"`
-	UserVerified  bool           `json:"user_verified"`
-	GstNo         sql.NullString `json:"gst_no"`
-	About         sql.NullString `json:"about"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-}
-
-func (q *Queries) GetUsersByRole(ctx context.Context, role string) ([]GetUsersByRoleRow, error) {
-	rows, err := q.query(ctx, q.getUsersByRoleStmt, getUsersByRole, role)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GetUsersByRoleRow{}
-	for rows.Next() {
-		var i GetUsersByRoleRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Email,
-			&i.Phone,
-			&i.Role,
-			&i.IsBlocked,
-			&i.EmailVerified,
-			&i.UserVerified,
-			&i.GstNo,
-			&i.About,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const unblockUserByID = `-- name: UnblockUserByID :one
 UPDATE users
 SET is_blocked = false, updated_at = current_timestamp
 WHERE id = $1
-RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about, created_at, updated_at
+RETURNING id, name, email, phone, role, is_blocked
 `
 
 type UnblockUserByIDRow struct {
-	ID            uuid.UUID      `json:"id"`
-	Name          string         `json:"name"`
-	Email         string         `json:"email"`
-	Phone         sql.NullInt64  `json:"phone"`
-	Role          string         `json:"role"`
-	IsBlocked     bool           `json:"is_blocked"`
-	EmailVerified bool           `json:"email_verified"`
-	UserVerified  bool           `json:"user_verified"`
-	GstNo         sql.NullString `json:"gst_no"`
-	About         sql.NullString `json:"about"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID        uuid.UUID     `json:"id"`
+	Name      string        `json:"name"`
+	Email     string        `json:"email"`
+	Phone     sql.NullInt64 `json:"phone"`
+	Role      string        `json:"role"`
+	IsBlocked bool          `json:"is_blocked"`
 }
 
 func (q *Queries) UnblockUserByID(ctx context.Context, id uuid.UUID) (UnblockUserByIDRow, error) {
@@ -596,12 +526,6 @@ func (q *Queries) UnblockUserByID(ctx context.Context, id uuid.UUID) (UnblockUse
 		&i.Phone,
 		&i.Role,
 		&i.IsBlocked,
-		&i.EmailVerified,
-		&i.UserVerified,
-		&i.GstNo,
-		&i.About,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -610,7 +534,7 @@ const verifySellerByID = `-- name: VerifySellerByID :one
 update users
 set user_verified = true, updated_at = current_timestamp
 where id = $1
-returning id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
+returning id, name, email, phone, role, is_blocked, email_verified, user_verified
 `
 
 type VerifySellerByIDRow struct {
@@ -622,8 +546,6 @@ type VerifySellerByIDRow struct {
 	IsBlocked     bool          `json:"is_blocked"`
 	EmailVerified bool          `json:"email_verified"`
 	UserVerified  bool          `json:"user_verified"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 func (q *Queries) VerifySellerByID(ctx context.Context, id uuid.UUID) (VerifySellerByIDRow, error) {
@@ -638,8 +560,6 @@ func (q *Queries) VerifySellerByID(ctx context.Context, id uuid.UUID) (VerifySel
 		&i.IsBlocked,
 		&i.EmailVerified,
 		&i.UserVerified,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -648,7 +568,7 @@ const verifySellerEmailByID = `-- name: VerifySellerEmailByID :one
 UPDATE users
 SET email_verified = true, updated_at = current_timestamp
 WHERE id = $1
-RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified
 `
 
 type VerifySellerEmailByIDRow struct {
@@ -660,8 +580,6 @@ type VerifySellerEmailByIDRow struct {
 	IsBlocked     bool          `json:"is_blocked"`
 	EmailVerified bool          `json:"email_verified"`
 	UserVerified  bool          `json:"user_verified"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 func (q *Queries) VerifySellerEmailByID(ctx context.Context, id uuid.UUID) (VerifySellerEmailByIDRow, error) {
@@ -676,8 +594,6 @@ func (q *Queries) VerifySellerEmailByID(ctx context.Context, id uuid.UUID) (Veri
 		&i.IsBlocked,
 		&i.EmailVerified,
 		&i.UserVerified,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -686,7 +602,7 @@ const verifyUserByID = `-- name: VerifyUserByID :one
 UPDATE users
 SET email_verified = true, user_verified = true, updated_at = current_timestamp
 WHERE id = $1
-RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified, created_at, updated_at
+RETURNING id, name, email, phone, role, is_blocked, email_verified, user_verified
 `
 
 type VerifyUserByIDRow struct {
@@ -698,8 +614,6 @@ type VerifyUserByIDRow struct {
 	IsBlocked     bool          `json:"is_blocked"`
 	EmailVerified bool          `json:"email_verified"`
 	UserVerified  bool          `json:"user_verified"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 func (q *Queries) VerifyUserByID(ctx context.Context, id uuid.UUID) (VerifyUserByIDRow, error) {
@@ -714,8 +628,6 @@ func (q *Queries) VerifyUserByID(ctx context.Context, id uuid.UUID) (VerifyUserB
 		&i.IsBlocked,
 		&i.EmailVerified,
 		&i.UserVerified,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }

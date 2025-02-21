@@ -171,8 +171,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAllUsersStmt, err = db.PrepareContext(ctx, getAllUsers); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllUsers: %w", err)
 	}
-	if q.getAllUsersByRoleStmt, err = db.PrepareContext(ctx, getAllUsersByRole); err != nil {
-		return nil, fmt.Errorf("error preparing query GetAllUsersByRole: %w", err)
+	if q.getAllUsersByRoleSellerStmt, err = db.PrepareContext(ctx, getAllUsersByRoleSeller); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAllUsersByRoleSeller: %w", err)
+	}
+	if q.getAllUsersByRoleUserStmt, err = db.PrepareContext(ctx, getAllUsersByRoleUser); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAllUsersByRoleUser: %w", err)
 	}
 	if q.getCartItemByIDStmt, err = db.PrepareContext(ctx, getCartItemByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCartItemByID: %w", err)
@@ -191,9 +194,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getCategoryNamesOfProductByIDStmt, err = db.PrepareContext(ctx, getCategoryNamesOfProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCategoryNamesOfProductByID: %w", err)
-	}
-	if q.getCurrentTimestampStmt, err = db.PrepareContext(ctx, getCurrentTimestamp); err != nil {
-		return nil, fmt.Errorf("error preparing query GetCurrentTimestamp: %w", err)
 	}
 	if q.getOrderItemsByOrderIDStmt, err = db.PrepareContext(ctx, getOrderItemsByOrderID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrderItemsByOrderID: %w", err)
@@ -233,9 +233,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getUserWithPasswordByEmailStmt, err = db.PrepareContext(ctx, getUserWithPasswordByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserWithPasswordByEmail: %w", err)
-	}
-	if q.getUsersByRoleStmt, err = db.PrepareContext(ctx, getUsersByRole); err != nil {
-		return nil, fmt.Errorf("error preparing query GetUsersByRole: %w", err)
 	}
 	if q.getValidForgotOTPByUserIDStmt, err = db.PrepareContext(ctx, getValidForgotOTPByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetValidForgotOTPByUserID: %w", err)
@@ -514,9 +511,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getAllUsersStmt: %w", cerr)
 		}
 	}
-	if q.getAllUsersByRoleStmt != nil {
-		if cerr := q.getAllUsersByRoleStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getAllUsersByRoleStmt: %w", cerr)
+	if q.getAllUsersByRoleSellerStmt != nil {
+		if cerr := q.getAllUsersByRoleSellerStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAllUsersByRoleSellerStmt: %w", cerr)
+		}
+	}
+	if q.getAllUsersByRoleUserStmt != nil {
+		if cerr := q.getAllUsersByRoleUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAllUsersByRoleUserStmt: %w", cerr)
 		}
 	}
 	if q.getCartItemByIDStmt != nil {
@@ -547,11 +549,6 @@ func (q *Queries) Close() error {
 	if q.getCategoryNamesOfProductByIDStmt != nil {
 		if cerr := q.getCategoryNamesOfProductByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCategoryNamesOfProductByIDStmt: %w", cerr)
-		}
-	}
-	if q.getCurrentTimestampStmt != nil {
-		if cerr := q.getCurrentTimestampStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getCurrentTimestampStmt: %w", cerr)
 		}
 	}
 	if q.getOrderItemsByOrderIDStmt != nil {
@@ -617,11 +614,6 @@ func (q *Queries) Close() error {
 	if q.getUserWithPasswordByEmailStmt != nil {
 		if cerr := q.getUserWithPasswordByEmailStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUserWithPasswordByEmailStmt: %w", cerr)
-		}
-	}
-	if q.getUsersByRoleStmt != nil {
-		if cerr := q.getUsersByRoleStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getUsersByRoleStmt: %w", cerr)
 		}
 	}
 	if q.getValidForgotOTPByUserIDStmt != nil {
@@ -757,14 +749,14 @@ type Queries struct {
 	getAllProductsForAdminStmt                 *sql.Stmt
 	getAllSessionsByUserIDStmt                 *sql.Stmt
 	getAllUsersStmt                            *sql.Stmt
-	getAllUsersByRoleStmt                      *sql.Stmt
+	getAllUsersByRoleSellerStmt                *sql.Stmt
+	getAllUsersByRoleUserStmt                  *sql.Stmt
 	getCartItemByIDStmt                        *sql.Stmt
 	getCartItemByUserIDAndProductIDStmt        *sql.Stmt
 	getCartItemsByUserIDStmt                   *sql.Stmt
 	getCategoryByIDStmt                        *sql.Stmt
 	getCategoryByNameStmt                      *sql.Stmt
 	getCategoryNamesOfProductByIDStmt          *sql.Stmt
-	getCurrentTimestampStmt                    *sql.Stmt
 	getOrderItemsByOrderIDStmt                 *sql.Stmt
 	getProductAndCategoryNameByIDStmt          *sql.Stmt
 	getProductByIDStmt                         *sql.Stmt
@@ -778,7 +770,6 @@ type Queries struct {
 	getUserByIdStmt                            *sql.Stmt
 	getUserBySessionIDStmt                     *sql.Stmt
 	getUserWithPasswordByEmailStmt             *sql.Stmt
-	getUsersByRoleStmt                         *sql.Stmt
 	getValidForgotOTPByUserIDStmt              *sql.Stmt
 	getValidOTPByUserIDStmt                    *sql.Stmt
 	getWalletByUserIDStmt                      *sql.Stmt
@@ -843,14 +834,14 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAllProductsForAdminStmt:                 q.getAllProductsForAdminStmt,
 		getAllSessionsByUserIDStmt:                 q.getAllSessionsByUserIDStmt,
 		getAllUsersStmt:                            q.getAllUsersStmt,
-		getAllUsersByRoleStmt:                      q.getAllUsersByRoleStmt,
+		getAllUsersByRoleSellerStmt:                q.getAllUsersByRoleSellerStmt,
+		getAllUsersByRoleUserStmt:                  q.getAllUsersByRoleUserStmt,
 		getCartItemByIDStmt:                        q.getCartItemByIDStmt,
 		getCartItemByUserIDAndProductIDStmt:        q.getCartItemByUserIDAndProductIDStmt,
 		getCartItemsByUserIDStmt:                   q.getCartItemsByUserIDStmt,
 		getCategoryByIDStmt:                        q.getCategoryByIDStmt,
 		getCategoryByNameStmt:                      q.getCategoryByNameStmt,
 		getCategoryNamesOfProductByIDStmt:          q.getCategoryNamesOfProductByIDStmt,
-		getCurrentTimestampStmt:                    q.getCurrentTimestampStmt,
 		getOrderItemsByOrderIDStmt:                 q.getOrderItemsByOrderIDStmt,
 		getProductAndCategoryNameByIDStmt:          q.getProductAndCategoryNameByIDStmt,
 		getProductByIDStmt:                         q.getProductByIDStmt,
@@ -864,7 +855,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getUserByIdStmt:                            q.getUserByIdStmt,
 		getUserBySessionIDStmt:                     q.getUserBySessionIDStmt,
 		getUserWithPasswordByEmailStmt:             q.getUserWithPasswordByEmailStmt,
-		getUsersByRoleStmt:                         q.getUsersByRoleStmt,
 		getValidForgotOTPByUserIDStmt:              q.getValidForgotOTPByUserIDStmt,
 		getValidOTPByUserIDStmt:                    q.getValidOTPByUserIDStmt,
 		getWalletByUserIDStmt:                      q.getWalletByUserIDStmt,
