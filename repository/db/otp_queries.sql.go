@@ -72,6 +72,8 @@ func (q *Queries) DeleteOTPByEmail(ctx context.Context, email string) (sql.Resul
 const getValidForgotOTPByUserID = `-- name: GetValidForgotOTPByUserID :one
 select id, user_id, otp, created_at, expires_at from forgot_otps
 where user_id  = $1 and expires_at > current_timestamp
+order by created_at DESC
+limit 1
 `
 
 func (q *Queries) GetValidForgotOTPByUserID(ctx context.Context, userID uuid.UUID) (ForgotOtp, error) {

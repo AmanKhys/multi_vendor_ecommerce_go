@@ -15,7 +15,9 @@ where user_id = (select user_id from users where email = $1);
 
 -- name: GetValidForgotOTPByUserID :one
 select * from forgot_otps
-where user_id  = $1 and expires_at > current_timestamp;
+where user_id  = $1 and expires_at > current_timestamp
+order by created_at DESC
+limit 1;
 
 -- name: AddForgotOTPByUserID :one
 insert into forgot_otps 

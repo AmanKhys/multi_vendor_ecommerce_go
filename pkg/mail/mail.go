@@ -37,7 +37,7 @@ func SendOTPMail(otp int, expires_at time.Time, recepientMail string) error {
 	var recepients []string
 	message := fmt.Sprintf("From: %s\r\n", smtpMail) +
 		"To: " + recepientMail + "\r\n" +
-		"Subject: Forgot Password OTP Verification\r\n" +
+		"Subject: OTP Verification\r\n" +
 		"MIME-Version: 1.0\r\n" +
 		"Content-Type: text/plain; charset=\"utf-8\"\r\n" +
 		"\r\n" + // Empty line separates headers from body
@@ -72,7 +72,7 @@ func SendForgotOTPMail(otp int, expires_at time.Time, recepientMail string) erro
 	var recepients []string
 	message := fmt.Sprintf("From: %s\r\n", smtpMail) +
 		"To: " + recepientMail + "\r\n" +
-		"Subject: OTP Verification\r\n" +
+		"Subject: Forgot Password OTP Verification\r\n" +
 		"MIME-Version: 1.0\r\n" +
 		"Content-Type: text/plain; charset=\"utf-8\"\r\n" +
 		"\r\n" + // Empty line separates headers from body
