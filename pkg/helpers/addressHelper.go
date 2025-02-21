@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
@@ -29,8 +30,8 @@ func (u *Helper) GetAddressesHelper(w http.ResponseWriter, r *http.Request, user
 	}
 
 	var resp struct {
-		Data    []db.Address `json:"data"`
-		Message string       `json:"message"`
+		Data    []db.GetAddressesByUserIDRow `json:"data"`
+		Message string                       `json:"message"`
 	}
 	resp.Data = addresses
 	resp.Message = "successfully fetched all address of the user"
@@ -38,15 +39,38 @@ func (u *Helper) GetAddressesHelper(w http.ResponseWriter, r *http.Request, user
 	json.NewEncoder(w).Encode(resp)
 }
 func (u *Helper) AddAddressHelper(w http.ResponseWriter, r *http.Request, user db.GetUserBySessionIDRow) {
-	var arg db.AddAddressByUserIDParams
-	err := json.NewDecoder(r.Body).Decode(&arg)
+	var req db.AddAddressByUserIDParams
+	err := json.NewDecoder(r.Body).Decode(&req)
+	var Err []string
 	if err != nil {
 		http.Error(w, "invalid request data format", http.StatusBadRequest)
 		return
 	}
-	arg.UserID = user.ID
-	arg.Type = user.Role
-	address, err := u.DB.AddAddressByUserID(context.TODO(), arg)
+	if !validators.ValidateAddress(req.BuildingName) {
+		Err = append(Err, "invalid building name")
+	}
+	if !validators.ValidateAddress(req.StreetName) {
+		Err = append(Err, "invalid street name")
+	}
+	if !validators.ValidateAddress(req.Town) {
+		Err = append(Err, "invalid town name")
+	}
+	if !validators.ValidateAddress(req.District) {
+		Err = append(Err, "invalid district name")
+	}
+	if !validators.ValidateAddress(req.State) {
+		Err = append(Err, "invalid state name")
+	}
+	if !validators.ValidatePincode(int(req.Pincode)) {
+		Err = append(Err, "invlaid pincode")
+	}
+	if len(Err) > 0 {
+		http.Error(w, strings.Join(Err, "\n"), http.StatusBadRequest)
+		return
+	}
+	req.UserID = user.ID
+	req.Type = user.Role
+	address, err := u.DB.AddAddressByUserID(context.TODO(), req)
 	if err != nil {
 		log.Warn("error adding valid user address", err.Error())
 		http.Error(w, "internal server error adding user address", http.StatusInternalServerError)
@@ -54,8 +78,8 @@ func (u *Helper) AddAddressHelper(w http.ResponseWriter, r *http.Request, user d
 	}
 
 	var resp struct {
-		Data    db.Address `json:"address"`
-		Message string     `json:"message"`
+		Data    db.AddAddressByUserIDRow `json:"address"`
+		Message string                   `json:"message"`
 	}
 	resp.Data = address
 	resp.Message = "successfully added addres to the user with email:" + user.Email
@@ -70,13 +94,29 @@ func (u *Helper) EditAddressHelper(w http.ResponseWriter, r *http.Request, user 
 	if err != nil {
 		http.Error(w, "wrong request format", http.StatusBadRequest)
 		return
-	} else if !(validators.ValidateAddress(req.BuildingName) &&
-		validators.ValidateAddress(req.StreetName) &&
-		validators.ValidateAddress(req.Town) &&
-		validators.ValidateAddress(req.District) &&
-		validators.ValidateAddress(req.State) &&
-		validators.ValidatePincode(int(req.Pincode))) {
-		http.Error(w, "invalid data values", http.StatusBadRequest)
+	}
+	// Error slice to store the return error values for response
+	var Err []string
+	if !validators.ValidateAddress(req.BuildingName) {
+		Err = append(Err, "invalid building name")
+	}
+	if !validators.ValidateAddress(req.StreetName) {
+		Err = append(Err, "invalid street name")
+	}
+	if !validators.ValidateAddress(req.Town) {
+		Err = append(Err, "invalid town name")
+	}
+	if !validators.ValidateAddress(req.District) {
+		Err = append(Err, "invalid district name")
+	}
+	if !validators.ValidateAddress(req.State) {
+		Err = append(Err, "invalid state name")
+	}
+	if !validators.ValidatePincode(int(req.Pincode)) {
+		Err = append(Err, "invlaid pincode")
+	}
+	if len(Err) > 0 {
+		http.Error(w, strings.Join(Err, "\n"), http.StatusBadRequest)
 		return
 	}
 
@@ -102,8 +142,8 @@ func (u *Helper) EditAddressHelper(w http.ResponseWriter, r *http.Request, user 
 	}
 
 	var resp struct {
-		Data    db.Address `json:"data"`
-		Message string     `json:"message"`
+		Data    db.EditAddressByIDRow `json:"data"`
+		Message string                `json:"message"`
 	}
 	resp.Data = editedAddr
 	resp.Message = "successfully edited address"
