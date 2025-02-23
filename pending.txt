@@ -12,6 +12,3 @@ searching with price min,max/category/name
 make notifications table that send messages on each update for any of the above;
 
 
-................ new error after changing code from perfectly fine working
-forgot password resp message
-forgot password otp and normal otp messages changed

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -167,6 +168,12 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "invalid request data format", http.StatusBadRequest)
 		return
+	} else if req.Quantity < 0 {
+		Err = append(Err, "trying to add invalid quantity. reverting quantity to 1")
+		req.Quantity = 1
+	} else if req.Quantity > 20 {
+		Err = append(Err, "trying to add invalid quantity. reverting quantity to maximum possible 20")
+		req.Quantity = 20
 	}
 
 	product, err := u.DB.GetProductByID(context.TODO(), req.ProductID)
@@ -175,9 +182,6 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		http.Error(w, "internal server error fetching product", http.StatusInternalServerError)
-		return
-	} else if req.Quantity <= 0 {
-		http.Error(w, "invalid quantity", http.StatusBadRequest)
 		return
 	} else if product.Stock < int32(req.Quantity) {
 		Err = append(Err, "product quantity added more than stock. Reverting to the maximum available stock for order.")
@@ -196,7 +200,12 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 		var arg db.AddCartItemParams
 		arg.UserID = user.ID
 		arg.ProductID = req.ProductID
-		arg.Quantity = int32(req.Quantity)
+		if req.Quantity == 0 {
+			http.Error(w, "trying to add a product with zero quantity. Skipping the product to add.", http.StatusBadRequest)
+			return
+		} else {
+			arg.Quantity = int32(req.Quantity)
+		}
 		arg.ProductID = product.ID
 		arg.UserID = user.ID
 		item, err := u.DB.AddCartItem(context.TODO(), arg)
@@ -214,9 +223,11 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 		var resp struct {
 			Data    respCartItem `json:"data"`
 			Message string       `json:"message"`
+			Err     []string     `json:"errors"`
 		}
 		resp.Data = respItem
 		resp.Message = "successfully added cart item"
+		resp.Err = Err
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
@@ -232,7 +243,9 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 	// update existing cartItem if there is a valid cartItem that is fetched from the database
 	var editArg db.EditCartItemByIDParams
 	editArg.ID = cartItem.ID
-	if cartItem.Quantity < product.Stock {
+	if cartItem.Quantity == 20 {
+		Err = append(Err, "cart item already added with maximum possible quantity. Not changing the quantity")
+	} else if cartItem.Quantity < product.Stock {
 		editArg.Quantity = cartItem.Quantity + 1
 	} else {
 		editArg.Quantity = product.Stock
@@ -252,9 +265,11 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 	var resp struct {
 		Data    respCartItem `json:"data"`
 		Message string       `json:"message"`
+		Err     []string     `json:"errors"`
 	}
 	resp.Data = respEditItem
 	resp.Message = "successfully updated cart item on adding the cart item on already existing cart item"
+	resp.Err = Err
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
@@ -278,6 +293,12 @@ func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, "invalid request data format", http.StatusBadRequest)
+		return
+	} else if req.Quantity <= 0 {
+		http.Error(w, "invalid quantity", http.StatusBadRequest)
+		return
+	} else if req.Quantity > 20 {
+		http.Error(w, "invalid quantity. maximum possible quantity is 20", http.StatusBadRequest)
 		return
 	}
 
@@ -306,9 +327,14 @@ func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
 		var arg db.AddCartItemParams
 		arg.UserID = user.ID
 		arg.ProductID = req.ProductID
-		if req.Quantity > int(product.Stock) {
+		if product.Stock == 0 {
+			http.Error(w, "trying to edit and add an out of stock product", http.StatusBadRequest)
+			return
+		} else if req.Quantity > int(product.Stock) {
 			Err = append(Err, "adding more quantity of product than there is stock. Reverting the quantity back to maximum allotable")
-			req.Quantity = int(product.Stock)
+			arg.Quantity = product.Stock
+		} else {
+			arg.Quantity = int32(req.Quantity)
 		}
 		arg.ProductID = product.ID
 		arg.UserID = user.ID
@@ -354,14 +380,15 @@ func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
 	editArg.ID = cartItem.ID
 	if req.Quantity > int(product.Stock) {
 		Err = append(Err, "edit cartItem with more quantity than there is stock. Reallocation the cartItem to the maximum possible")
-		req.Quantity = int(product.Stock)
+		editArg.Quantity = product.Stock
 	} else {
 		editArg.Quantity = int32(req.Quantity)
 	}
 	// edit the cartItem
 	editedItem, err := u.DB.EditCartItemByID(context.TODO(), editArg)
 	if err != nil {
-		log.Warn("internal error editing cartItem:", err.Error())
+
+		log.Warn("internal error editing cartItem: ", editArg, err.Error())
 		http.Error(w, "internal error editing cartItem", http.StatusInternalServerError)
 		return
 	}
@@ -449,13 +476,116 @@ func (u *User) DeleteCartHandler(w http.ResponseWriter, r *http.Request) {
 
 // //////////////////////////
 // order handlers
-
 func (u *User) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)
 	if user.ID == uuid.Nil {
 		return
 	}
 
+	// get orders by userId
+	orders, err := u.DB.GetOrdersByUserID(context.TODO(), user.ID)
+	if err != nil {
+		log.Warn("error fetching orders by userID in getOrdersHandler:", err.Error())
+		http.Error(w, "internal error fetching orders", http.StatusInternalServerError)
+		return
+	}
+
+	// respOrderItem struct
+	type respOrderItem struct {
+		OrderItemID uuid.UUID `json:"order_item_id"`
+		ProductID   uuid.UUID `json:"product_id"`
+		ProductName string    `json:"product_name"`
+		Price       float64   `json:"price"`
+		Quantity    int       `json:"quantity"`
+		TotalAmount float64   `json:"total_amount"`
+	}
+	// respOrder struct
+	type respOrder struct {
+		OrderID    uuid.UUID       `json:"order_id"`
+		OrderItems []respOrderItem `json:"order_items"`
+	}
+
+	// var respOrders, errors
+	var respOrders []respOrder
+	var Err []string
+
+	for _, o := range orders {
+		var temp respOrder
+		orderItems, err := u.DB.GetOrderItemsByOrderID(context.TODO(), o.ID)
+		if err != nil {
+			log.Warn("error fetching orderItem in GetOrderHandler:", err.Error())
+			Err = append(Err, "error fetching order by orderID:", o.ID.String())
+		} else {
+			temp.OrderID = o.ID
+			for _, oi := range orderItems {
+				var orderItem respOrderItem
+				orderItem.OrderItemID = oi.ID
+				orderItem.ProductID = oi.ProductID
+				orderItem.ProductName = oi.ProductName
+				orderItem.Price = oi.Price
+				orderItem.Quantity = int(oi.Quantity)
+				orderItem.TotalAmount = oi.TotalAmount
+				temp.OrderItems = append(temp.OrderItems, orderItem)
+			}
+			respOrders = append(respOrders, temp)
+		}
+	}
+
+	// send response
+	var resp struct {
+		Data    []respOrder `json:"data"`
+		Err     []string    `json:"errors"`
+		Message string      `json:"message"`
+	}
+	resp.Data = respOrders
+	resp.Err = Err
+	resp.Message = "successfully fetched orders and orderItems"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (u *User) GetOrderItemsHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	orderItems, err := u.DB.GetOrderItemsByUserID(context.TODO(), user.ID)
+	if err != nil {
+		log.Warn("error fetching order_items from userID in getOrderItems:", err.Error())
+		http.Error(w, "internal error fetching orderItems", http.StatusInternalServerError)
+		return
+	}
+	type respOrderItem struct {
+		OrderItemID uuid.UUID `json:"order_item_id"`
+		Status      string    `json:"status"`
+		ProductID   uuid.UUID `json:"product_id"`
+		Price       float64   `json:"price"`
+		Quantity    int       `json:"quantity"`
+		TotalAmount float64   `json:"total_amount"`
+	}
+	// storing response Order items
+	var respOrderItems []respOrderItem
+	for _, v := range orderItems {
+		var temp respOrderItem
+		temp.OrderItemID = v.ID
+		temp.Status = v.Status
+		temp.ProductID = v.ProductID
+		temp.Price = v.Price
+		temp.Quantity = int(v.Quantity)
+		temp.TotalAmount = v.TotalAmount
+
+		respOrderItems = append(respOrderItems, temp)
+	}
+
+	// send response
+	var resp struct {
+		OrderItems []respOrderItem `json:"order_items"`
+		Messaege   string          `json:"message"`
+	}
+	resp.OrderItems = respOrderItems
+	resp.Messaege = "successfully fetched orderItems"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
@@ -472,19 +602,17 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the shipping address from the request
-	var req struct {
-		ShippingAddressID uuid.UUID `json:"shipping_address_id"`
-	}
-	err := json.NewDecoder(r.Body).Decode(&req)
+	ShippingAddressIDStr := r.URL.Query().Get("shipping_address_id")
+	ShippingAddressID, err := uuid.Parse(ShippingAddressIDStr)
 	if err != nil {
-		http.Error(w, "invalid request data", http.StatusBadRequest)
+		http.Error(w, "invalid address format", http.StatusBadRequest)
 		return
 	}
 
 	// to add and display insignificant errors
 	var Err []string
 	// get a valid address for the shipping address
-	address, err := u.DB.GetAddressByID(context.TODO(), req.ShippingAddressID)
+	address, err := u.DB.GetAddressByID(context.TODO(), ShippingAddressID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "not a valid addressID", http.StatusBadRequest)
 		return
@@ -538,6 +666,7 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		var addArg db.AddOrderITemParams
 		addArg.OrderID = order.ID
 		addArg.ProductID = v.ProductID
+		addArg.Price = v.Price
 		addArg.Quantity = v.Quantity
 		addArg.TotalAmount = v.TotalAmount
 		sumTotal += v.TotalAmount
@@ -546,6 +675,22 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 			log.Warn("error adding cartItem to order_item:", err.Error())
 			http.Error(w, "internal error adding cartItem to order_items", http.StatusInternalServerError)
 			return
+		}
+		product, err := u.DB.GetProductByID(context.TODO(), v.ProductID)
+		if err == sql.ErrNoRows {
+			log.Warn("no product with matching productId from cartItem:", err.Error())
+		} else if err != nil {
+			log.Warn("error executing GetProductByID query:", err.Error())
+		}
+		var decArg db.DecProductStockByIDParams
+		decArg.ProductID = v.ProductID
+		decArg.DecQuantity = v.Quantity
+		decProduct, err := u.DB.DecProductStockByID(context.TODO(), decArg)
+		if err != nil {
+			log.Warn("error decrementing from product stock after placing order:", err.Error())
+		} else {
+			msg := fmt.Sprintf("decremented product: %s from quantity: %d to %d.", v.ProductID.String(), product.Stock, decProduct.Stock)
+			log.Info(msg)
 		}
 	}
 
@@ -595,12 +740,183 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+func (u *User) CancelOrderItemHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	// get request ordreItemID from request
+	orderItemIDStr := r.URL.Query().Get("order_item_id")
+	orderItemID, err := uuid.Parse(orderItemIDStr)
+	if err != nil {
+		http.Error(w, "ordreItemID not in uuid format", http.StatusBadRequest)
+		return
+	}
+	// get OrderItemId
+	orderItem, err := u.DB.GetOrderItemByID(context.TODO(), orderItemID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "not a valid order_item_id", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error fetching orderItemByID in cancel order:", err.Error())
+		http.Error(w, "internal server error fetching orderItem", http.StatusInternalServerError)
+		return
+	}
+
+	// get userID from orderItemID and verify it's the same user's orderItem
+	OrderItemUserID, err := u.DB.GetUserIDFromOrderItemID(context.TODO(), orderItemID)
+	if err != nil {
+		log.Warn("error fetching userID from orderItemID in cancel order:", err.Error())
+		http.Error(w, "internal error fetching userID from orderItemID", http.StatusInternalServerError)
+		return
+	} else if OrderItemUserID != user.ID {
+		http.Error(w, "not user's orderItemID. User unauthorized.", http.StatusUnauthorized)
+		return
+	}
+
+	// check if the order is shipped or not
+	// if order is processing or pending, cancel order
+	if orderItem.Status == utils.StatusOrderCancelled {
+		http.Error(w, "order already cancelled. cannot cancel", http.StatusForbidden)
+		return
+	} else if orderItem.Status == utils.StatusOrderDelivered {
+		http.Error(w, "order already delivered. cannot cancel", http.StatusForbidden)
+		return
+	} else if orderItem.Status == utils.StatusOrderShipped {
+		http.Error(w, "order already shipped. cannot cancel", http.StatusForbidden)
+		return
+	} else if orderItem.Status == utils.StatusOrderPending || orderItem.Status == utils.StatusOrderProcessing {
+		// cancel order
+		var editOrderItemArg db.EditOrderItemStatusByIDParams
+		editOrderItemArg.ID = orderItem.ID
+		editOrderItemArg.Status = utils.StatusOrderCancelled
+		_, err = u.DB.EditOrderItemStatusByID(context.TODO(), editOrderItemArg)
+		if err != nil {
+			log.Warn("error editing orderItemStatus:", err.Error())
+			http.Error(w, "internal error editing orderItemStatus", http.StatusInternalServerError)
+			return
+		}
+		// increment product stock after cancelling order
+		var incArg db.IncProductStockByIDParams
+		incArg.ProductID = orderItem.ProductID
+		incArg.IncQuantity = orderItem.Quantity
+		_, err = u.DB.IncProductStockByID(context.TODO(), incArg)
+		if err != nil {
+			log.Warn("error incrementing product stock after cancelling order:", err.Error())
+
+			// print the increment quantity if there were no errors incrementing
+		} else {
+			product, err := u.DB.GetProductByID(context.TODO(), orderItem.ProductID)
+			if err != nil {
+				msg := fmt.Sprintf("incremented product stock after cancelling: %d added back", incArg.IncQuantity)
+				log.Info(msg)
+			} else {
+				msg := fmt.Sprintf("incremented product stock after cancelling: from stock: %d to new_stock: %d", product.Stock-incArg.IncQuantity, product.Stock)
+				log.Info(msg)
+			}
+		}
+
+		// make Err slice to give for response errors
+		var Err []string
+		// decrement payment on cancelling order
+		payment, err := u.DB.DecPaymentAmountByOrderItemID(context.TODO(), orderItem.ID)
+		if err != nil {
+			log.Warn("error updating payment for the order:", err.Error())
+			Err = append(Err, "error updating payment for the order after cancelling item")
+
+			// change the payment status to returned if the payment becomes zero
+		} else if payment.TotalAmount == 0 {
+			var editPaymentArg db.EditPaymentStatusByIDParams
+			editPaymentArg.ID = payment.ID
+			editPaymentArg.Status = utils.StatusPaymentReturned
+			zeroPayment, err := u.DB.EditPaymentStatusByID(context.TODO(), editPaymentArg)
+			if err != nil {
+				log.Warn("error editing payment status:", err.Error())
+			} else {
+				payment.Status = zeroPayment.Status
+			}
+		}
+
+		type RespPayment struct {
+			PaymentID      uuid.UUID `json:"payment_id"`
+			NewTotalAmount float64   `json:"new_total_amount"`
+			PaymentMethod  string    `json:"payment_method"`
+			PaymentStatus  string    `json:"payment_status"`
+		}
+		var rPay RespPayment
+		rPay.PaymentID = payment.ID
+		rPay.NewTotalAmount = payment.TotalAmount
+		rPay.PaymentStatus = payment.Status
+		rPay.PaymentMethod = payment.Method
+
+		// send response after successful order cancellation
+		var resp struct {
+			OrderItemID uuid.UUID   `json:"order_item_id"`
+			Message     string      `json:"message"`
+			Err         []string    `json:"errors"`
+			NewPayment  RespPayment `json:"new_payment"`
+		}
+		resp.OrderItemID = orderItem.ID
+		resp.Message = "order_item has been cancelled."
+		resp.Err = Err
+		resp.NewPayment = rPay
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+
+		// incase the orderItem status doesn't match all the rest// theoretically impossible
+	} else {
+		log.Warn("invalid order status for orderItem in cancel order:")
+		http.Error(w, "invalid order status for orderItem", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (u *User) CancelOrderHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)
 	if user.ID == uuid.Nil {
 		return
 	}
 
+	// get orderID from request params
+	orderIDStr := r.URL.Query().Get("order_id")
+	orderID, err := uuid.Parse(orderIDStr)
+	if err != nil {
+		http.Error(w, "orderID not in uuid format", http.StatusBadRequest)
+		return
+	}
+
+	// check whether it is a valid order and if it the current users's order
+	order, err := u.DB.GetOrderByID(context.TODO(), orderID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "not a valid orderID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error fetching order by ID in CancelOrderHandler:", err.Error())
+		http.Error(w, "error fetching order by id", http.StatusInternalServerError)
+		return
+	} else if order.UserID != user.ID {
+		http.Error(w, "not user's order to cancel", http.StatusUnauthorized)
+		return
+	}
+
+	// cancel orderITems for the orderID
+	err = u.DB.CancelOrderByID(context.TODO(), orderID)
+	if err != nil {
+		log.Warn("error cancelling orderItems by orderID in CancelOrderHandler:", err.Error())
+		http.Error(w, "internal error cancelling orderItems by orderID", http.StatusInternalServerError)
+		return
+	} else {
+		err = u.DB.CancelPaymentByOrderID(context.TODO(), orderID)
+		if err != nil {
+			log.Warn("error returning payment by orderID in CancelOrderHandler:", err.Error())
+			http.Error(w, "intenral error cancelling payment by orderID after successfully cancelling orderItems", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	message := "successfully cancelled order and the payment"
+	w.Write([]byte(message))
 }
 
 func (u *User) ReturnOrderHandler(w http.ResponseWriter, r *http.Request) {
