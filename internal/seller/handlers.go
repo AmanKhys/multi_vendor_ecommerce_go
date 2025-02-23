@@ -94,6 +94,16 @@ func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 	if user.ID == uuid.Nil {
 		return
 	}
+	// check if the seller added a shipping address or not
+	_, err := s.DB.GetAddressBySellerID(context.TODO(), user.ID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "cannot add product withot a address for seller. visit /seller/address/add and make an address", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error fetching address for seller in AddProductHandler:", err.Error())
+		http.Error(w, "internal error fetching seller address to verify the seller has an address before adding product", http.StatusInternalServerError)
+		return
+	}
 	var arg struct {
 		Name        string   `json:"name"`
 		Description string   `json:"description"`
@@ -101,7 +111,7 @@ func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		Stock       int      `json:"stock"`
 		Categories  []string `json:"categories"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&arg)
+	err = json.NewDecoder(r.Body).Decode(&arg)
 	if err != nil {
 		http.Error(w, "invalid data format", http.StatusBadRequest)
 		return

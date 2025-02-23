@@ -158,6 +158,31 @@ func (q *Queries) GetAddressByID(ctx context.Context, id uuid.UUID) (Address, er
 	return i, err
 }
 
+const getAddressBySellerID = `-- name: GetAddressBySellerID :one
+select id, user_id, type, building_name, street_name, town, district, state, pincode, created_at, updated_at from addresses
+where user_id = $1
+limit 1
+`
+
+func (q *Queries) GetAddressBySellerID(ctx context.Context, userID uuid.UUID) (Address, error) {
+	row := q.queryRow(ctx, q.getAddressBySellerIDStmt, getAddressBySellerID, userID)
+	var i Address
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Type,
+		&i.BuildingName,
+		&i.StreetName,
+		&i.Town,
+		&i.District,
+		&i.State,
+		&i.Pincode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAddressesByUserID = `-- name: GetAddressesByUserID :many
 select id, building_name, street_name, town, district, state, pincode from addresses
 where user_id = $1

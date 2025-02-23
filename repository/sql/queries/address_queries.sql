@@ -9,6 +9,11 @@ returning id, building_name, street_name, town, district, state, pincode;
 select * from addresses
 where id = $1;
 
+-- name: GetAddressBySellerID :one
+select * from addresses
+where user_id = $1
+limit 1;
+
 -- name: GetAddressesByUserID :many
 select id, building_name, street_name, town, district, state, pincode from addresses
 where user_id = $1;

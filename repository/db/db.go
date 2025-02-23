@@ -165,6 +165,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAddressByIDStmt, err = db.PrepareContext(ctx, getAddressByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAddressByID: %w", err)
 	}
+	if q.getAddressBySellerIDStmt, err = db.PrepareContext(ctx, getAddressBySellerID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAddressBySellerID: %w", err)
+	}
 	if q.getAddressesByUserIDStmt, err = db.PrepareContext(ctx, getAddressesByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAddressesByUserID: %w", err)
 	}
@@ -540,6 +543,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getAddressByIDStmt: %w", cerr)
 		}
 	}
+	if q.getAddressBySellerIDStmt != nil {
+		if cerr := q.getAddressBySellerIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAddressBySellerIDStmt: %w", cerr)
+		}
+	}
 	if q.getAddressesByUserIDStmt != nil {
 		if cerr := q.getAddressesByUserIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getAddressesByUserIDStmt: %w", cerr)
@@ -851,6 +859,7 @@ type Queries struct {
 	editPaymentStatusByOrderIDStmt             *sql.Stmt
 	editProductByIDStmt                        *sql.Stmt
 	getAddressByIDStmt                         *sql.Stmt
+	getAddressBySellerIDStmt                   *sql.Stmt
 	getAddressesByUserIDStmt                   *sql.Stmt
 	getAllCategoriesStmt                       *sql.Stmt
 	getAllCategoriesForAdminStmt               *sql.Stmt
@@ -949,6 +958,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		editPaymentStatusByOrderIDStmt:             q.editPaymentStatusByOrderIDStmt,
 		editProductByIDStmt:                        q.editProductByIDStmt,
 		getAddressByIDStmt:                         q.getAddressByIDStmt,
+		getAddressBySellerIDStmt:                   q.getAddressBySellerIDStmt,
 		getAddressesByUserIDStmt:                   q.getAddressesByUserIDStmt,
 		getAllCategoriesStmt:                       q.getAllCategoriesStmt,
 		getAllCategoriesForAdminStmt:               q.getAllCategoriesForAdminStmt,
