@@ -338,3 +338,126 @@ func (a *Admin) DeleteCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("category: %s deleted", category.Name)
 	w.Write([]byte(message))
 }
+
+func (a *Admin) GetOrderItemsHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+	// fetch order_items
+	orderItems, err := a.DB.GetAllOrderForAdmin(context.TODO())
+	if err != nil {
+		log.Warn("error fetching orders for admin in GetOrderItemsHandler:", err.Error())
+		http.Error(w, "internal server error fetching orders for admin", http.StatusInternalServerError)
+		return
+	}
+
+	// make resp orderItem struct
+	type respOrderItem struct {
+		ID          uuid.UUID `json:"id"`
+		OrderID     uuid.UUID `json:"order_id"`
+		Status      string    `json:"status"`
+		ProductID   uuid.UUID `json:"product_id"`
+		Price       float64   `json:"price"`
+		Quantity    int       `json:"quantity"`
+		TotalAmount float64   `json:"total_amount"`
+	}
+
+	// respOrderItems slice
+	var respOrderItems []respOrderItem
+	for _, v := range orderItems {
+		var temp respOrderItem
+		temp.ID = v.ID
+		temp.OrderID = v.OrderID
+		temp.Status = v.Status
+		temp.ProductID = v.ProductID
+		temp.Price = v.Price
+		temp.Quantity = int(v.Quantity)
+		temp.TotalAmount = v.TotalAmount
+
+		respOrderItems = append(respOrderItems, temp)
+	}
+
+	// give response
+	var resp struct {
+		Data    []respOrderItem `json:"data"`
+		Message string          `json:"message"`
+	}
+	resp.Data = respOrderItems
+	resp.Message = "successfully fetched all orderItems"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (a *Admin) DeliverOrderItemHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+	var req struct {
+		OrderItemIDStr string `json:"order_item_id"`
+	}
+	req.OrderItemIDStr = r.URL.Query().Get("order_item_id")
+	orderID, err := uuid.Parse(req.OrderItemIDStr)
+	if err != nil {
+		http.Error(w, "not a valid orderItemID", http.StatusBadRequest)
+		return
+	}
+
+	orderItem, err := a.DB.GetOrderItemByID(context.TODO(), orderID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "not a valid orderItemID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error fetching orderItemByID in admin to change orderStatus:", err.Error())
+		http.Error(w, "internal server error fetching orderItem", http.StatusInternalServerError)
+		return
+	}
+
+	// checking order item status to change the status to delivered
+	if orderItem.Status == utils.StatusOrderCancelled ||
+		orderItem.Status == utils.StatusOrderPending ||
+		orderItem.Status == utils.StatusOrderProcessing ||
+		orderItem.Status == utils.StatusOrderDelivered {
+		msg := fmt.Sprintf("order %s. Cannot change to status to delivered", orderItem.Status)
+		http.Error(w, msg, http.StatusUnauthorized)
+		return
+	}
+	// no need to check the orderItem status is shipped since it is the
+	// default case if all the cases above failed
+
+	var arg db.ChangeOrderItemStatusByIDParams
+	arg.ID = orderItem.ID
+	arg.Status = utils.StatusOrderDelivered
+	updatedOrderItem, err := a.DB.ChangeOrderItemStatusByID(context.TODO(), arg)
+	if err != nil {
+		log.Warn("error changing order status to delivered in DeliverOrderItemHandler in admin:", err.Error())
+		http.Error(w, "internal error changing order status to delivered", http.StatusInternalServerError)
+		return
+	}
+	type respOrderItem struct {
+		OrderItemID uuid.UUID `json:"order_item_id"`
+		Status      string    `json:"status"`
+		ProductID   uuid.UUID `json:"product_id"`
+		Price       float64   `json:"price"`
+		Qauntity    int       `json:"quantity"`
+		TotalAmount float64   `json:"total_amount"`
+	}
+	var respUpdatedOrderItem respOrderItem
+	respUpdatedOrderItem.OrderItemID = updatedOrderItem.ID
+	respUpdatedOrderItem.ProductID = updatedOrderItem.ProductID
+	respUpdatedOrderItem.Price = updatedOrderItem.Price
+	respUpdatedOrderItem.Qauntity = int(updatedOrderItem.Quantity)
+	respUpdatedOrderItem.TotalAmount = updatedOrderItem.TotalAmount
+	respUpdatedOrderItem.Status = updatedOrderItem.Status
+	var resp struct {
+		Data    respOrderItem `json:"data"`
+		Message string
+	}
+	resp.Data = respUpdatedOrderItem
+	resp.Message = "successfully updated the orderItem to status delivered"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}

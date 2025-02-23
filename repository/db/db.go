@@ -90,6 +90,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.changeNameByUserIDStmt, err = db.PrepareContext(ctx, changeNameByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query ChangeNameByUserID: %w", err)
 	}
+	if q.changeOrderItemStatusByIDStmt, err = db.PrepareContext(ctx, changeOrderItemStatusByID); err != nil {
+		return nil, fmt.Errorf("error preparing query ChangeOrderItemStatusByID: %w", err)
+	}
 	if q.changePasswordByUserIDStmt, err = db.PrepareContext(ctx, changePasswordByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query ChangePasswordByUserID: %w", err)
 	}
@@ -171,6 +174,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAllCategoriesForAdminStmt, err = db.PrepareContext(ctx, getAllCategoriesForAdmin); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllCategoriesForAdmin: %w", err)
 	}
+	if q.getAllOrderForAdminStmt, err = db.PrepareContext(ctx, getAllOrderForAdmin); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAllOrderForAdmin: %w", err)
+	}
 	if q.getAllProductsStmt, err = db.PrepareContext(ctx, getAllProducts); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllProducts: %w", err)
 	}
@@ -216,6 +222,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getOrderItemsByOrderIDStmt, err = db.PrepareContext(ctx, getOrderItemsByOrderID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrderItemsByOrderID: %w", err)
 	}
+	if q.getOrderItemsBySellerIDStmt, err = db.PrepareContext(ctx, getOrderItemsBySellerID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetOrderItemsBySellerID: %w", err)
+	}
 	if q.getOrderItemsByUserIDStmt, err = db.PrepareContext(ctx, getOrderItemsByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrderItemsByUserID: %w", err)
 	}
@@ -242,6 +251,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getSellerByProductIDStmt, err = db.PrepareContext(ctx, getSellerByProductID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSellerByProductID: %w", err)
+	}
+	if q.getSellerIDFromOrderItemIDStmt, err = db.PrepareContext(ctx, getSellerIDFromOrderItemID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetSellerIDFromOrderItemID: %w", err)
 	}
 	if q.getSessionDetailsByIDStmt, err = db.PrepareContext(ctx, getSessionDetailsByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSessionDetailsByID: %w", err)
@@ -403,6 +415,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing changeNameByUserIDStmt: %w", cerr)
 		}
 	}
+	if q.changeOrderItemStatusByIDStmt != nil {
+		if cerr := q.changeOrderItemStatusByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing changeOrderItemStatusByIDStmt: %w", cerr)
+		}
+	}
 	if q.changePasswordByUserIDStmt != nil {
 		if cerr := q.changePasswordByUserIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing changePasswordByUserIDStmt: %w", cerr)
@@ -538,6 +555,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getAllCategoriesForAdminStmt: %w", cerr)
 		}
 	}
+	if q.getAllOrderForAdminStmt != nil {
+		if cerr := q.getAllOrderForAdminStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAllOrderForAdminStmt: %w", cerr)
+		}
+	}
 	if q.getAllProductsStmt != nil {
 		if cerr := q.getAllProductsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getAllProductsStmt: %w", cerr)
@@ -613,6 +635,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getOrderItemsByOrderIDStmt: %w", cerr)
 		}
 	}
+	if q.getOrderItemsBySellerIDStmt != nil {
+		if cerr := q.getOrderItemsBySellerIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getOrderItemsBySellerIDStmt: %w", cerr)
+		}
+	}
 	if q.getOrderItemsByUserIDStmt != nil {
 		if cerr := q.getOrderItemsByUserIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getOrderItemsByUserIDStmt: %w", cerr)
@@ -656,6 +683,11 @@ func (q *Queries) Close() error {
 	if q.getSellerByProductIDStmt != nil {
 		if cerr := q.getSellerByProductIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getSellerByProductIDStmt: %w", cerr)
+		}
+	}
+	if q.getSellerIDFromOrderItemIDStmt != nil {
+		if cerr := q.getSellerIDFromOrderItemIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getSellerIDFromOrderItemIDStmt: %w", cerr)
 		}
 	}
 	if q.getSessionDetailsByIDStmt != nil {
@@ -794,6 +826,7 @@ type Queries struct {
 	cancelOrderByIDStmt                        *sql.Stmt
 	cancelPaymentByOrderIDStmt                 *sql.Stmt
 	changeNameByUserIDStmt                     *sql.Stmt
+	changeOrderItemStatusByIDStmt              *sql.Stmt
 	changePasswordByUserIDStmt                 *sql.Stmt
 	decPaymentAmountByOrderItemIDStmt          *sql.Stmt
 	decProductStockByIDStmt                    *sql.Stmt
@@ -821,6 +854,7 @@ type Queries struct {
 	getAddressesByUserIDStmt                   *sql.Stmt
 	getAllCategoriesStmt                       *sql.Stmt
 	getAllCategoriesForAdminStmt               *sql.Stmt
+	getAllOrderForAdminStmt                    *sql.Stmt
 	getAllProductsStmt                         *sql.Stmt
 	getAllProductsForAdminStmt                 *sql.Stmt
 	getAllSessionsByUserIDStmt                 *sql.Stmt
@@ -836,6 +870,7 @@ type Queries struct {
 	getOrderByIDStmt                           *sql.Stmt
 	getOrderItemByIDStmt                       *sql.Stmt
 	getOrderItemsByOrderIDStmt                 *sql.Stmt
+	getOrderItemsBySellerIDStmt                *sql.Stmt
 	getOrderItemsByUserIDStmt                  *sql.Stmt
 	getOrdersByUserIDStmt                      *sql.Stmt
 	getProductAndCategoryNameByIDStmt          *sql.Stmt
@@ -845,6 +880,7 @@ type Queries struct {
 	getProductsByCategoryNameStmt              *sql.Stmt
 	getProductsBySellerIDStmt                  *sql.Stmt
 	getSellerByProductIDStmt                   *sql.Stmt
+	getSellerIDFromOrderItemIDStmt             *sql.Stmt
 	getSessionDetailsByIDStmt                  *sql.Stmt
 	getUserByEmailStmt                         *sql.Stmt
 	getUserByIdStmt                            *sql.Stmt
@@ -888,6 +924,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		cancelOrderByIDStmt:                        q.cancelOrderByIDStmt,
 		cancelPaymentByOrderIDStmt:                 q.cancelPaymentByOrderIDStmt,
 		changeNameByUserIDStmt:                     q.changeNameByUserIDStmt,
+		changeOrderItemStatusByIDStmt:              q.changeOrderItemStatusByIDStmt,
 		changePasswordByUserIDStmt:                 q.changePasswordByUserIDStmt,
 		decPaymentAmountByOrderItemIDStmt:          q.decPaymentAmountByOrderItemIDStmt,
 		decProductStockByIDStmt:                    q.decProductStockByIDStmt,
@@ -915,6 +952,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAddressesByUserIDStmt:                   q.getAddressesByUserIDStmt,
 		getAllCategoriesStmt:                       q.getAllCategoriesStmt,
 		getAllCategoriesForAdminStmt:               q.getAllCategoriesForAdminStmt,
+		getAllOrderForAdminStmt:                    q.getAllOrderForAdminStmt,
 		getAllProductsStmt:                         q.getAllProductsStmt,
 		getAllProductsForAdminStmt:                 q.getAllProductsForAdminStmt,
 		getAllSessionsByUserIDStmt:                 q.getAllSessionsByUserIDStmt,
@@ -930,6 +968,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getOrderByIDStmt:                           q.getOrderByIDStmt,
 		getOrderItemByIDStmt:                       q.getOrderItemByIDStmt,
 		getOrderItemsByOrderIDStmt:                 q.getOrderItemsByOrderIDStmt,
+		getOrderItemsBySellerIDStmt:                q.getOrderItemsBySellerIDStmt,
 		getOrderItemsByUserIDStmt:                  q.getOrderItemsByUserIDStmt,
 		getOrdersByUserIDStmt:                      q.getOrdersByUserIDStmt,
 		getProductAndCategoryNameByIDStmt:          q.getProductAndCategoryNameByIDStmt,
@@ -939,6 +978,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getProductsByCategoryNameStmt:              q.getProductsByCategoryNameStmt,
 		getProductsBySellerIDStmt:                  q.getProductsBySellerIDStmt,
 		getSellerByProductIDStmt:                   q.getSellerByProductIDStmt,
+		getSellerIDFromOrderItemIDStmt:             q.getSellerIDFromOrderItemIDStmt,
 		getSessionDetailsByIDStmt:                  q.getSessionDetailsByIDStmt,
 		getUserByEmailStmt:                         q.getUserByEmailStmt,
 		getUserByIdStmt:                            q.getUserByIdStmt,

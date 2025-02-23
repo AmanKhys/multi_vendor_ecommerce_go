@@ -179,6 +179,35 @@ func (q *Queries) CancelPaymentByOrderID(ctx context.Context, orderID uuid.UUID)
 	return err
 }
 
+const changeOrderItemStatusByID = `-- name: ChangeOrderItemStatusByID :one
+update order_items oi
+set status =  $2
+where id = $1
+returning id, order_id, product_id, price, quantity, total_amount, status, created_at, updated_at
+`
+
+type ChangeOrderItemStatusByIDParams struct {
+	ID     uuid.UUID `json:"id"`
+	Status string    `json:"status"`
+}
+
+func (q *Queries) ChangeOrderItemStatusByID(ctx context.Context, arg ChangeOrderItemStatusByIDParams) (OrderItem, error) {
+	row := q.queryRow(ctx, q.changeOrderItemStatusByIDStmt, changeOrderItemStatusByID, arg.ID, arg.Status)
+	var i OrderItem
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.ProductID,
+		&i.Price,
+		&i.Quantity,
+		&i.TotalAmount,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const decPaymentAmountByOrderItemID = `-- name: DecPaymentAmountByOrderItemID :one
 WITH cte AS (
   SELECT oi.order_id, oi.total_amount
@@ -303,6 +332,43 @@ func (q *Queries) EditPaymentStatusByOrderID(ctx context.Context, arg EditPaymen
 	return i, err
 }
 
+const getAllOrderForAdmin = `-- name: GetAllOrderForAdmin :many
+select id, order_id, product_id, price, quantity, total_amount, status, created_at, updated_at from order_items
+`
+
+func (q *Queries) GetAllOrderForAdmin(ctx context.Context) ([]OrderItem, error) {
+	rows, err := q.query(ctx, q.getAllOrderForAdminStmt, getAllOrderForAdmin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrderItem{}
+	for rows.Next() {
+		var i OrderItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.Price,
+			&i.Quantity,
+			&i.TotalAmount,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOrderByID = `-- name: GetOrderByID :one
 select id, user_id, created_at, updated_at from orders
 where id = $1
@@ -397,6 +463,46 @@ func (q *Queries) GetOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID)
 	return items, nil
 }
 
+const getOrderItemsBySellerID = `-- name: GetOrderItemsBySellerID :many
+select oi.id, oi.order_id, oi.product_id, oi.price, oi.quantity, oi.total_amount, oi.status, oi.created_at, oi.updated_at from order_items oi
+inner join products p
+on oi.product_id = p.id
+where p.seller_id = $1
+`
+
+func (q *Queries) GetOrderItemsBySellerID(ctx context.Context, sellerID uuid.UUID) ([]OrderItem, error) {
+	rows, err := q.query(ctx, q.getOrderItemsBySellerIDStmt, getOrderItemsBySellerID, sellerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrderItem{}
+	for rows.Next() {
+		var i OrderItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.Price,
+			&i.Quantity,
+			&i.TotalAmount,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOrderItemsByUserID = `-- name: GetOrderItemsByUserID :many
 select oi.id, oi.order_id, oi.product_id, oi.price, oi.quantity, oi.total_amount, oi.status, oi.created_at, oi.updated_at from order_items oi
 inner join orders o
@@ -470,6 +576,20 @@ func (q *Queries) GetOrdersByUserID(ctx context.Context, userID uuid.UUID) ([]Or
 		return nil, err
 	}
 	return items, nil
+}
+
+const getSellerIDFromOrderItemID = `-- name: GetSellerIDFromOrderItemID :one
+select p.seller_id from order_items oi
+inner join products p
+on oi.product_id = p.id
+where oi.id = $1
+`
+
+func (q *Queries) GetSellerIDFromOrderItemID(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.queryRow(ctx, q.getSellerIDFromOrderItemIDStmt, getSellerIDFromOrderItemID, id)
+	var seller_id uuid.UUID
+	err := row.Scan(&seller_id)
+	return seller_id, err
 }
 
 const getUserIDFromOrderItemID = `-- name: GetUserIDFromOrderItemID :one

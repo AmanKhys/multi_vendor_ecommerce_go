@@ -3,6 +3,7 @@ package admin
 import (
 	"net/http"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/helpers"
 	middleware "github.com/amankhys/multi_vendor_ecommerce_go/pkg/middlewares"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository"
@@ -12,6 +13,9 @@ import (
 var dbConn = repository.NewDBConfig()
 var DB = db.New(dbConn)
 var a = Admin{DB: DB}
+var helper = helpers.Helper{
+	DB: DB,
+}
 
 func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/allusers", middleware.AuthenticateUserMiddleware(a.AdminAllUsersHandler, utils.AdminRole))
@@ -29,4 +33,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/category/add", middleware.AuthenticateUserMiddleware(a.AddCategoryHandler, utils.AdminRole))
 	mux.HandleFunc("PUT /admin/category/edit", middleware.AuthenticateUserMiddleware(a.EditCategoryHandler, utils.AdminRole))
 	mux.HandleFunc("DELETE /admin/category/delete", middleware.AuthenticateUserMiddleware(a.DeleteCategoryHandler, utils.AdminRole))
+
+	mux.HandleFunc("GET /admin/orders", middleware.AuthenticateUserMiddleware(a.GetOrderItemsHandler, utils.AdminRole))
+	mux.HandleFunc("PUT /admin/orders/deliver", middleware.AuthenticateUserMiddleware(a.DeliverOrderItemHandler, utils.AdminRole))
 }

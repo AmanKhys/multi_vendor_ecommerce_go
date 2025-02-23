@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
@@ -406,4 +407,135 @@ func (s *Seller) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orderItems, err := s.DB.GetOrderItemsBySellerID(context.TODO(), user.ID)
+	if err != nil {
+		log.Warn("error fetching orderItems for the seller in GetOrdersHandler:", err.Error())
+		http.Error(w, "intenral error fetching orderItems for the seller", http.StatusInternalServerError)
+		return
+	}
+
+	// respOrderItem struct
+	type respOrderItem struct {
+		OrderItemID uuid.UUID `json:"order_item_id"`
+		Status      string    `json:"status"`
+		ProductID   uuid.UUID `json:"product_id"`
+		Price       float64   `json:"price"`
+		Quantity    int       `json:"quantity"`
+		TotalAmount float64   `json:"total_amount"`
+	}
+
+	// respOrderItems slice for seller
+	var respOrderItems []respOrderItem
+
+	for _, v := range orderItems {
+		var temp respOrderItem
+		temp.OrderItemID = v.ID
+		temp.Status = v.Status
+		temp.ProductID = v.ProductID
+		temp.Price = v.Price
+		temp.Quantity = int(v.Quantity)
+		temp.TotalAmount = v.TotalAmount
+
+		respOrderItems = append(respOrderItems, temp)
+	}
+
+	// send response
+	var resp struct {
+		Data    []respOrderItem `json:"data"`
+		Message string          `json:"message"`
+	}
+	resp.Data = respOrderItems
+	resp.Message = "successfully fetched seller's orderItems"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Seller) ChangeOrderStatusHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	var req struct {
+		OrderItemIDStr string `json:"order_item_id"`
+		Status         string `json:"status"`
+	}
+	req.OrderItemIDStr = r.URL.Query().Get("order_item_id")
+	req.Status = r.URL.Query().Get("status")
+	// get orderItemID
+	orderItemID, err := uuid.Parse(req.OrderItemIDStr)
+	if err != nil {
+		http.Error(w, "invalid ordreItemID", http.StatusBadRequest)
+		return
+	}
+	// get OrderItem
+	orderItem, err := s.DB.GetOrderItemByID(context.TODO(), orderItemID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid orderItemID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Warn("error fetching orderItem in ChangeOrderItemStatusHandler in seller:", err.Error())
+		http.Error(w, "internal error fetching orderItem", http.StatusInternalServerError)
+		return
+	}
+	sellerID, err := s.DB.GetSellerIDFromOrderItemID(context.TODO(), orderItem.ID)
+	if err != nil {
+		log.Warn("error fetching sellerID from orderItemID in ChangeOrderStatusHandler in seller:", err.Error())
+		http.Error(w, "internal error fetching sellerID from orderItem to verify it is the same seller's id", http.StatusInternalServerError)
+		return
+	}
+	if sellerID != user.ID {
+		http.Error(w, "not the current sellers's order_item to change status", http.StatusUnauthorized)
+		return
+	}
+	// check if orderStatus, req status is valid for update
+	if orderItem.Status == utils.StatusOrderCancelled ||
+		orderItem.Status == utils.StatusOrderDelivered ||
+		orderItem.Status == utils.StatusOrderShipped {
+		msg := fmt.Sprintf("orderItem %s. cannot change the status of ordreItem", orderItem.Status)
+		http.Error(w, msg, http.StatusBadRequest)
+	} else if req.Status != utils.StatusOrderPending &&
+		req.Status != utils.StatusOrderProcessing &&
+		req.Status != utils.StatusOrderShipped {
+		http.Error(w, "invalid status", http.StatusBadRequest)
+		return
+	}
+
+	// udpate orderItemStatus
+	var arg db.ChangeOrderItemStatusByIDParams
+	arg.ID = orderItem.ID
+	arg.Status = req.Status
+	updatedOrderItem, err := s.DB.ChangeOrderItemStatusByID(context.TODO(), arg)
+	if err != nil {
+		log.Warn("error updating ordreItem status for seller ChangeOrderStatusHandler:", err.Error())
+		http.Error(w, "internal error changing status for orderItem", http.StatusInternalServerError)
+		return
+	}
+
+	// send response
+	type respOrderItem struct {
+		OrderItemID uuid.UUID `json:"order_item_id"`
+		Status      string    `json:"status"`
+		ProductID   uuid.UUID `json:"product_id"`
+		Price       float64   `json:"price"`
+		Quantity    int       `json:"quantity"`
+		TotalAmount float64   `json:"total_amount"`
+	}
+
+	var updatedRespOrderItem respOrderItem
+	updatedRespOrderItem.OrderItemID = updatedOrderItem.ID
+	updatedRespOrderItem.Status = updatedOrderItem.Status
+	updatedRespOrderItem.ProductID = updatedOrderItem.ProductID
+	updatedRespOrderItem.Price = updatedOrderItem.Price
+	updatedRespOrderItem.Quantity = int(updatedOrderItem.Quantity)
+	updatedRespOrderItem.TotalAmount = updatedOrderItem.TotalAmount
+
+	var resp struct {
+		Data    respOrderItem `json:"data"`
+		Message string        `json:"message"`
+	}
+
+	resp.Data = updatedRespOrderItem
+	resp.Message = "successfully updated orderItem status"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }

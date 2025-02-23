@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS addresses (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at)
 );
 
+-- add partial index after creating address schema 
+-- for unique userID when type = 'seller'
+CREATE UNIQUE INDEX unique_seller_address_per_user 
+ON addresses(user_id) 
+WHERE type = 'seller';
+
 -- Categories Table
 CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

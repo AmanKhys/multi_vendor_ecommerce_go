@@ -1,3 +1,6 @@
+-- name: GetAllOrderForAdmin :many
+select * from order_items;
+
 -- name: GetOrdersByUserID :many
 select * from orders
 where user_id = $1;
@@ -5,6 +8,19 @@ where user_id = $1;
 -- name: GetOrderByID :one
 select * from orders
 where id = $1;
+
+-- name: GetOrderItemsBySellerID :many
+select oi.* from order_items oi
+inner join products p
+on oi.product_id = p.id
+where p.seller_id = $1;
+
+-- name: GetSellerIDFromOrderItemID :one
+select p.seller_id from order_items oi
+inner join products p
+on oi.product_id = p.id
+where oi.id = $1;
+
 
 -- name: AddOrder :one
 insert into orders
@@ -103,3 +119,9 @@ where order_id = $1;
 update payments
 set status = "returned", total_amount = 0, updated_at = current_timestamp
 where order_id = $1;
+
+-- name: ChangeOrderItemStatusByID :one
+update order_items oi
+set status =  $2
+where id = $1
+returning *;
