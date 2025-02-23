@@ -169,9 +169,12 @@ CREATE TABLE IF NOT EXISTS order_items (
     id UUID NOT NULL DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES orders(id),
     product_id UUID NOT NULL REFERENCES products(id),
+    price NUMERIC(10,2) NOT NULL CHECK(price>0),
     quantity INT NOT NULL CHECK (quantity>0),
-    total_amount NUMERIC(10, 2) NOT NULL CHECK (total_amount >0),
-    status TEXT NOT NULL CHECK (status in ('pending', 'processing', 'shippeed', 'delivered', 'cancelled')) DEFAULT 'pending',
+    -- check == 0 since the orderItems cannot have 0 for total_amount 
+    -- thus total_amount here never becomes zero  unless all the items are cancelled.
+    total_amount NUMERIC(10, 2) NOT NULL CHECK (total_amount >=0),
+    status TEXT NOT NULL CHECK (status in ('pending', 'processing', 'shipped', 'delivered', 'cancelled')) DEFAULT 'pending',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK(updated_at>=created_at)
 );

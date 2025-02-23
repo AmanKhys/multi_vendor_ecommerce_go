@@ -3,7 +3,7 @@ select * from carts
 where id = $1;
 
 -- name: GetCartItemsByUserID :many
-select c.id as cart_id, p.id as product_id, p.name as product_name, c.quantity, (p.price * c.quantity)::numeric(10,2) as total_amount
+select c.id as cart_id, p.id as product_id, p.name as product_name, c.quantity, p.price, (p.price * c.quantity)::numeric(10,2) as total_amount
 from carts c
 inner join products p
 on c.product_id = p.id

@@ -27,14 +27,14 @@ returning *;
 
 -- name: DecProductStockByID :one
 update products
-set stock = stock - $2, updated_at = current_timestamp
-where id = $1 and stock >= $2
+set stock = stock - @dec_quantity, updated_at = current_timestamp
+where id = @product_id and stock >= @dec_quantity
 returning *;
 
 -- name: IncProductStockByID :one
 update products
-set stock = stock + $2, updated_at = current_timestamp
-where id = $1
+set stock = stock + @inc_quantity, updated_at = current_timestamp
+where id = @product_id
 returning *;
 
 -- name: DeleteProductByID :one

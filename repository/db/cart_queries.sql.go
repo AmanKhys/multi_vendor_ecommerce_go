@@ -137,7 +137,7 @@ func (q *Queries) GetCartItemByUserIDAndProductID(ctx context.Context, arg GetCa
 }
 
 const getCartItemsByUserID = `-- name: GetCartItemsByUserID :many
-select c.id as cart_id, p.id as product_id, p.name as product_name, c.quantity, (p.price * c.quantity)::numeric(10,2) as total_amount
+select c.id as cart_id, p.id as product_id, p.name as product_name, c.quantity, p.price, (p.price * c.quantity)::numeric(10,2) as total_amount
 from carts c
 inner join products p
 on c.product_id = p.id
@@ -149,6 +149,7 @@ type GetCartItemsByUserIDRow struct {
 	ProductID   uuid.UUID `json:"product_id"`
 	ProductName string    `json:"product_name"`
 	Quantity    int32     `json:"quantity"`
+	Price       float64   `json:"price"`
 	TotalAmount float64   `json:"total_amount"`
 }
 
@@ -166,6 +167,7 @@ func (q *Queries) GetCartItemsByUserID(ctx context.Context, userID uuid.UUID) ([
 			&i.ProductID,
 			&i.ProductName,
 			&i.Quantity,
+			&i.Price,
 			&i.TotalAmount,
 		); err != nil {
 			return nil, err

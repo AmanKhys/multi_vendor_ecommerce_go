@@ -104,18 +104,18 @@ func (q *Queries) AddProductToCategoryByID(ctx context.Context, arg AddProductTo
 
 const decProductStockByID = `-- name: DecProductStockByID :one
 update products
-set stock = stock - $2, updated_at = current_timestamp
-where id = $1 and stock >= $2
+set stock = stock - $1, updated_at = current_timestamp
+where id = $2 and stock >= $1
 returning id, name, description, price, stock, seller_id, is_deleted, created_at, updated_at
 `
 
 type DecProductStockByIDParams struct {
-	ID    uuid.UUID `json:"id"`
-	Stock int32     `json:"stock"`
+	DecQuantity int32     `json:"dec_quantity"`
+	ProductID   uuid.UUID `json:"product_id"`
 }
 
 func (q *Queries) DecProductStockByID(ctx context.Context, arg DecProductStockByIDParams) (Product, error) {
-	row := q.queryRow(ctx, q.decProductStockByIDStmt, decProductStockByID, arg.ID, arg.Stock)
+	row := q.queryRow(ctx, q.decProductStockByIDStmt, decProductStockByID, arg.DecQuantity, arg.ProductID)
 	var i Product
 	err := row.Scan(
 		&i.ID,
@@ -411,18 +411,18 @@ func (q *Queries) GetProductsBySellerID(ctx context.Context, sellerID uuid.UUID)
 
 const incProductStockByID = `-- name: IncProductStockByID :one
 update products
-set stock = stock + $2, updated_at = current_timestamp
-where id = $1
+set stock = stock + $1, updated_at = current_timestamp
+where id = $2
 returning id, name, description, price, stock, seller_id, is_deleted, created_at, updated_at
 `
 
 type IncProductStockByIDParams struct {
-	ID    uuid.UUID `json:"id"`
-	Stock int32     `json:"stock"`
+	IncQuantity int32     `json:"inc_quantity"`
+	ProductID   uuid.UUID `json:"product_id"`
 }
 
 func (q *Queries) IncProductStockByID(ctx context.Context, arg IncProductStockByIDParams) (Product, error) {
-	row := q.queryRow(ctx, q.incProductStockByIDStmt, incProductStockByID, arg.ID, arg.Stock)
+	row := q.queryRow(ctx, q.incProductStockByIDStmt, incProductStockByID, arg.IncQuantity, arg.ProductID)
 	var i Product
 	err := row.Scan(
 		&i.ID,
