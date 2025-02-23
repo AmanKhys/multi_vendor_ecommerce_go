@@ -390,14 +390,6 @@ func (s *Seller) EditAddressHandler(w http.ResponseWriter, r *http.Request) {
 	helper.EditAddressHelper(w, r, user)
 }
 
-func (s *Seller) DeleteAddressHandler(w http.ResponseWriter, r *http.Request) {
-	user := helper.GetUserHelper(w, r)
-	if user.ID == uuid.Nil {
-		return
-	}
-	helper.DeleteAddressHelper(w, r, user)
-}
-
 // /////////////////////////////////
 // order handler
 
