@@ -18,6 +18,8 @@ var helper = helpers.Helper{
 }
 
 func RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("PUT /user/profile/edit", middleware.AuthenticateUserMiddleware(u.EditProfileHandler, utils.UserRole))
+
 	mux.HandleFunc("GET /user/products", u.ProductsHandler)
 	mux.HandleFunc("GET /user/product", u.ProductHandler)
 	mux.HandleFunc("GET /user/category", u.CategoryHandler)
@@ -37,5 +39,5 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /user/orders/addcart", middleware.AuthenticateUserMiddleware(u.AddCartToOrderHandler, utils.UserRole))
 	mux.HandleFunc("PUT /user/orders/cancel", middleware.AuthenticateUserMiddleware(u.CancelOrderHandler, utils.UserRole))
 	mux.HandleFunc("PUT /user/orders/item/cancel", middleware.AuthenticateUserMiddleware(u.CancelOrderItemHandler, utils.UserRole))
-	mux.HandleFunc("PUT /user/orders/return", middleware.AuthenticateUserMiddleware(u.ReturnOrderHandler, utils.UserRole))
+	// mux.HandleFunc("PUT /user/orders/return", middleware.AuthenticateUserMiddleware(u.ReturnOrderHandler, utils.UserRole))
 }

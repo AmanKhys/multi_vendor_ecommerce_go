@@ -212,6 +212,80 @@ func (q *Queries) ChangePasswordByUserID(ctx context.Context, arg ChangePassword
 	return err
 }
 
+const editSellerByID = `-- name: EditSellerByID :one
+update users
+set name = $2, about = $3, phone = $4, updated_at = current_timestamp
+where id = $1
+returning id, name, email, phone, password, role, email_verified, user_verified, is_blocked, gst_no, about, created_at, updated_at
+`
+
+type EditSellerByIDParams struct {
+	ID    uuid.UUID      `json:"id"`
+	Name  string         `json:"name"`
+	About sql.NullString `json:"about"`
+	Phone sql.NullInt64  `json:"phone"`
+}
+
+func (q *Queries) EditSellerByID(ctx context.Context, arg EditSellerByIDParams) (User, error) {
+	row := q.queryRow(ctx, q.editSellerByIDStmt, editSellerByID,
+		arg.ID,
+		arg.Name,
+		arg.About,
+		arg.Phone,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Password,
+		&i.Role,
+		&i.EmailVerified,
+		&i.UserVerified,
+		&i.IsBlocked,
+		&i.GstNo,
+		&i.About,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const editUserByID = `-- name: EditUserByID :one
+update users
+set name = $2, phone = $3, updated_at = current_timestamp
+where id = $1
+returning id, name, email, phone, password, role, email_verified, user_verified, is_blocked, gst_no, about, created_at, updated_at
+`
+
+type EditUserByIDParams struct {
+	ID    uuid.UUID     `json:"id"`
+	Name  string        `json:"name"`
+	Phone sql.NullInt64 `json:"phone"`
+}
+
+func (q *Queries) EditUserByID(ctx context.Context, arg EditUserByIDParams) (User, error) {
+	row := q.queryRow(ctx, q.editUserByIDStmt, editUserByID, arg.ID, arg.Name, arg.Phone)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Password,
+		&i.Role,
+		&i.EmailVerified,
+		&i.UserVerified,
+		&i.IsBlocked,
+		&i.GstNo,
+		&i.About,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAllUsers = `-- name: GetAllUsers :many
 SELECT id, name, email, phone, role, is_blocked, email_verified, user_verified, gst_no, about FROM users
 `

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
@@ -16,6 +18,102 @@ import (
 
 type Seller struct {
 	DB *db.Queries
+}
+
+// edit profile handler
+func (s *Seller) EditProfileHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+	// get request
+	var req struct {
+		Name  string
+		About string
+		Phone string
+	}
+	req.Name = r.URL.Query().Get("name")
+	req.About = r.URL.Query().Get("about")
+	req.Phone = r.URL.Query().Get("phone")
+
+	// make errors slice for response
+	var Err []string
+	if !validators.ValidateName(req.Name) && req.Name != "" {
+		Err = append(Err, "invalid name format")
+	}
+	if !validators.ValidatePhone(req.Phone) && req.Phone != "" {
+		Err = append(Err, "invalid phone number format")
+	}
+	if len(Err) > 0 {
+		http.Error(w, strings.Join(Err, "\n"), http.StatusBadRequest)
+		return
+	}
+
+	// update profile
+	// check and make the update argument for db function
+	var arg db.EditSellerByIDParams
+	arg.ID = user.ID
+	if req.Name == "" {
+		arg.Name = user.Name
+	} else {
+		arg.Name = req.Name
+	}
+	if req.Phone == "" {
+		arg.Phone = user.Phone
+	} else {
+		phoneInt, err := strconv.Atoi(req.Phone)
+		if err != nil {
+			arg.Phone = user.Phone
+		} else {
+			arg.Phone = sql.NullInt64{
+				Int64: int64(phoneInt),
+				Valid: true,
+			}
+		}
+	}
+	if req.About == "" {
+		arg.About = user.About
+	} else {
+		arg.About = sql.NullString{
+			String: req.About,
+			Valid:  true,
+		}
+	}
+
+	// edit user if the input values from query params are valid
+	editedUser, err := s.DB.EditSellerByID(context.TODO(), arg)
+	if err != nil {
+		log.Warn("error updating users via EditSellerByID in EditProfileHandler for seller:", err.Error())
+		http.Error(w, "internal server error updating seller profile values", http.StatusInternalServerError)
+		return
+	}
+
+	// send response
+	type respSeller struct {
+		ID    uuid.UUID `json:"id"`
+		Name  string    `json:"name"`
+		About string    `json:"about"`
+		Phone int       `json:"phone"`
+		Email string    `json:"email"`
+		GstNo string    `json:"gst_no"`
+	}
+	var respSellerData respSeller
+	respSellerData.ID = editedUser.ID
+	respSellerData.Name = editedUser.Name
+	respSellerData.About = editedUser.About.String
+	respSellerData.GstNo = editedUser.GstNo.String
+	respSellerData.Phone = int(editedUser.Phone.Int64)
+	respSellerData.Email = editedUser.Email
+
+	var resp struct {
+		Data    respSeller `json:"data"`
+		Message string     `json:"message"`
+	}
+	resp.Data = respSellerData
+	resp.Message = "successfully updated seller details"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Seller) OwnProductsHandler(w http.ResponseWriter, r *http.Request) {

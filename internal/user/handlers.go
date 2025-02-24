@@ -8,8 +8,10 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -17,6 +19,90 @@ import (
 
 type User struct {
 	DB *db.Queries
+}
+
+// ///////////////////////////////////
+// edit profile handler
+func (u *User) EditProfileHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+	// get request
+	var req struct {
+		Name  string
+		Phone string
+	}
+	req.Name = r.URL.Query().Get("name")
+	req.Phone = r.URL.Query().Get("phone")
+	fmt.Println(req)
+
+	// make errors slice for response
+	var Err []string
+	if !validators.ValidateName(req.Name) && req.Name != "" {
+		Err = append(Err, "invalid name format")
+	}
+	if !validators.ValidatePhone(req.Phone) && req.Phone != "" {
+		Err = append(Err, "invalid phone number format")
+	}
+	if len(Err) > 0 {
+		http.Error(w, strings.Join(Err, "\n"), http.StatusBadRequest)
+		return
+	}
+
+	// update profile
+	// check and make the update argument for db function
+	var arg db.EditUserByIDParams
+	arg.ID = user.ID
+	if req.Name == "" {
+		arg.Name = user.Name
+	} else {
+		arg.Name = req.Name
+	}
+	if req.Phone == "" {
+		arg.Phone = user.Phone
+	} else {
+		phoneInt, err := strconv.Atoi(req.Phone)
+		if err != nil {
+			arg.Phone = user.Phone
+		} else {
+			arg.Phone = sql.NullInt64{
+				Int64: int64(phoneInt),
+				Valid: true,
+			}
+		}
+	}
+
+	// edit user if the input values from query params are valid
+	editedUser, err := u.DB.EditUserByID(context.TODO(), arg)
+	if err != nil {
+		log.Warn("error updating users via EditUserByID in EditProfileHandler for seller:", err.Error())
+		http.Error(w, "internal server error updating seller profile values", http.StatusInternalServerError)
+		return
+	}
+
+	// send response
+	type respUser struct {
+		ID    uuid.UUID `json:"id"`
+		Name  string    `json:"name"`
+		Phone int       `json:"phone"`
+		Email string    `json:"email"`
+	}
+	var respUserData respUser
+	respUserData.ID = editedUser.ID
+	respUserData.Name = editedUser.Name
+	respUserData.Phone = int(editedUser.Phone.Int64)
+	respUserData.Email = editedUser.Email
+
+	var resp struct {
+		Data    respUser `json:"data"`
+		Message string   `json:"message"`
+	}
+	resp.Data = respUserData
+	resp.Message = "successfully updated seller details"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // //////////////////////////////////
@@ -1014,12 +1100,4 @@ func (u *User) CancelOrderHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	message := "successfully cancelled order and the payment"
 	w.Write([]byte(message))
-}
-
-func (u *User) ReturnOrderHandler(w http.ResponseWriter, r *http.Request) {
-	user := helper.GetUserHelper(w, r)
-	if user.ID == uuid.Nil {
-		return
-	}
-
 }

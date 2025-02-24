@@ -8,7 +8,7 @@ add/edit/delete/get address...done(remove delete for seller)
 add/edit/delete/get cart_items... done
 add/edit/get orders...add/edit/get.. done for both admin and seller
 searching with price min,max/category/name...done
-edit profile for seller/user
+edit profile for seller/user...done
 
 make notifications table that send messages on each update for any of the above;(optional)
 

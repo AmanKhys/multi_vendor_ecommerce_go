@@ -1,3 +1,15 @@
+-- name: EditUserByID :one
+update users
+set name = $2, phone = $3, updated_at = current_timestamp
+where id = $1
+returning *;
+
+-- name: EditSellerByID :one
+update users
+set name = $2, about = $3, phone = $4, updated_at = current_timestamp
+where id = $1
+returning *;
+
 -- name: AddUser :one
 INSERT INTO users
 (name, email, phone, password, role)

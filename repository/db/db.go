@@ -162,6 +162,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.editProductByIDStmt, err = db.PrepareContext(ctx, editProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditProductByID: %w", err)
 	}
+	if q.editSellerByIDStmt, err = db.PrepareContext(ctx, editSellerByID); err != nil {
+		return nil, fmt.Errorf("error preparing query EditSellerByID: %w", err)
+	}
+	if q.editUserByIDStmt, err = db.PrepareContext(ctx, editUserByID); err != nil {
+		return nil, fmt.Errorf("error preparing query EditUserByID: %w", err)
+	}
 	if q.getAddressByIDStmt, err = db.PrepareContext(ctx, getAddressByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAddressByID: %w", err)
 	}
@@ -538,6 +544,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing editProductByIDStmt: %w", cerr)
 		}
 	}
+	if q.editSellerByIDStmt != nil {
+		if cerr := q.editSellerByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editSellerByIDStmt: %w", cerr)
+		}
+	}
+	if q.editUserByIDStmt != nil {
+		if cerr := q.editUserByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editUserByIDStmt: %w", cerr)
+		}
+	}
 	if q.getAddressByIDStmt != nil {
 		if cerr := q.getAddressByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getAddressByIDStmt: %w", cerr)
@@ -858,6 +874,8 @@ type Queries struct {
 	editPaymentStatusByIDStmt                  *sql.Stmt
 	editPaymentStatusByOrderIDStmt             *sql.Stmt
 	editProductByIDStmt                        *sql.Stmt
+	editSellerByIDStmt                         *sql.Stmt
+	editUserByIDStmt                           *sql.Stmt
 	getAddressByIDStmt                         *sql.Stmt
 	getAddressBySellerIDStmt                   *sql.Stmt
 	getAddressesByUserIDStmt                   *sql.Stmt
@@ -957,6 +975,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		editPaymentStatusByIDStmt:                  q.editPaymentStatusByIDStmt,
 		editPaymentStatusByOrderIDStmt:             q.editPaymentStatusByOrderIDStmt,
 		editProductByIDStmt:                        q.editProductByIDStmt,
+		editSellerByIDStmt:                         q.editSellerByIDStmt,
+		editUserByIDStmt:                           q.editUserByIDStmt,
 		getAddressByIDStmt:                         q.getAddressByIDStmt,
 		getAddressBySellerIDStmt:                   q.getAddressBySellerIDStmt,
 		getAddressesByUserIDStmt:                   q.getAddressesByUserIDStmt,
