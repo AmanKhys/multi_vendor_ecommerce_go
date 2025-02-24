@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
@@ -21,17 +23,112 @@ type User struct {
 // product handlers
 
 func (u *User) ProductsHandler(w http.ResponseWriter, r *http.Request) {
-	type Response struct {
-		Data []db.Product `json:"data"`
+	// take request value params
+	var req struct {
+		PriceMaxStr string   `json:"price_max"`
+		PriceMinStr string   `json:"price_min"`
+		Categories  []string `json:"categories"`
+		Name        string   `json:"name"`
 	}
-	products, err := u.DB.GetAllProducts(context.TODO())
+	req.PriceMaxStr = r.URL.Query().Get("price_max")
+	req.PriceMinStr = r.URL.Query().Get("price_min")
+	req.Categories = r.URL.Query()["categories"]
+	req.Name = r.URL.Query().Get("name")
+
+	// take valid values out of request
+	PriceMax, err := strconv.Atoi(req.PriceMaxStr)
+	if err != nil || PriceMax < 0 {
+		PriceMax = math.MaxInt
+	}
+	PriceMin, err := strconv.Atoi(req.PriceMinStr)
+	if err != nil || PriceMin < 0 {
+		PriceMin = 0
+	}
+	var Categories []string
+	for _, v := range req.Categories {
+		category, err := u.DB.GetCategoryByName(context.TODO(), v)
+		if err == sql.ErrNoRows {
+			continue
+		} else if err != nil {
+			log.Warn("error fetching categoryByName in ProductsHandler in user:", err.Error())
+			continue
+		}
+		Categories = append(Categories, category.Name)
+	}
+	// take all products
+	allProducts, err := u.DB.GetAllProducts(context.TODO())
 	if err != nil {
-		log.Warn("couldn't fetch from products table: ", err)
-		http.Error(w, "internal server error: couldn't fetch products", http.StatusInternalServerError)
+		log.Warn("error fetching products in ProductsHandler in user:", err.Error())
+		http.Error(w, "internal server error fetching products", http.StatusInternalServerError)
 		return
 	}
+
+	// name filter by either name or description
+	var nameFilterProducts []db.Product
+	if len(req.Name) > 0 {
+		for _, v := range allProducts {
+			if utils.FilterName(req.Name, v.Name+v.Description) {
+				nameFilterProducts = append(nameFilterProducts, v)
+			}
+		}
+	} else {
+		nameFilterProducts = allProducts
+	}
+
+	// take category filtered products
+	var filteredProducts []db.Product
+	if len(Categories) > 0 {
+		for _, v := range nameFilterProducts {
+			vCats, err := u.DB.GetCategoryNamesOfProductByID(context.TODO(), v.ID)
+			if err != nil {
+				log.Warn("error fetching category names of product by id in ProductsHandler for user")
+				continue
+			} else if utils.CheckCategory(vCats, Categories) {
+				filteredProducts = append(filteredProducts, v)
+			}
+		}
+	} else {
+		filteredProducts = nameFilterProducts
+	}
+
+	// filter products by price
+	var finalProducts []db.Product
+	for _, v := range filteredProducts {
+		if v.Price <= float64(PriceMax) && v.Price >= float64(PriceMin) {
+			finalProducts = append(finalProducts, v)
+		}
+	}
+
+	// make response product struct
+	type respProduct struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int       `json:"stock"`
+		SellerID    uuid.UUID `json:"seller_id"`
+	}
+	var respProducts []respProduct
+	for _, v := range finalProducts {
+		var temp respProduct
+		temp.ID = v.ID
+		temp.Name = v.Name
+		temp.Description = v.Description
+		temp.Price = v.Price
+		temp.Stock = int(v.Stock)
+		temp.SellerID = v.SellerID
+
+		respProducts = append(respProducts, temp)
+	}
+
+	// send response
+	var resp struct {
+		Data    []respProduct `json:"data"`
+		Message string        `json:"message"`
+	}
 	w.Header().Set("Content-Type", "application/json")
-	resp := Response{Data: products}
+	resp.Data = respProducts
+	resp.Message = "successfully fetched filtered products"
 	json.NewEncoder(w).Encode(resp)
 }
 

@@ -4,11 +4,12 @@ error check ... err =  json.NewEncoder(w).Encode(resp) at the end of each handle
 do not send unwanted data to user;
 validate requests on each handler before passing it onto database layer.
 
-add/edit/delete/get address...done
+add/edit/delete/get address...done(remove delete for seller)
 add/edit/delete/get cart_items... done
-add/edit/get orders...
-searching with price min,max/category/name
+add/edit/get orders...add/edit/get.. done for both admin and seller
+searching with price min,max/category/name...done
+edit profile for seller/user
 
-make notifications table that send messages on each update for any of the above;
+make notifications table that send messages on each update for any of the above;(optional)
 
 
