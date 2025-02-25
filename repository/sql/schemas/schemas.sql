@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS vendor_payments (
     id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
     order_item_id UUID NOT NULL REFERENCES order_items(id),
     seller_id UUID NOT NULL REFERENCES users(id),
-    status TEXT NOT NULL CHECK (status in ('waiting','cancelled', 'pending', 'received', 'failed')),
+    status TEXT NOT NULL CHECK (status in ('waiting','cancelled', 'pending', 'received', 'failed')) default 'waiting',
     total_amount NUMERIC(10, 2) NOT NULL,
     platform_fee NUMERIC(10,2) NOT NULL,
     credit_amount NUMERIC(10,2) NOT NULL ,

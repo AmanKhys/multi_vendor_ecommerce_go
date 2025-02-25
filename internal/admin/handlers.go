@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
@@ -88,11 +89,8 @@ func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "invalid request format", http.StatusBadRequest)
-		return
-	} else if !validators.ValidateEmail(req.Email) {
+	req.Email = r.URL.Query().Get("email")
+	if !validators.ValidateEmail(req.Email) {
 		http.Error(w, "invalid email format:", http.StatusBadRequest)
 		return
 	}
@@ -187,15 +185,16 @@ func (a *Admin) AdminCategoriesHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *Admin) BlockUserHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		UserID uuid.UUID `json:"id"`
+		UserIDStr string `json:"user_id"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&req)
+	req.UserIDStr = r.URL.Query().Get("user_id")
+	userID, err := uuid.Parse(req.UserIDStr)
 	if err != nil {
-		http.Error(w, "invalid data format", http.StatusBadRequest)
+		http.Error(w, "userID not in valid format", http.StatusBadRequest)
 		return
 	}
 
-	user, err := a.DB.GetUserById(context.TODO(), req.UserID)
+	user, err := a.DB.GetUserById(context.TODO(), userID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid userID", http.StatusBadRequest)
 		return
@@ -211,7 +210,7 @@ func (a *Admin) BlockUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blockedUser, err := a.DB.BlockUserByID(context.TODO(), req.UserID)
+	blockedUser, err := a.DB.BlockUserByID(context.TODO(), userID)
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, "error blocking user", http.StatusInternalServerError)
@@ -225,15 +224,16 @@ func (a *Admin) BlockUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *Admin) UnblockUserHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		UserID uuid.UUID `json:"id"`
+		UserIDStr string `json:"user_id"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&req)
+	req.UserIDStr = r.URL.Query().Get("user_id")
+	userID, err := uuid.Parse(req.UserIDStr)
 	if err != nil {
-		http.Error(w, "invalid data format", http.StatusBadRequest)
+		http.Error(w, "invalid userID format", http.StatusBadRequest)
 		return
 	}
 
-	user, err := a.DB.UnblockUserByID(context.TODO(), req.UserID)
+	user, err := a.DB.UnblockUserByID(context.TODO(), userID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "invalid user data", http.StatusBadRequest)
 		return
@@ -355,13 +355,14 @@ func (a *Admin) GetOrderItemsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// make resp orderItem struct
 	type respOrderItem struct {
-		ID          uuid.UUID `json:"id"`
+		ID          uuid.UUID `json:"order_item_id"`
 		OrderID     uuid.UUID `json:"order_id"`
 		Status      string    `json:"status"`
 		ProductID   uuid.UUID `json:"product_id"`
 		Price       float64   `json:"price"`
 		Quantity    int       `json:"quantity"`
 		TotalAmount float64   `json:"total_amount"`
+		CreatedAt   time.Time `json:"created_at"`
 	}
 
 	// respOrderItems slice
@@ -375,6 +376,7 @@ func (a *Admin) GetOrderItemsHandler(w http.ResponseWriter, r *http.Request) {
 		temp.Price = v.Price
 		temp.Quantity = int(v.Quantity)
 		temp.TotalAmount = v.TotalAmount
+		temp.CreatedAt = v.CreatedAt
 
 		respOrderItems = append(respOrderItems, temp)
 	}
@@ -396,8 +398,9 @@ func (a *Admin) DeliverOrderItemHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// take request value from params
 	var req struct {
-		OrderItemIDStr string `json:"order_item_id"`
+		OrderItemIDStr string
 	}
 	req.OrderItemIDStr = r.URL.Query().Get("order_item_id")
 	orderID, err := uuid.Parse(req.OrderItemIDStr)
@@ -406,6 +409,7 @@ func (a *Admin) DeliverOrderItemHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// fetch orderItemByID
 	orderItem, err := a.DB.GetOrderItemByID(context.TODO(), orderID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "not a valid orderItemID", http.StatusBadRequest)
@@ -421,7 +425,7 @@ func (a *Admin) DeliverOrderItemHandler(w http.ResponseWriter, r *http.Request) 
 		orderItem.Status == utils.StatusOrderPending ||
 		orderItem.Status == utils.StatusOrderProcessing ||
 		orderItem.Status == utils.StatusOrderDelivered {
-		msg := fmt.Sprintf("order %s. Cannot change to status to delivered", orderItem.Status)
+		msg := fmt.Sprintf("order %s. Cannot change to status to delivered. can only deliver orderItem that is shipped", orderItem.Status)
 		http.Error(w, msg, http.StatusUnauthorized)
 		return
 	}
