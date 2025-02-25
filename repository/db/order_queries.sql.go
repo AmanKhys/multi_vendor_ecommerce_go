@@ -70,42 +70,6 @@ func (q *Queries) AddOrderITem(ctx context.Context, arg AddOrderITemParams) (Ord
 	return i, err
 }
 
-const addPayment = `-- name: AddPayment :one
-insert into payments
-(order_id, method, status, total_amount)
-values
-($1, $2, $3, $4)
-returning id, order_id, method, status, total_amount, transaction_id, created_at, updated_at
-`
-
-type AddPaymentParams struct {
-	OrderID     uuid.UUID `json:"order_id"`
-	Method      string    `json:"method"`
-	Status      string    `json:"status"`
-	TotalAmount float64   `json:"total_amount"`
-}
-
-func (q *Queries) AddPayment(ctx context.Context, arg AddPaymentParams) (Payment, error) {
-	row := q.queryRow(ctx, q.addPaymentStmt, addPayment,
-		arg.OrderID,
-		arg.Method,
-		arg.Status,
-		arg.TotalAmount,
-	)
-	var i Payment
-	err := row.Scan(
-		&i.ID,
-		&i.OrderID,
-		&i.Method,
-		&i.Status,
-		&i.TotalAmount,
-		&i.TransactionID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const addShippingAddress = `-- name: AddShippingAddress :one
 insert into shipping_address
 (order_id, house_name, street_name, town, district, state, pincode)
@@ -159,23 +123,12 @@ func (q *Queries) AddShippingAddress(ctx context.Context, arg AddShippingAddress
 
 const cancelOrderByID = `-- name: CancelOrderByID :exec
 update order_items
-set status = "cancelled", updated_at = current_timestamp
+set status = 'cancelled', updated_at = current_timestamp
 where order_id = $1
 `
 
 func (q *Queries) CancelOrderByID(ctx context.Context, orderID uuid.UUID) error {
 	_, err := q.exec(ctx, q.cancelOrderByIDStmt, cancelOrderByID, orderID)
-	return err
-}
-
-const cancelPaymentByOrderID = `-- name: CancelPaymentByOrderID :exec
-update payments
-set status = "returned", total_amount = 0, updated_at = current_timestamp
-where order_id = $1
-`
-
-func (q *Queries) CancelPaymentByOrderID(ctx context.Context, orderID uuid.UUID) error {
-	_, err := q.exec(ctx, q.cancelPaymentByOrderIDStmt, cancelPaymentByOrderID, orderID)
 	return err
 }
 
@@ -202,35 +155,6 @@ func (q *Queries) ChangeOrderItemStatusByID(ctx context.Context, arg ChangeOrder
 		&i.Quantity,
 		&i.TotalAmount,
 		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const decPaymentAmountByOrderItemID = `-- name: DecPaymentAmountByOrderItemID :one
-WITH cte AS (
-  SELECT oi.order_id, oi.total_amount
-  FROM order_items oi
-  WHERE oi.id = $1
-)
-UPDATE payments
-SET total_amount = payments.total_amount - cte.total_amount
-FROM cte
-WHERE payments.order_id = cte.order_id
-RETURNING payments.id, payments.order_id, payments.method, payments.status, payments.total_amount, payments.transaction_id, payments.created_at, payments.updated_at
-`
-
-func (q *Queries) DecPaymentAmountByOrderItemID(ctx context.Context, id uuid.UUID) (Payment, error) {
-	row := q.queryRow(ctx, q.decPaymentAmountByOrderItemIDStmt, decPaymentAmountByOrderItemID, id)
-	var i Payment
-	err := row.Scan(
-		&i.ID,
-		&i.OrderID,
-		&i.Method,
-		&i.Status,
-		&i.TotalAmount,
-		&i.TransactionID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -276,64 +200,9 @@ func (q *Queries) EditOrderItemStatusByID(ctx context.Context, arg EditOrderItem
 	return i, err
 }
 
-const editPaymentStatusByID = `-- name: EditPaymentStatusByID :one
-update payments
-set status = $2, updated_at = current_timestamp
-where id = $1
-returning id, order_id, method, status, total_amount, transaction_id, created_at, updated_at
-`
-
-type EditPaymentStatusByIDParams struct {
-	ID     uuid.UUID `json:"id"`
-	Status string    `json:"status"`
-}
-
-func (q *Queries) EditPaymentStatusByID(ctx context.Context, arg EditPaymentStatusByIDParams) (Payment, error) {
-	row := q.queryRow(ctx, q.editPaymentStatusByIDStmt, editPaymentStatusByID, arg.ID, arg.Status)
-	var i Payment
-	err := row.Scan(
-		&i.ID,
-		&i.OrderID,
-		&i.Method,
-		&i.Status,
-		&i.TotalAmount,
-		&i.TransactionID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const editPaymentStatusByOrderID = `-- name: EditPaymentStatusByOrderID :one
-update payments
-set status = $2, updated_at = current_timestamp
-where order_id = $1
-returning id, order_id, method, status, total_amount, transaction_id, created_at, updated_at
-`
-
-type EditPaymentStatusByOrderIDParams struct {
-	OrderID uuid.UUID `json:"order_id"`
-	Status  string    `json:"status"`
-}
-
-func (q *Queries) EditPaymentStatusByOrderID(ctx context.Context, arg EditPaymentStatusByOrderIDParams) (Payment, error) {
-	row := q.queryRow(ctx, q.editPaymentStatusByOrderIDStmt, editPaymentStatusByOrderID, arg.OrderID, arg.Status)
-	var i Payment
-	err := row.Scan(
-		&i.ID,
-		&i.OrderID,
-		&i.Method,
-		&i.Status,
-		&i.TotalAmount,
-		&i.TransactionID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getAllOrderForAdmin = `-- name: GetAllOrderForAdmin :many
 select id, order_id, product_id, price, quantity, total_amount, status, created_at, updated_at from order_items
+order by created_at desc
 `
 
 func (q *Queries) GetAllOrderForAdmin(ctx context.Context) ([]OrderItem, error) {
@@ -468,6 +337,7 @@ select oi.id, oi.order_id, oi.product_id, oi.price, oi.quantity, oi.total_amount
 inner join products p
 on oi.product_id = p.id
 where p.seller_id = $1
+order by oi.created_at desc
 `
 
 func (q *Queries) GetOrderItemsBySellerID(ctx context.Context, sellerID uuid.UUID) ([]OrderItem, error) {
@@ -510,6 +380,7 @@ on oi.order_id = o.id
 inner join users u
 on o.user_id = u.id
 where u.id = $1
+order by oi.created_at desc
 `
 
 func (q *Queries) GetOrderItemsByUserID(ctx context.Context, id uuid.UUID) ([]OrderItem, error) {
@@ -548,6 +419,7 @@ func (q *Queries) GetOrderItemsByUserID(ctx context.Context, id uuid.UUID) ([]Or
 const getOrdersByUserID = `-- name: GetOrdersByUserID :many
 select id, user_id, created_at, updated_at from orders
 where user_id = $1
+order by created_at desc
 `
 
 func (q *Queries) GetOrdersByUserID(ctx context.Context, userID uuid.UUID) ([]Order, error) {

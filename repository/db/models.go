@@ -166,6 +166,18 @@ type User struct {
 	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
+type VendorPayment struct {
+	ID           uuid.UUID `json:"id"`
+	OrderItemID  uuid.UUID `json:"order_item_id"`
+	SellerID     uuid.UUID `json:"seller_id"`
+	Status       string    `json:"status"`
+	TotalAmount  float64   `json:"total_amount"`
+	PlatformFee  float64   `json:"platform_fee"`
+	CreditAmount float64   `json:"credit_amount"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 type Wallet struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`

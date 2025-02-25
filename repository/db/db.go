@@ -75,6 +75,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addUserStmt, err = db.PrepareContext(ctx, addUser); err != nil {
 		return nil, fmt.Errorf("error preparing query AddUser: %w", err)
 	}
+	if q.addVendorPaymentStmt, err = db.PrepareContext(ctx, addVendorPayment); err != nil {
+		return nil, fmt.Errorf("error preparing query AddVendorPayment: %w", err)
+	}
 	if q.addWalletByUserIDStmt, err = db.PrepareContext(ctx, addWalletByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query AddWalletByUserID: %w", err)
 	}
@@ -397,6 +400,11 @@ func (q *Queries) Close() error {
 	if q.addUserStmt != nil {
 		if cerr := q.addUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addUserStmt: %w", cerr)
+		}
+	}
+	if q.addVendorPaymentStmt != nil {
+		if cerr := q.addVendorPaymentStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addVendorPaymentStmt: %w", cerr)
 		}
 	}
 	if q.addWalletByUserIDStmt != nil {
@@ -845,6 +853,7 @@ type Queries struct {
 	addSessionStmt                             *sql.Stmt
 	addShippingAddressStmt                     *sql.Stmt
 	addUserStmt                                *sql.Stmt
+	addVendorPaymentStmt                       *sql.Stmt
 	addWalletByUserIDStmt                      *sql.Stmt
 	blockUserByIDStmt                          *sql.Stmt
 	cancelOrderByIDStmt                        *sql.Stmt
@@ -946,6 +955,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addSessionStmt:                             q.addSessionStmt,
 		addShippingAddressStmt:                     q.addShippingAddressStmt,
 		addUserStmt:                                q.addUserStmt,
+		addVendorPaymentStmt:                       q.addVendorPaymentStmt,
 		addWalletByUserIDStmt:                      q.addWalletByUserIDStmt,
 		blockUserByIDStmt:                          q.blockUserByIDStmt,
 		cancelOrderByIDStmt:                        q.cancelOrderByIDStmt,

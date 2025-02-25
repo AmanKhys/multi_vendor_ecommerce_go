@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES orders(id),
     method TEXT NOT NULL CHECK (method in ('upi', 'razorpay', 'cod')),
-    status TEXT NOT NULL CHECK (status in ('processing', 'successful', 'failed', 'returned')),
+    status TEXT NOT NULL CHECK (status in ('processing', 'successful', 'failed', 'cancelled')),
     total_amount NUMERIC(10,2) NOT NULL CHECK(total_amount>0),
     transaction_id TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS shipping_address (
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
-    id UUID NOT NULL DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES orders(id),
     product_id UUID NOT NULL REFERENCES products(id),
     price NUMERIC(10,2) NOT NULL CHECK(price>0),
@@ -181,6 +181,19 @@ CREATE TABLE IF NOT EXISTS order_items (
     -- thus total_amount here never becomes zero  unless all the items are cancelled.
     total_amount NUMERIC(10, 2) NOT NULL CHECK (total_amount >=0),
     status TEXT NOT NULL CHECK (status in ('pending', 'processing', 'shipped', 'delivered', 'cancelled')) DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK(updated_at>=created_at)
+);
+
+
+CREATE TABLE IF NOT EXISTS vendor_payments (
+    id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    order_item_id UUID NOT NULL REFERENCES order_items(id),
+    seller_id UUID NOT NULL REFERENCES users(id),
+    status TEXT NOT NULL CHECK (status in ('waiting','cancelled', 'pending', 'received', 'failed')),
+    total_amount NUMERIC(10, 2) NOT NULL,
+    platform_fee NUMERIC(10,2) NOT NULL,
+    credit_amount NUMERIC(10,2) NOT NULL ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK(updated_at>=created_at)
 );

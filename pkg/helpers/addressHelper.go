@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
@@ -70,7 +71,19 @@ func (u *Helper) AddAddressHelper(w http.ResponseWriter, r *http.Request, user d
 	}
 	req.UserID = user.ID
 	req.Type = user.Role
-	address, err := u.DB.AddAddressByUserID(context.TODO(), req)
+	if req.Type == utils.SellerRole {
+		address, err := u.DB.GetAddressesByUserID(context.TODO(), req.UserID)
+		if err != nil {
+			log.Warn("error fetching addresses by userID for seller in AddAddressHandler")
+			http.Error(w, "intenral error fetching address for seller to check if the seller already has an address", http.StatusInternalServerError)
+			return
+		}
+		if len(address) > 0 {
+			http.Error(w, "seller already has an address. Cannot add another address", http.StatusUnauthorized)
+			return
+		}
+	}
+	addedAdddress, err := u.DB.AddAddressByUserID(context.TODO(), req)
 	if err != nil {
 		log.Warn("error adding valid user address", err.Error())
 		http.Error(w, "internal server error adding user address", http.StatusInternalServerError)
@@ -81,7 +94,7 @@ func (u *Helper) AddAddressHelper(w http.ResponseWriter, r *http.Request, user d
 		Data    db.AddAddressByUserIDRow `json:"address"`
 		Message string                   `json:"message"`
 	}
-	resp.Data = address
+	resp.Data = addedAdddress
 	resp.Message = "successfully added addres to the user with email:" + user.Email
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
