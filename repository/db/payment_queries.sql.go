@@ -184,6 +184,35 @@ func (q *Queries) EditPaymentStatusByOrderID(ctx context.Context, arg EditPaymen
 	return i, err
 }
 
+const editVendorPaymentStatusByOrderItemID = `-- name: EditVendorPaymentStatusByOrderItemID :one
+update vendor_payments
+set status = $2
+where order_item_id = $1
+returning id, order_item_id, seller_id, status, total_amount, platform_fee, credit_amount, created_at, updated_at
+`
+
+type EditVendorPaymentStatusByOrderItemIDParams struct {
+	OrderItemID uuid.UUID `json:"order_item_id"`
+	Status      string    `json:"status"`
+}
+
+func (q *Queries) EditVendorPaymentStatusByOrderItemID(ctx context.Context, arg EditVendorPaymentStatusByOrderItemIDParams) (VendorPayment, error) {
+	row := q.queryRow(ctx, q.editVendorPaymentStatusByOrderItemIDStmt, editVendorPaymentStatusByOrderItemID, arg.OrderItemID, arg.Status)
+	var i VendorPayment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderItemID,
+		&i.SellerID,
+		&i.Status,
+		&i.TotalAmount,
+		&i.PlatformFee,
+		&i.CreditAmount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getVendorPaymentByOrderItemID = `-- name: GetVendorPaymentByOrderItemID :one
 select id, order_item_id, seller_id, status, total_amount, platform_fee, credit_amount, created_at, updated_at from vendor_payments
 where order_item_id = $1

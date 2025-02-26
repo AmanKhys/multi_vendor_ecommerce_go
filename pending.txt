@@ -13,3 +13,21 @@ edit profile for seller/user...done
 make notifications table that send messages on each update for any of the above;(optional)
 
 
+-------- week 4 -----------------------------------------------
+user/admin side
+1. edit cart.. adding new item on it and stock/quantity check
+-- editing new item on it ... stock/quantity check
+2. add cart.. adding new item .. stock/quantity check...
+3. add vendorPayment with status 'waiting' on cod... 
+otherwise set Payment to successful on successful razorpay payment
+add the transactionId on payment
+4. add retry payment on order for 10 minutes.. if not paid in razorpay .. cancel order..
+5. in cod ... set status of payment to successful on admin delivery
+6. after delivered orderItem.. wait for 3 days.. then make a vendorPayment to the respective seller towards his wallet
+- collect platform fee
+7. apply single coupon on order
+8. add reject return on user damaged product..(optional)
+9. make notifications for each individual on every change in the order status and store it.
+
+// seller side
+1. make sales report .. with custom date 

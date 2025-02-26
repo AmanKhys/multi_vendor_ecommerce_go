@@ -853,7 +853,7 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		addArg.Quantity = v.Quantity
 		addArg.TotalAmount = v.TotalAmount
 		sumTotal += v.TotalAmount
-		_, err = u.DB.AddOrderITem(context.TODO(), addArg)
+		orderItem, err := u.DB.AddOrderITem(context.TODO(), addArg)
 		if err != nil {
 			log.Warn("error adding cartItem to order_item:", err.Error())
 			http.Error(w, "internal error adding cartItem to order_items", http.StatusInternalServerError)
@@ -864,6 +864,26 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 			log.Warn("no product with matching productId from cartItem:", err.Error())
 		} else if err != nil {
 			log.Warn("error executing GetProductByID query:", err.Error())
+		}
+
+		// get sellerID from OrderItemID
+		sellerID, err := u.DB.GetSellerIDFromOrderItemID(context.TODO(), orderItem.ID)
+		if err != nil {
+			log.Warn("error fetching sellerID from orderItemID:", err.Error())
+		}
+		// add vendor payment for each orderItem
+		var addVendorPayArg db.AddVendorPaymentParams
+		addVendorPayArg.OrderItemID = orderItem.ID
+		addVendorPayArg.SellerID = sellerID
+		addVendorPayArg.Status = utils.StatusVendorPaymentWaiting
+		addVendorPayArg.TotalAmount = orderItem.TotalAmount
+		addVendorPayArg.PlatformFee = orderItem.TotalAmount * utils.PlatformFeePercentage
+		addVendorPayArg.CreditAmount = orderItem.TotalAmount * (1 - utils.PlatformFeePercentage)
+		_, err = u.DB.AddVendorPayment(context.TODO(), addVendorPayArg)
+		if err == sql.ErrNoRows {
+			log.Warn("error no vendorPayment done after successful query:", err.Error())
+		} else if err != nil {
+			log.Warn("error failed addVendorPayment in AddCartToOrderHandler:", err.Error())
 		}
 		var decArg db.DecProductStockByIDParams
 		decArg.ProductID = v.ProductID

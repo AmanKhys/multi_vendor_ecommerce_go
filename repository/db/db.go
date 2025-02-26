@@ -171,6 +171,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.editUserByIDStmt, err = db.PrepareContext(ctx, editUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditUserByID: %w", err)
 	}
+	if q.editVendorPaymentStatusByOrderItemIDStmt, err = db.PrepareContext(ctx, editVendorPaymentStatusByOrderItemID); err != nil {
+		return nil, fmt.Errorf("error preparing query EditVendorPaymentStatusByOrderItemID: %w", err)
+	}
 	if q.getAddressByIDStmt, err = db.PrepareContext(ctx, getAddressByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAddressByID: %w", err)
 	}
@@ -565,6 +568,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing editUserByIDStmt: %w", cerr)
 		}
 	}
+	if q.editVendorPaymentStatusByOrderItemIDStmt != nil {
+		if cerr := q.editVendorPaymentStatusByOrderItemIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editVendorPaymentStatusByOrderItemIDStmt: %w", cerr)
+		}
+	}
 	if q.getAddressByIDStmt != nil {
 		if cerr := q.getAddressByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getAddressByIDStmt: %w", cerr)
@@ -893,6 +901,7 @@ type Queries struct {
 	editProductByIDStmt                        *sql.Stmt
 	editSellerByIDStmt                         *sql.Stmt
 	editUserByIDStmt                           *sql.Stmt
+	editVendorPaymentStatusByOrderItemIDStmt   *sql.Stmt
 	getAddressByIDStmt                         *sql.Stmt
 	getAddressBySellerIDStmt                   *sql.Stmt
 	getAddressesByUserIDStmt                   *sql.Stmt
@@ -996,6 +1005,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		editProductByIDStmt:                        q.editProductByIDStmt,
 		editSellerByIDStmt:                         q.editSellerByIDStmt,
 		editUserByIDStmt:                           q.editUserByIDStmt,
+		editVendorPaymentStatusByOrderItemIDStmt:   q.editVendorPaymentStatusByOrderItemIDStmt,
 		getAddressByIDStmt:                         q.getAddressByIDStmt,
 		getAddressBySellerIDStmt:                   q.getAddressBySellerIDStmt,
 		getAddressesByUserIDStmt:                   q.getAddressesByUserIDStmt,

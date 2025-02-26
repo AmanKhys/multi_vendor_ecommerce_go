@@ -46,3 +46,9 @@ returning *;
 -- name: GetVendorPaymentByOrderItemID :one
 select * from vendor_payments
 where order_item_id = $1;
+
+-- name: EditVendorPaymentStatusByOrderItemID :one
+update vendor_payments
+set status = $2
+where order_item_id = $1
+returning *;

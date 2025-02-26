@@ -441,6 +441,11 @@ func (a *Admin) DeliverOrderItemHandler(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "internal error changing order status to delivered", http.StatusInternalServerError)
 		return
 	}
+	// if updatedOrderItem.Status == utils.Status
+	// var editVendorPayArg db.EditVendorPaymentStatusByOrderItemIDParams
+	// editVendorPayArg.OrderItemID = updatedOrderItem.ID
+	// editVendorPayArg.Status = utils.StatusVendorPaymentReceived
+	// a.DB.EditVendorPaymentStatusByOrderItemID(context.TODO(), editVendorPayArg)
 	type respOrderItem struct {
 		OrderItemID uuid.UUID `json:"order_item_id"`
 		Status      string    `json:"status"`

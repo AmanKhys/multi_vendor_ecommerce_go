@@ -24,3 +24,4 @@ const StatusVendorPaymentPending = "pending"
 const StatusVendorPaymentCancelled = "cancelled"
 const StatusVendorPaymentReceived = "received"
 const StatusVendorPaymentFailed = "failed"
+const PlatformFeePercentage = 0.15
