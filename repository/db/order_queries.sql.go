@@ -33,7 +33,7 @@ func (q *Queries) AddOrder(ctx context.Context, userID uuid.UUID) (Order, error)
 
 const addOrderITem = `-- name: AddOrderITem :one
 insert into order_items
-(order_id, product_id,price, quantity, total_amount)
+(order_id, product_id, price, quantity, total_amount)
 values
 ($1, $2, $3, $4, $5)
 returning id, order_id, product_id, price, quantity, total_amount, status, created_at, updated_at

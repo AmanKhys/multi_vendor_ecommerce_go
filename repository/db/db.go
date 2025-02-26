@@ -291,6 +291,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getValidOTPByUserIDStmt, err = db.PrepareContext(ctx, getValidOTPByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetValidOTPByUserID: %w", err)
 	}
+	if q.getVendorPaymentByOrderItemIDStmt, err = db.PrepareContext(ctx, getVendorPaymentByOrderItemID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetVendorPaymentByOrderItemID: %w", err)
+	}
 	if q.getWalletByUserIDStmt, err = db.PrepareContext(ctx, getWalletByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetWalletByUserID: %w", err)
 	}
@@ -762,6 +765,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getValidOTPByUserIDStmt: %w", cerr)
 		}
 	}
+	if q.getVendorPaymentByOrderItemIDStmt != nil {
+		if cerr := q.getVendorPaymentByOrderItemIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getVendorPaymentByOrderItemIDStmt: %w", cerr)
+		}
+	}
 	if q.getWalletByUserIDStmt != nil {
 		if cerr := q.getWalletByUserIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getWalletByUserIDStmt: %w", cerr)
@@ -925,6 +933,7 @@ type Queries struct {
 	getUserWithPasswordByEmailStmt             *sql.Stmt
 	getValidForgotOTPByUserIDStmt              *sql.Stmt
 	getValidOTPByUserIDStmt                    *sql.Stmt
+	getVendorPaymentByOrderItemIDStmt          *sql.Stmt
 	getWalletByUserIDStmt                      *sql.Stmt
 	incProductStockByIDStmt                    *sql.Stmt
 	retractSavingsFromWalletByUserIDStmt       *sql.Stmt
@@ -1027,6 +1036,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getUserWithPasswordByEmailStmt:             q.getUserWithPasswordByEmailStmt,
 		getValidForgotOTPByUserIDStmt:              q.getValidForgotOTPByUserIDStmt,
 		getValidOTPByUserIDStmt:                    q.getValidOTPByUserIDStmt,
+		getVendorPaymentByOrderItemIDStmt:          q.getVendorPaymentByOrderItemIDStmt,
 		getWalletByUserIDStmt:                      q.getWalletByUserIDStmt,
 		incProductStockByIDStmt:                    q.incProductStockByIDStmt,
 		retractSavingsFromWalletByUserIDStmt:       q.retractSavingsFromWalletByUserIDStmt,

@@ -37,7 +37,7 @@ where id = $1;
 
 -- name: AddOrderITem :one
 insert into order_items
-(order_id, product_id,price, quantity, total_amount)
+(order_id, product_id, price, quantity, total_amount)
 values
 ($1, $2, $3, $4, $5)
 returning *;

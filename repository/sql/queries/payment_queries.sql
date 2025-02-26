@@ -42,3 +42,7 @@ insert into vendor_payments
 values
 ($1, $2, $3, $4, $5, $6)
 returning *;
+
+-- name: GetVendorPaymentByOrderItemID :one
+select * from vendor_payments
+where order_item_id = $1;
