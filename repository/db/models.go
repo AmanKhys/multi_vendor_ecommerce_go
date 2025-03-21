@@ -50,6 +50,15 @@ type CategoryItem struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+type Coupon struct {
+	ID             uuid.UUID `json:"id"`
+	Name           string    `json:"name"`
+	TriggerPrice   float64   `json:"trigger_price"`
+	DiscountAmount float64   `json:"discount_amount"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
 type ForgotOtp struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`
@@ -59,10 +68,14 @@ type ForgotOtp struct {
 }
 
 type Order struct {
-	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID             uuid.UUID     `json:"id"`
+	UserID         uuid.UUID     `json:"user_id"`
+	TotalAmount    float64       `json:"total_amount"`
+	CouponID       uuid.NullUUID `json:"coupon_id"`
+	DiscountAmount float64       `json:"discount_amount"`
+	NetAmount      float64       `json:"net_amount"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
 type OrderItem struct {
@@ -114,6 +127,19 @@ type ProductImage struct {
 	ImageUrl  string    `json:"image_url"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type ReturnRefund struct {
+	ID                    uuid.UUID `json:"id"`
+	UserID                uuid.UUID `json:"user_id"`
+	OrderItemID           uuid.UUID `json:"order_item_id"`
+	PaymentID             uuid.UUID `json:"payment_id"`
+	ItemAmount            float64   `json:"item_amount"`
+	DiscountRemovalAmount float64   `json:"discount_removal_amount"`
+	RefundAmount          float64   `json:"refund_amount"`
+	Status                string    `json:"status"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 type Review struct {

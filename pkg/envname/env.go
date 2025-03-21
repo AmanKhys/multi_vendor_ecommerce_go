@@ -27,3 +27,7 @@ const AesIV = "aes_iv"
 // google auth keys
 const GoogleClientID = "google_client_id"
 const GoogleSecretKey = "google_secret_key"
+
+// razorpay keys
+const RPID = "rpay_key_id"
+const RPSecretKey = "rpay_secret_key"

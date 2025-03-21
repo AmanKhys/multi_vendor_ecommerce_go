@@ -37,9 +37,9 @@ where id = $1;
 
 -- name: AddOrderITem :one
 insert into order_items
-(order_id, product_id, price, quantity, total_amount)
+(order_id, product_id, price, quantity)
 values
-($1, $2, $3, $4, $5)
+($1, $2, $3, $4)
 returning *;
 
 -- name: GetOrderItemsByUserID :many
@@ -93,3 +93,16 @@ returning *;
 update order_items
 set status = 'cancelled', updated_at = current_timestamp
 where order_id = $1;
+
+-- name: GetTotalAmountOfCartItems :one
+select sum(total_amount) as total_amount
+from carts
+where user_id = $1;
+
+-- name: GetOrderItemsBySellerIDAndDateRange :many
+select oi.* 
+from order_items oi
+inner join products p on oi.product_id = p.id
+where p.seller_id = $1 
+  and oi.created_at between @start_date and @end_date
+order by oi.created_at desc;

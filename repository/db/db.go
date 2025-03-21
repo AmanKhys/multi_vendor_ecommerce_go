@@ -156,6 +156,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.editOrderItemStatusByIDStmt, err = db.PrepareContext(ctx, editOrderItemStatusByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditOrderItemStatusByID: %w", err)
 	}
+	if q.editPaymentByOrderIDStmt, err = db.PrepareContext(ctx, editPaymentByOrderID); err != nil {
+		return nil, fmt.Errorf("error preparing query EditPaymentByOrderID: %w", err)
+	}
 	if q.editPaymentStatusByIDStmt, err = db.PrepareContext(ctx, editPaymentStatusByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditPaymentStatusByID: %w", err)
 	}
@@ -170,6 +173,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.editUserByIDStmt, err = db.PrepareContext(ctx, editUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditUserByID: %w", err)
+	}
+	if q.editVendorPaymentStatusByOrderItemIDStmt, err = db.PrepareContext(ctx, editVendorPaymentStatusByOrderItemID); err != nil {
+		return nil, fmt.Errorf("error preparing query EditVendorPaymentStatusByOrderItemID: %w", err)
 	}
 	if q.getAddressByIDStmt, err = db.PrepareContext(ctx, getAddressByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAddressByID: %w", err)
@@ -237,11 +243,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getOrderItemsBySellerIDStmt, err = db.PrepareContext(ctx, getOrderItemsBySellerID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrderItemsBySellerID: %w", err)
 	}
+	if q.getOrderItemsBySellerIDAndDateRangeStmt, err = db.PrepareContext(ctx, getOrderItemsBySellerIDAndDateRange); err != nil {
+		return nil, fmt.Errorf("error preparing query GetOrderItemsBySellerIDAndDateRange: %w", err)
+	}
 	if q.getOrderItemsByUserIDStmt, err = db.PrepareContext(ctx, getOrderItemsByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrderItemsByUserID: %w", err)
 	}
 	if q.getOrdersByUserIDStmt, err = db.PrepareContext(ctx, getOrdersByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrdersByUserID: %w", err)
+	}
+	if q.getPaymentByOrderIDStmt, err = db.PrepareContext(ctx, getPaymentByOrderID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPaymentByOrderID: %w", err)
 	}
 	if q.getProductAndCategoryNameByIDStmt, err = db.PrepareContext(ctx, getProductAndCategoryNameByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductAndCategoryNameByID: %w", err)
@@ -270,6 +282,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getSessionDetailsByIDStmt, err = db.PrepareContext(ctx, getSessionDetailsByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSessionDetailsByID: %w", err)
 	}
+	if q.getTotalAmountOfCartItemsStmt, err = db.PrepareContext(ctx, getTotalAmountOfCartItems); err != nil {
+		return nil, fmt.Errorf("error preparing query GetTotalAmountOfCartItems: %w", err)
+	}
 	if q.getUserByEmailStmt, err = db.PrepareContext(ctx, getUserByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByEmail: %w", err)
 	}
@@ -293,6 +308,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getVendorPaymentByOrderItemIDStmt, err = db.PrepareContext(ctx, getVendorPaymentByOrderItemID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetVendorPaymentByOrderItemID: %w", err)
+	}
+	if q.getVendorPaymentsBySellerIDStmt, err = db.PrepareContext(ctx, getVendorPaymentsBySellerID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetVendorPaymentsBySellerID: %w", err)
+	}
+	if q.getVendorPaymentsBySellerIDAndDateRangeStmt, err = db.PrepareContext(ctx, getVendorPaymentsBySellerIDAndDateRange); err != nil {
+		return nil, fmt.Errorf("error preparing query GetVendorPaymentsBySellerIDAndDateRange: %w", err)
 	}
 	if q.getWalletByUserIDStmt, err = db.PrepareContext(ctx, getWalletByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetWalletByUserID: %w", err)
@@ -540,6 +561,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing editOrderItemStatusByIDStmt: %w", cerr)
 		}
 	}
+	if q.editPaymentByOrderIDStmt != nil {
+		if cerr := q.editPaymentByOrderIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editPaymentByOrderIDStmt: %w", cerr)
+		}
+	}
 	if q.editPaymentStatusByIDStmt != nil {
 		if cerr := q.editPaymentStatusByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing editPaymentStatusByIDStmt: %w", cerr)
@@ -563,6 +589,11 @@ func (q *Queries) Close() error {
 	if q.editUserByIDStmt != nil {
 		if cerr := q.editUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing editUserByIDStmt: %w", cerr)
+		}
+	}
+	if q.editVendorPaymentStatusByOrderItemIDStmt != nil {
+		if cerr := q.editVendorPaymentStatusByOrderItemIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editVendorPaymentStatusByOrderItemIDStmt: %w", cerr)
 		}
 	}
 	if q.getAddressByIDStmt != nil {
@@ -675,6 +706,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getOrderItemsBySellerIDStmt: %w", cerr)
 		}
 	}
+	if q.getOrderItemsBySellerIDAndDateRangeStmt != nil {
+		if cerr := q.getOrderItemsBySellerIDAndDateRangeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getOrderItemsBySellerIDAndDateRangeStmt: %w", cerr)
+		}
+	}
 	if q.getOrderItemsByUserIDStmt != nil {
 		if cerr := q.getOrderItemsByUserIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getOrderItemsByUserIDStmt: %w", cerr)
@@ -683,6 +719,11 @@ func (q *Queries) Close() error {
 	if q.getOrdersByUserIDStmt != nil {
 		if cerr := q.getOrdersByUserIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getOrdersByUserIDStmt: %w", cerr)
+		}
+	}
+	if q.getPaymentByOrderIDStmt != nil {
+		if cerr := q.getPaymentByOrderIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPaymentByOrderIDStmt: %w", cerr)
 		}
 	}
 	if q.getProductAndCategoryNameByIDStmt != nil {
@@ -730,6 +771,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getSessionDetailsByIDStmt: %w", cerr)
 		}
 	}
+	if q.getTotalAmountOfCartItemsStmt != nil {
+		if cerr := q.getTotalAmountOfCartItemsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getTotalAmountOfCartItemsStmt: %w", cerr)
+		}
+	}
 	if q.getUserByEmailStmt != nil {
 		if cerr := q.getUserByEmailStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUserByEmailStmt: %w", cerr)
@@ -768,6 +814,16 @@ func (q *Queries) Close() error {
 	if q.getVendorPaymentByOrderItemIDStmt != nil {
 		if cerr := q.getVendorPaymentByOrderItemIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getVendorPaymentByOrderItemIDStmt: %w", cerr)
+		}
+	}
+	if q.getVendorPaymentsBySellerIDStmt != nil {
+		if cerr := q.getVendorPaymentsBySellerIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getVendorPaymentsBySellerIDStmt: %w", cerr)
+		}
+	}
+	if q.getVendorPaymentsBySellerIDAndDateRangeStmt != nil {
+		if cerr := q.getVendorPaymentsBySellerIDAndDateRangeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getVendorPaymentsBySellerIDAndDateRangeStmt: %w", cerr)
 		}
 	}
 	if q.getWalletByUserIDStmt != nil {
@@ -842,207 +898,221 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                                         DBTX
-	tx                                         *sql.Tx
-	addAddressByUserIDStmt                     *sql.Stmt
-	addAndVerifyUserStmt                       *sql.Stmt
-	addCartItemStmt                            *sql.Stmt
-	addCateogryStmt                            *sql.Stmt
-	addForgotOTPByUserIDStmt                   *sql.Stmt
-	addOTPStmt                                 *sql.Stmt
-	addOrderStmt                               *sql.Stmt
-	addOrderITemStmt                           *sql.Stmt
-	addPaymentStmt                             *sql.Stmt
-	addProductStmt                             *sql.Stmt
-	addProductToCategoryByCategoryNameStmt     *sql.Stmt
-	addProductToCategoryByIDStmt               *sql.Stmt
-	addSavingsToWalletByUserIDStmt             *sql.Stmt
-	addSellerStmt                              *sql.Stmt
-	addSessionStmt                             *sql.Stmt
-	addShippingAddressStmt                     *sql.Stmt
-	addUserStmt                                *sql.Stmt
-	addVendorPaymentStmt                       *sql.Stmt
-	addWalletByUserIDStmt                      *sql.Stmt
-	blockUserByIDStmt                          *sql.Stmt
-	cancelOrderByIDStmt                        *sql.Stmt
-	cancelPaymentByOrderIDStmt                 *sql.Stmt
-	changeNameByUserIDStmt                     *sql.Stmt
-	changeOrderItemStatusByIDStmt              *sql.Stmt
-	changePasswordByUserIDStmt                 *sql.Stmt
-	decPaymentAmountByOrderItemIDStmt          *sql.Stmt
-	decProductStockByIDStmt                    *sql.Stmt
-	deleteAddressByIDStmt                      *sql.Stmt
-	deleteAddressesByUserIDStmt                *sql.Stmt
-	deleteAllCategoriesForProductByIDStmt      *sql.Stmt
-	deleteCartItemByUserIDAndProductIDStmt     *sql.Stmt
-	deleteCartItemsByUserIDStmt                *sql.Stmt
-	deleteCategoryByNameStmt                   *sql.Stmt
-	deleteForgotOTPByEmailStmt                 *sql.Stmt
-	deleteOTPByEmailStmt                       *sql.Stmt
-	deleteOrderByIDStmt                        *sql.Stmt
-	deleteProductByIDStmt                      *sql.Stmt
-	deleteProductsBySellerIDStmt               *sql.Stmt
-	deleteSessionByIDStmt                      *sql.Stmt
-	deleteSessionsByuserIDStmt                 *sql.Stmt
-	editAddressByIDStmt                        *sql.Stmt
-	editCartItemByIDStmt                       *sql.Stmt
-	editCategoryNameByNameStmt                 *sql.Stmt
-	editOrderItemStatusByIDStmt                *sql.Stmt
-	editPaymentStatusByIDStmt                  *sql.Stmt
-	editPaymentStatusByOrderIDStmt             *sql.Stmt
-	editProductByIDStmt                        *sql.Stmt
-	editSellerByIDStmt                         *sql.Stmt
-	editUserByIDStmt                           *sql.Stmt
-	getAddressByIDStmt                         *sql.Stmt
-	getAddressBySellerIDStmt                   *sql.Stmt
-	getAddressesByUserIDStmt                   *sql.Stmt
-	getAllCategoriesStmt                       *sql.Stmt
-	getAllCategoriesForAdminStmt               *sql.Stmt
-	getAllOrderForAdminStmt                    *sql.Stmt
-	getAllProductsStmt                         *sql.Stmt
-	getAllProductsForAdminStmt                 *sql.Stmt
-	getAllSessionsByUserIDStmt                 *sql.Stmt
-	getAllUsersStmt                            *sql.Stmt
-	getAllUsersByRoleSellerStmt                *sql.Stmt
-	getAllUsersByRoleUserStmt                  *sql.Stmt
-	getCartItemByIDStmt                        *sql.Stmt
-	getCartItemByUserIDAndProductIDStmt        *sql.Stmt
-	getCartItemsByUserIDStmt                   *sql.Stmt
-	getCategoryByIDStmt                        *sql.Stmt
-	getCategoryByNameStmt                      *sql.Stmt
-	getCategoryNamesOfProductByIDStmt          *sql.Stmt
-	getOrderByIDStmt                           *sql.Stmt
-	getOrderItemByIDStmt                       *sql.Stmt
-	getOrderItemsByOrderIDStmt                 *sql.Stmt
-	getOrderItemsBySellerIDStmt                *sql.Stmt
-	getOrderItemsByUserIDStmt                  *sql.Stmt
-	getOrdersByUserIDStmt                      *sql.Stmt
-	getProductAndCategoryNameByIDStmt          *sql.Stmt
-	getProductByIDStmt                         *sql.Stmt
-	getProductFromCartByIDStmt                 *sql.Stmt
-	getProductNameAndQuantityFromCartsByIDStmt *sql.Stmt
-	getProductsByCategoryNameStmt              *sql.Stmt
-	getProductsBySellerIDStmt                  *sql.Stmt
-	getSellerByProductIDStmt                   *sql.Stmt
-	getSellerIDFromOrderItemIDStmt             *sql.Stmt
-	getSessionDetailsByIDStmt                  *sql.Stmt
-	getUserByEmailStmt                         *sql.Stmt
-	getUserByIdStmt                            *sql.Stmt
-	getUserBySessionIDStmt                     *sql.Stmt
-	getUserIDFromOrderItemIDStmt               *sql.Stmt
-	getUserWithPasswordByEmailStmt             *sql.Stmt
-	getValidForgotOTPByUserIDStmt              *sql.Stmt
-	getValidOTPByUserIDStmt                    *sql.Stmt
-	getVendorPaymentByOrderItemIDStmt          *sql.Stmt
-	getWalletByUserIDStmt                      *sql.Stmt
-	incProductStockByIDStmt                    *sql.Stmt
-	retractSavingsFromWalletByUserIDStmt       *sql.Stmt
-	unblockUserByIDStmt                        *sql.Stmt
-	verifySellerByIDStmt                       *sql.Stmt
-	verifySellerEmailByIDStmt                  *sql.Stmt
-	verifyUserByIDStmt                         *sql.Stmt
+	db                                          DBTX
+	tx                                          *sql.Tx
+	addAddressByUserIDStmt                      *sql.Stmt
+	addAndVerifyUserStmt                        *sql.Stmt
+	addCartItemStmt                             *sql.Stmt
+	addCateogryStmt                             *sql.Stmt
+	addForgotOTPByUserIDStmt                    *sql.Stmt
+	addOTPStmt                                  *sql.Stmt
+	addOrderStmt                                *sql.Stmt
+	addOrderITemStmt                            *sql.Stmt
+	addPaymentStmt                              *sql.Stmt
+	addProductStmt                              *sql.Stmt
+	addProductToCategoryByCategoryNameStmt      *sql.Stmt
+	addProductToCategoryByIDStmt                *sql.Stmt
+	addSavingsToWalletByUserIDStmt              *sql.Stmt
+	addSellerStmt                               *sql.Stmt
+	addSessionStmt                              *sql.Stmt
+	addShippingAddressStmt                      *sql.Stmt
+	addUserStmt                                 *sql.Stmt
+	addVendorPaymentStmt                        *sql.Stmt
+	addWalletByUserIDStmt                       *sql.Stmt
+	blockUserByIDStmt                           *sql.Stmt
+	cancelOrderByIDStmt                         *sql.Stmt
+	cancelPaymentByOrderIDStmt                  *sql.Stmt
+	changeNameByUserIDStmt                      *sql.Stmt
+	changeOrderItemStatusByIDStmt               *sql.Stmt
+	changePasswordByUserIDStmt                  *sql.Stmt
+	decPaymentAmountByOrderItemIDStmt           *sql.Stmt
+	decProductStockByIDStmt                     *sql.Stmt
+	deleteAddressByIDStmt                       *sql.Stmt
+	deleteAddressesByUserIDStmt                 *sql.Stmt
+	deleteAllCategoriesForProductByIDStmt       *sql.Stmt
+	deleteCartItemByUserIDAndProductIDStmt      *sql.Stmt
+	deleteCartItemsByUserIDStmt                 *sql.Stmt
+	deleteCategoryByNameStmt                    *sql.Stmt
+	deleteForgotOTPByEmailStmt                  *sql.Stmt
+	deleteOTPByEmailStmt                        *sql.Stmt
+	deleteOrderByIDStmt                         *sql.Stmt
+	deleteProductByIDStmt                       *sql.Stmt
+	deleteProductsBySellerIDStmt                *sql.Stmt
+	deleteSessionByIDStmt                       *sql.Stmt
+	deleteSessionsByuserIDStmt                  *sql.Stmt
+	editAddressByIDStmt                         *sql.Stmt
+	editCartItemByIDStmt                        *sql.Stmt
+	editCategoryNameByNameStmt                  *sql.Stmt
+	editOrderItemStatusByIDStmt                 *sql.Stmt
+	editPaymentByOrderIDStmt                    *sql.Stmt
+	editPaymentStatusByIDStmt                   *sql.Stmt
+	editPaymentStatusByOrderIDStmt              *sql.Stmt
+	editProductByIDStmt                         *sql.Stmt
+	editSellerByIDStmt                          *sql.Stmt
+	editUserByIDStmt                            *sql.Stmt
+	editVendorPaymentStatusByOrderItemIDStmt    *sql.Stmt
+	getAddressByIDStmt                          *sql.Stmt
+	getAddressBySellerIDStmt                    *sql.Stmt
+	getAddressesByUserIDStmt                    *sql.Stmt
+	getAllCategoriesStmt                        *sql.Stmt
+	getAllCategoriesForAdminStmt                *sql.Stmt
+	getAllOrderForAdminStmt                     *sql.Stmt
+	getAllProductsStmt                          *sql.Stmt
+	getAllProductsForAdminStmt                  *sql.Stmt
+	getAllSessionsByUserIDStmt                  *sql.Stmt
+	getAllUsersStmt                             *sql.Stmt
+	getAllUsersByRoleSellerStmt                 *sql.Stmt
+	getAllUsersByRoleUserStmt                   *sql.Stmt
+	getCartItemByIDStmt                         *sql.Stmt
+	getCartItemByUserIDAndProductIDStmt         *sql.Stmt
+	getCartItemsByUserIDStmt                    *sql.Stmt
+	getCategoryByIDStmt                         *sql.Stmt
+	getCategoryByNameStmt                       *sql.Stmt
+	getCategoryNamesOfProductByIDStmt           *sql.Stmt
+	getOrderByIDStmt                            *sql.Stmt
+	getOrderItemByIDStmt                        *sql.Stmt
+	getOrderItemsByOrderIDStmt                  *sql.Stmt
+	getOrderItemsBySellerIDStmt                 *sql.Stmt
+	getOrderItemsBySellerIDAndDateRangeStmt     *sql.Stmt
+	getOrderItemsByUserIDStmt                   *sql.Stmt
+	getOrdersByUserIDStmt                       *sql.Stmt
+	getPaymentByOrderIDStmt                     *sql.Stmt
+	getProductAndCategoryNameByIDStmt           *sql.Stmt
+	getProductByIDStmt                          *sql.Stmt
+	getProductFromCartByIDStmt                  *sql.Stmt
+	getProductNameAndQuantityFromCartsByIDStmt  *sql.Stmt
+	getProductsByCategoryNameStmt               *sql.Stmt
+	getProductsBySellerIDStmt                   *sql.Stmt
+	getSellerByProductIDStmt                    *sql.Stmt
+	getSellerIDFromOrderItemIDStmt              *sql.Stmt
+	getSessionDetailsByIDStmt                   *sql.Stmt
+	getTotalAmountOfCartItemsStmt               *sql.Stmt
+	getUserByEmailStmt                          *sql.Stmt
+	getUserByIdStmt                             *sql.Stmt
+	getUserBySessionIDStmt                      *sql.Stmt
+	getUserIDFromOrderItemIDStmt                *sql.Stmt
+	getUserWithPasswordByEmailStmt              *sql.Stmt
+	getValidForgotOTPByUserIDStmt               *sql.Stmt
+	getValidOTPByUserIDStmt                     *sql.Stmt
+	getVendorPaymentByOrderItemIDStmt           *sql.Stmt
+	getVendorPaymentsBySellerIDStmt             *sql.Stmt
+	getVendorPaymentsBySellerIDAndDateRangeStmt *sql.Stmt
+	getWalletByUserIDStmt                       *sql.Stmt
+	incProductStockByIDStmt                     *sql.Stmt
+	retractSavingsFromWalletByUserIDStmt        *sql.Stmt
+	unblockUserByIDStmt                         *sql.Stmt
+	verifySellerByIDStmt                        *sql.Stmt
+	verifySellerEmailByIDStmt                   *sql.Stmt
+	verifyUserByIDStmt                          *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                                         tx,
-		tx:                                         tx,
-		addAddressByUserIDStmt:                     q.addAddressByUserIDStmt,
-		addAndVerifyUserStmt:                       q.addAndVerifyUserStmt,
-		addCartItemStmt:                            q.addCartItemStmt,
-		addCateogryStmt:                            q.addCateogryStmt,
-		addForgotOTPByUserIDStmt:                   q.addForgotOTPByUserIDStmt,
-		addOTPStmt:                                 q.addOTPStmt,
-		addOrderStmt:                               q.addOrderStmt,
-		addOrderITemStmt:                           q.addOrderITemStmt,
-		addPaymentStmt:                             q.addPaymentStmt,
-		addProductStmt:                             q.addProductStmt,
-		addProductToCategoryByCategoryNameStmt:     q.addProductToCategoryByCategoryNameStmt,
-		addProductToCategoryByIDStmt:               q.addProductToCategoryByIDStmt,
-		addSavingsToWalletByUserIDStmt:             q.addSavingsToWalletByUserIDStmt,
-		addSellerStmt:                              q.addSellerStmt,
-		addSessionStmt:                             q.addSessionStmt,
-		addShippingAddressStmt:                     q.addShippingAddressStmt,
-		addUserStmt:                                q.addUserStmt,
-		addVendorPaymentStmt:                       q.addVendorPaymentStmt,
-		addWalletByUserIDStmt:                      q.addWalletByUserIDStmt,
-		blockUserByIDStmt:                          q.blockUserByIDStmt,
-		cancelOrderByIDStmt:                        q.cancelOrderByIDStmt,
-		cancelPaymentByOrderIDStmt:                 q.cancelPaymentByOrderIDStmt,
-		changeNameByUserIDStmt:                     q.changeNameByUserIDStmt,
-		changeOrderItemStatusByIDStmt:              q.changeOrderItemStatusByIDStmt,
-		changePasswordByUserIDStmt:                 q.changePasswordByUserIDStmt,
-		decPaymentAmountByOrderItemIDStmt:          q.decPaymentAmountByOrderItemIDStmt,
-		decProductStockByIDStmt:                    q.decProductStockByIDStmt,
-		deleteAddressByIDStmt:                      q.deleteAddressByIDStmt,
-		deleteAddressesByUserIDStmt:                q.deleteAddressesByUserIDStmt,
-		deleteAllCategoriesForProductByIDStmt:      q.deleteAllCategoriesForProductByIDStmt,
-		deleteCartItemByUserIDAndProductIDStmt:     q.deleteCartItemByUserIDAndProductIDStmt,
-		deleteCartItemsByUserIDStmt:                q.deleteCartItemsByUserIDStmt,
-		deleteCategoryByNameStmt:                   q.deleteCategoryByNameStmt,
-		deleteForgotOTPByEmailStmt:                 q.deleteForgotOTPByEmailStmt,
-		deleteOTPByEmailStmt:                       q.deleteOTPByEmailStmt,
-		deleteOrderByIDStmt:                        q.deleteOrderByIDStmt,
-		deleteProductByIDStmt:                      q.deleteProductByIDStmt,
-		deleteProductsBySellerIDStmt:               q.deleteProductsBySellerIDStmt,
-		deleteSessionByIDStmt:                      q.deleteSessionByIDStmt,
-		deleteSessionsByuserIDStmt:                 q.deleteSessionsByuserIDStmt,
-		editAddressByIDStmt:                        q.editAddressByIDStmt,
-		editCartItemByIDStmt:                       q.editCartItemByIDStmt,
-		editCategoryNameByNameStmt:                 q.editCategoryNameByNameStmt,
-		editOrderItemStatusByIDStmt:                q.editOrderItemStatusByIDStmt,
-		editPaymentStatusByIDStmt:                  q.editPaymentStatusByIDStmt,
-		editPaymentStatusByOrderIDStmt:             q.editPaymentStatusByOrderIDStmt,
-		editProductByIDStmt:                        q.editProductByIDStmt,
-		editSellerByIDStmt:                         q.editSellerByIDStmt,
-		editUserByIDStmt:                           q.editUserByIDStmt,
-		getAddressByIDStmt:                         q.getAddressByIDStmt,
-		getAddressBySellerIDStmt:                   q.getAddressBySellerIDStmt,
-		getAddressesByUserIDStmt:                   q.getAddressesByUserIDStmt,
-		getAllCategoriesStmt:                       q.getAllCategoriesStmt,
-		getAllCategoriesForAdminStmt:               q.getAllCategoriesForAdminStmt,
-		getAllOrderForAdminStmt:                    q.getAllOrderForAdminStmt,
-		getAllProductsStmt:                         q.getAllProductsStmt,
-		getAllProductsForAdminStmt:                 q.getAllProductsForAdminStmt,
-		getAllSessionsByUserIDStmt:                 q.getAllSessionsByUserIDStmt,
-		getAllUsersStmt:                            q.getAllUsersStmt,
-		getAllUsersByRoleSellerStmt:                q.getAllUsersByRoleSellerStmt,
-		getAllUsersByRoleUserStmt:                  q.getAllUsersByRoleUserStmt,
-		getCartItemByIDStmt:                        q.getCartItemByIDStmt,
-		getCartItemByUserIDAndProductIDStmt:        q.getCartItemByUserIDAndProductIDStmt,
-		getCartItemsByUserIDStmt:                   q.getCartItemsByUserIDStmt,
-		getCategoryByIDStmt:                        q.getCategoryByIDStmt,
-		getCategoryByNameStmt:                      q.getCategoryByNameStmt,
-		getCategoryNamesOfProductByIDStmt:          q.getCategoryNamesOfProductByIDStmt,
-		getOrderByIDStmt:                           q.getOrderByIDStmt,
-		getOrderItemByIDStmt:                       q.getOrderItemByIDStmt,
-		getOrderItemsByOrderIDStmt:                 q.getOrderItemsByOrderIDStmt,
-		getOrderItemsBySellerIDStmt:                q.getOrderItemsBySellerIDStmt,
-		getOrderItemsByUserIDStmt:                  q.getOrderItemsByUserIDStmt,
-		getOrdersByUserIDStmt:                      q.getOrdersByUserIDStmt,
-		getProductAndCategoryNameByIDStmt:          q.getProductAndCategoryNameByIDStmt,
-		getProductByIDStmt:                         q.getProductByIDStmt,
-		getProductFromCartByIDStmt:                 q.getProductFromCartByIDStmt,
-		getProductNameAndQuantityFromCartsByIDStmt: q.getProductNameAndQuantityFromCartsByIDStmt,
-		getProductsByCategoryNameStmt:              q.getProductsByCategoryNameStmt,
-		getProductsBySellerIDStmt:                  q.getProductsBySellerIDStmt,
-		getSellerByProductIDStmt:                   q.getSellerByProductIDStmt,
-		getSellerIDFromOrderItemIDStmt:             q.getSellerIDFromOrderItemIDStmt,
-		getSessionDetailsByIDStmt:                  q.getSessionDetailsByIDStmt,
-		getUserByEmailStmt:                         q.getUserByEmailStmt,
-		getUserByIdStmt:                            q.getUserByIdStmt,
-		getUserBySessionIDStmt:                     q.getUserBySessionIDStmt,
-		getUserIDFromOrderItemIDStmt:               q.getUserIDFromOrderItemIDStmt,
-		getUserWithPasswordByEmailStmt:             q.getUserWithPasswordByEmailStmt,
-		getValidForgotOTPByUserIDStmt:              q.getValidForgotOTPByUserIDStmt,
-		getValidOTPByUserIDStmt:                    q.getValidOTPByUserIDStmt,
-		getVendorPaymentByOrderItemIDStmt:          q.getVendorPaymentByOrderItemIDStmt,
-		getWalletByUserIDStmt:                      q.getWalletByUserIDStmt,
-		incProductStockByIDStmt:                    q.incProductStockByIDStmt,
-		retractSavingsFromWalletByUserIDStmt:       q.retractSavingsFromWalletByUserIDStmt,
-		unblockUserByIDStmt:                        q.unblockUserByIDStmt,
-		verifySellerByIDStmt:                       q.verifySellerByIDStmt,
-		verifySellerEmailByIDStmt:                  q.verifySellerEmailByIDStmt,
-		verifyUserByIDStmt:                         q.verifyUserByIDStmt,
+		db:                                          tx,
+		tx:                                          tx,
+		addAddressByUserIDStmt:                      q.addAddressByUserIDStmt,
+		addAndVerifyUserStmt:                        q.addAndVerifyUserStmt,
+		addCartItemStmt:                             q.addCartItemStmt,
+		addCateogryStmt:                             q.addCateogryStmt,
+		addForgotOTPByUserIDStmt:                    q.addForgotOTPByUserIDStmt,
+		addOTPStmt:                                  q.addOTPStmt,
+		addOrderStmt:                                q.addOrderStmt,
+		addOrderITemStmt:                            q.addOrderITemStmt,
+		addPaymentStmt:                              q.addPaymentStmt,
+		addProductStmt:                              q.addProductStmt,
+		addProductToCategoryByCategoryNameStmt:      q.addProductToCategoryByCategoryNameStmt,
+		addProductToCategoryByIDStmt:                q.addProductToCategoryByIDStmt,
+		addSavingsToWalletByUserIDStmt:              q.addSavingsToWalletByUserIDStmt,
+		addSellerStmt:                               q.addSellerStmt,
+		addSessionStmt:                              q.addSessionStmt,
+		addShippingAddressStmt:                      q.addShippingAddressStmt,
+		addUserStmt:                                 q.addUserStmt,
+		addVendorPaymentStmt:                        q.addVendorPaymentStmt,
+		addWalletByUserIDStmt:                       q.addWalletByUserIDStmt,
+		blockUserByIDStmt:                           q.blockUserByIDStmt,
+		cancelOrderByIDStmt:                         q.cancelOrderByIDStmt,
+		cancelPaymentByOrderIDStmt:                  q.cancelPaymentByOrderIDStmt,
+		changeNameByUserIDStmt:                      q.changeNameByUserIDStmt,
+		changeOrderItemStatusByIDStmt:               q.changeOrderItemStatusByIDStmt,
+		changePasswordByUserIDStmt:                  q.changePasswordByUserIDStmt,
+		decPaymentAmountByOrderItemIDStmt:           q.decPaymentAmountByOrderItemIDStmt,
+		decProductStockByIDStmt:                     q.decProductStockByIDStmt,
+		deleteAddressByIDStmt:                       q.deleteAddressByIDStmt,
+		deleteAddressesByUserIDStmt:                 q.deleteAddressesByUserIDStmt,
+		deleteAllCategoriesForProductByIDStmt:       q.deleteAllCategoriesForProductByIDStmt,
+		deleteCartItemByUserIDAndProductIDStmt:      q.deleteCartItemByUserIDAndProductIDStmt,
+		deleteCartItemsByUserIDStmt:                 q.deleteCartItemsByUserIDStmt,
+		deleteCategoryByNameStmt:                    q.deleteCategoryByNameStmt,
+		deleteForgotOTPByEmailStmt:                  q.deleteForgotOTPByEmailStmt,
+		deleteOTPByEmailStmt:                        q.deleteOTPByEmailStmt,
+		deleteOrderByIDStmt:                         q.deleteOrderByIDStmt,
+		deleteProductByIDStmt:                       q.deleteProductByIDStmt,
+		deleteProductsBySellerIDStmt:                q.deleteProductsBySellerIDStmt,
+		deleteSessionByIDStmt:                       q.deleteSessionByIDStmt,
+		deleteSessionsByuserIDStmt:                  q.deleteSessionsByuserIDStmt,
+		editAddressByIDStmt:                         q.editAddressByIDStmt,
+		editCartItemByIDStmt:                        q.editCartItemByIDStmt,
+		editCategoryNameByNameStmt:                  q.editCategoryNameByNameStmt,
+		editOrderItemStatusByIDStmt:                 q.editOrderItemStatusByIDStmt,
+		editPaymentByOrderIDStmt:                    q.editPaymentByOrderIDStmt,
+		editPaymentStatusByIDStmt:                   q.editPaymentStatusByIDStmt,
+		editPaymentStatusByOrderIDStmt:              q.editPaymentStatusByOrderIDStmt,
+		editProductByIDStmt:                         q.editProductByIDStmt,
+		editSellerByIDStmt:                          q.editSellerByIDStmt,
+		editUserByIDStmt:                            q.editUserByIDStmt,
+		editVendorPaymentStatusByOrderItemIDStmt:    q.editVendorPaymentStatusByOrderItemIDStmt,
+		getAddressByIDStmt:                          q.getAddressByIDStmt,
+		getAddressBySellerIDStmt:                    q.getAddressBySellerIDStmt,
+		getAddressesByUserIDStmt:                    q.getAddressesByUserIDStmt,
+		getAllCategoriesStmt:                        q.getAllCategoriesStmt,
+		getAllCategoriesForAdminStmt:                q.getAllCategoriesForAdminStmt,
+		getAllOrderForAdminStmt:                     q.getAllOrderForAdminStmt,
+		getAllProductsStmt:                          q.getAllProductsStmt,
+		getAllProductsForAdminStmt:                  q.getAllProductsForAdminStmt,
+		getAllSessionsByUserIDStmt:                  q.getAllSessionsByUserIDStmt,
+		getAllUsersStmt:                             q.getAllUsersStmt,
+		getAllUsersByRoleSellerStmt:                 q.getAllUsersByRoleSellerStmt,
+		getAllUsersByRoleUserStmt:                   q.getAllUsersByRoleUserStmt,
+		getCartItemByIDStmt:                         q.getCartItemByIDStmt,
+		getCartItemByUserIDAndProductIDStmt:         q.getCartItemByUserIDAndProductIDStmt,
+		getCartItemsByUserIDStmt:                    q.getCartItemsByUserIDStmt,
+		getCategoryByIDStmt:                         q.getCategoryByIDStmt,
+		getCategoryByNameStmt:                       q.getCategoryByNameStmt,
+		getCategoryNamesOfProductByIDStmt:           q.getCategoryNamesOfProductByIDStmt,
+		getOrderByIDStmt:                            q.getOrderByIDStmt,
+		getOrderItemByIDStmt:                        q.getOrderItemByIDStmt,
+		getOrderItemsByOrderIDStmt:                  q.getOrderItemsByOrderIDStmt,
+		getOrderItemsBySellerIDStmt:                 q.getOrderItemsBySellerIDStmt,
+		getOrderItemsBySellerIDAndDateRangeStmt:     q.getOrderItemsBySellerIDAndDateRangeStmt,
+		getOrderItemsByUserIDStmt:                   q.getOrderItemsByUserIDStmt,
+		getOrdersByUserIDStmt:                       q.getOrdersByUserIDStmt,
+		getPaymentByOrderIDStmt:                     q.getPaymentByOrderIDStmt,
+		getProductAndCategoryNameByIDStmt:           q.getProductAndCategoryNameByIDStmt,
+		getProductByIDStmt:                          q.getProductByIDStmt,
+		getProductFromCartByIDStmt:                  q.getProductFromCartByIDStmt,
+		getProductNameAndQuantityFromCartsByIDStmt:  q.getProductNameAndQuantityFromCartsByIDStmt,
+		getProductsByCategoryNameStmt:               q.getProductsByCategoryNameStmt,
+		getProductsBySellerIDStmt:                   q.getProductsBySellerIDStmt,
+		getSellerByProductIDStmt:                    q.getSellerByProductIDStmt,
+		getSellerIDFromOrderItemIDStmt:              q.getSellerIDFromOrderItemIDStmt,
+		getSessionDetailsByIDStmt:                   q.getSessionDetailsByIDStmt,
+		getTotalAmountOfCartItemsStmt:               q.getTotalAmountOfCartItemsStmt,
+		getUserByEmailStmt:                          q.getUserByEmailStmt,
+		getUserByIdStmt:                             q.getUserByIdStmt,
+		getUserBySessionIDStmt:                      q.getUserBySessionIDStmt,
+		getUserIDFromOrderItemIDStmt:                q.getUserIDFromOrderItemIDStmt,
+		getUserWithPasswordByEmailStmt:              q.getUserWithPasswordByEmailStmt,
+		getValidForgotOTPByUserIDStmt:               q.getValidForgotOTPByUserIDStmt,
+		getValidOTPByUserIDStmt:                     q.getValidOTPByUserIDStmt,
+		getVendorPaymentByOrderItemIDStmt:           q.getVendorPaymentByOrderItemIDStmt,
+		getVendorPaymentsBySellerIDStmt:             q.getVendorPaymentsBySellerIDStmt,
+		getVendorPaymentsBySellerIDAndDateRangeStmt: q.getVendorPaymentsBySellerIDAndDateRangeStmt,
+		getWalletByUserIDStmt:                       q.getWalletByUserIDStmt,
+		incProductStockByIDStmt:                     q.incProductStockByIDStmt,
+		retractSavingsFromWalletByUserIDStmt:        q.retractSavingsFromWalletByUserIDStmt,
+		unblockUserByIDStmt:                         q.unblockUserByIDStmt,
+		verifySellerByIDStmt:                        q.verifySellerByIDStmt,
+		verifySellerEmailByIDStmt:                   q.verifySellerEmailByIDStmt,
+		verifyUserByIDStmt:                          q.verifyUserByIDStmt,
 	}
 }

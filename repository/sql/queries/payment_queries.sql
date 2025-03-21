@@ -5,6 +5,10 @@ values
 ($1, $2, $3, $4)
 returning *;
 
+-- name: GetPaymentByOrderID :one
+select * from payments
+where order_id = $1;
+
 -- name: DecPaymentAmountByOrderItemID :one
 WITH cte AS (
   SELECT oi.order_id, oi.total_amount
@@ -22,6 +26,12 @@ RETURNING payments.*;
 update payments
 set status = $2, updated_at = current_timestamp
 where id = $1
+returning *;
+
+-- name: EditPaymentByOrderID :one
+update payments
+set status = $2, transaction_id = $3, updated_at = current_timestamp
+where order_id = $1
 returning *;
 
 -- name: EditPaymentStatusByOrderID :one
@@ -46,3 +56,19 @@ returning *;
 -- name: GetVendorPaymentByOrderItemID :one
 select * from vendor_payments
 where order_item_id = $1;
+
+-- name: EditVendorPaymentStatusByOrderItemID :one
+update vendor_payments
+set status = $2
+where order_item_id = $1
+returning *;
+
+-- name: GetVendorPaymentsBySellerID :many
+select * from vendor_payments
+where seller_id = $1;
+
+-- name: GetVendorPaymentsBySellerIDAndDateRange :many
+select * 
+from vendor_payments
+where seller_id = $1  and
+created_at between @start_date and @end_date;

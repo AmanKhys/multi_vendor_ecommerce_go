@@ -14,7 +14,7 @@ import (
 const addSavingsToWalletByUserID = `-- name: AddSavingsToWalletByUserID :one
 update wallets
 set savings = savings + $2, updated_at = current_timestamp
-where user_id = $1
+where user_id = $1 and (savings + $2) >= 0
 returning id, savings
 `
 

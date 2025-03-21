@@ -39,7 +39,7 @@ set quantity = $2, updated_at = current_timestamp
 where id = $1
 returning *;
 
--- name: DeleteCartItemByUserIDAndProductID :execrows
+-- name: DeleteCartItemByUserIDAndProductID :exec
 delete from carts
 where user_id = $1 and product_id = $2;
 

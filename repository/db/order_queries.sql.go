@@ -16,7 +16,7 @@ const addOrder = `-- name: AddOrder :one
 insert into orders
 (user_id)
 values ($1)
-returning id, user_id, created_at, updated_at
+returning id, user_id, total_amount, coupon_id, discount_amount, net_amount, created_at, updated_at
 `
 
 func (q *Queries) AddOrder(ctx context.Context, userID uuid.UUID) (Order, error) {
@@ -25,6 +25,10 @@ func (q *Queries) AddOrder(ctx context.Context, userID uuid.UUID) (Order, error)
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
+		&i.TotalAmount,
+		&i.CouponID,
+		&i.DiscountAmount,
+		&i.NetAmount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -33,18 +37,17 @@ func (q *Queries) AddOrder(ctx context.Context, userID uuid.UUID) (Order, error)
 
 const addOrderITem = `-- name: AddOrderITem :one
 insert into order_items
-(order_id, product_id, price, quantity, total_amount)
+(order_id, product_id, price, quantity)
 values
-($1, $2, $3, $4, $5)
+($1, $2, $3, $4)
 returning id, order_id, product_id, price, quantity, total_amount, status, created_at, updated_at
 `
 
 type AddOrderITemParams struct {
-	OrderID     uuid.UUID `json:"order_id"`
-	ProductID   uuid.UUID `json:"product_id"`
-	Price       float64   `json:"price"`
-	Quantity    int32     `json:"quantity"`
-	TotalAmount float64   `json:"total_amount"`
+	OrderID   uuid.UUID `json:"order_id"`
+	ProductID uuid.UUID `json:"product_id"`
+	Price     float64   `json:"price"`
+	Quantity  int32     `json:"quantity"`
 }
 
 func (q *Queries) AddOrderITem(ctx context.Context, arg AddOrderITemParams) (OrderItem, error) {
@@ -53,7 +56,6 @@ func (q *Queries) AddOrderITem(ctx context.Context, arg AddOrderITemParams) (Ord
 		arg.ProductID,
 		arg.Price,
 		arg.Quantity,
-		arg.TotalAmount,
 	)
 	var i OrderItem
 	err := row.Scan(
@@ -239,7 +241,7 @@ func (q *Queries) GetAllOrderForAdmin(ctx context.Context) ([]OrderItem, error) 
 }
 
 const getOrderByID = `-- name: GetOrderByID :one
-select id, user_id, created_at, updated_at from orders
+select id, user_id, total_amount, coupon_id, discount_amount, net_amount, created_at, updated_at from orders
 where id = $1
 `
 
@@ -249,6 +251,10 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
+		&i.TotalAmount,
+		&i.CouponID,
+		&i.DiscountAmount,
+		&i.NetAmount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -373,6 +379,54 @@ func (q *Queries) GetOrderItemsBySellerID(ctx context.Context, sellerID uuid.UUI
 	return items, nil
 }
 
+const getOrderItemsBySellerIDAndDateRange = `-- name: GetOrderItemsBySellerIDAndDateRange :many
+select oi.id, oi.order_id, oi.product_id, oi.price, oi.quantity, oi.total_amount, oi.status, oi.created_at, oi.updated_at 
+from order_items oi
+inner join products p on oi.product_id = p.id
+where p.seller_id = $1 
+  and oi.created_at between $2 and $3
+order by oi.created_at desc
+`
+
+type GetOrderItemsBySellerIDAndDateRangeParams struct {
+	SellerID  uuid.UUID `json:"seller_id"`
+	StartDate time.Time `json:"start_date"`
+	EndDate   time.Time `json:"end_date"`
+}
+
+func (q *Queries) GetOrderItemsBySellerIDAndDateRange(ctx context.Context, arg GetOrderItemsBySellerIDAndDateRangeParams) ([]OrderItem, error) {
+	rows, err := q.query(ctx, q.getOrderItemsBySellerIDAndDateRangeStmt, getOrderItemsBySellerIDAndDateRange, arg.SellerID, arg.StartDate, arg.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrderItem{}
+	for rows.Next() {
+		var i OrderItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.Price,
+			&i.Quantity,
+			&i.TotalAmount,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOrderItemsByUserID = `-- name: GetOrderItemsByUserID :many
 select oi.id, oi.order_id, oi.product_id, oi.price, oi.quantity, oi.total_amount, oi.status, oi.created_at, oi.updated_at from order_items oi
 inner join orders o
@@ -417,7 +471,7 @@ func (q *Queries) GetOrderItemsByUserID(ctx context.Context, id uuid.UUID) ([]Or
 }
 
 const getOrdersByUserID = `-- name: GetOrdersByUserID :many
-select id, user_id, created_at, updated_at from orders
+select id, user_id, total_amount, coupon_id, discount_amount, net_amount, created_at, updated_at from orders
 where user_id = $1
 order by created_at desc
 `
@@ -434,6 +488,10 @@ func (q *Queries) GetOrdersByUserID(ctx context.Context, userID uuid.UUID) ([]Or
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
+			&i.TotalAmount,
+			&i.CouponID,
+			&i.DiscountAmount,
+			&i.NetAmount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -462,6 +520,19 @@ func (q *Queries) GetSellerIDFromOrderItemID(ctx context.Context, id uuid.UUID) 
 	var seller_id uuid.UUID
 	err := row.Scan(&seller_id)
 	return seller_id, err
+}
+
+const getTotalAmountOfCartItems = `-- name: GetTotalAmountOfCartItems :one
+select sum(total_amount) as total_amount
+from carts
+where user_id = $1
+`
+
+func (q *Queries) GetTotalAmountOfCartItems(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.queryRow(ctx, q.getTotalAmountOfCartItemsStmt, getTotalAmountOfCartItems, userID)
+	var total_amount int64
+	err := row.Scan(&total_amount)
+	return total_amount, err
 }
 
 const getUserIDFromOrderItemID = `-- name: GetUserIDFromOrderItemID :one

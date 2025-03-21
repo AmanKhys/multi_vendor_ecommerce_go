@@ -18,9 +18,17 @@ const StatusPaymentProcessing = "processing"
 const StatusPaymentSuccessful = "successful"
 const StatusPaymentFailed = "failed"
 const StatusPaymentReturned = "returned"
+const StatusPaymentCancelled = "cancelled"
 
 const StatusVendorPaymentWaiting = "waiting"
 const StatusVendorPaymentPending = "pending"
 const StatusVendorPaymentCancelled = "cancelled"
 const StatusVendorPaymentReceived = "received"
 const StatusVendorPaymentFailed = "failed"
+const PlatformFeePercentage = 0.15
+
+const StatusPaymentMethodCod = "cod"
+const StatusPaymentMethodWallet = "wallet"
+const StatusPaymentMethodRpay = "razorpay"
+
+const EcomName = "Toy Stores Ecom"
