@@ -9,11 +9,16 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"text/template"
+	"time"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
+	helpers "github.com/amankhys/multi_vendor_ecommerce_go/pkg/payment"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
+	env "github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -366,6 +371,9 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 	} else if err != nil {
 		http.Error(w, "internal server error fetching product", http.StatusInternalServerError)
 		return
+	} else if product.Stock == 0 {
+		http.Error(w, "product out of stock. cannot add item to cart", http.StatusBadRequest)
+		return
 	} else if product.Stock < int32(req.Quantity) {
 		Err = append(Err, "product quantity added more than stock. Reverting to the maximum available stock for order.")
 		req.Quantity = int(product.Stock)
@@ -428,6 +436,7 @@ func (u *User) AddCartHandler(w http.ResponseWriter, r *http.Request) {
 	editArg.ID = cartItem.ID
 	if cartItem.Quantity == 20 {
 		Err = append(Err, "cart item already added with maximum possible quantity. Not changing the quantity")
+		editArg.Quantity = cartItem.Quantity
 	} else if cartItem.Quantity < product.Stock {
 		editArg.Quantity = cartItem.Quantity + 1
 	} else {
@@ -477,7 +486,7 @@ func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "invalid request data format", http.StatusBadRequest)
 		return
-	} else if req.Quantity <= 0 {
+	} else if req.Quantity < 0 {
 		http.Error(w, "invalid quantity", http.StatusBadRequest)
 		return
 	} else if req.Quantity > 20 {
@@ -507,6 +516,10 @@ func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
 	cartItem, err := u.DB.GetCartItemByUserIDAndProductID(context.TODO(), getArg)
 	// add product if the product is not in carts;
 	if err == sql.ErrNoRows {
+		if req.Quantity == 0 {
+			http.Error(w, "invalid quantity to add a product on editHandler. change quantity > 0", http.StatusBadRequest)
+			return
+		}
 		var arg db.AddCartItemParams
 		arg.UserID = user.ID
 		arg.ProductID = req.ProductID
@@ -561,7 +574,21 @@ func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
 	// edit cart item when there is an existing cart item for the product
 	var editArg db.EditCartItemByIDParams
 	editArg.ID = cartItem.ID
-	if req.Quantity > int(product.Stock) {
+	if req.Quantity == 0 {
+		var deleteCartArg db.DeleteCartItemByUserIDAndProductIDParams
+		deleteCartArg.ProductID = product.ID
+		deleteCartArg.UserID = user.ID
+		err = u.DB.DeleteCartItemByUserIDAndProductID(context.TODO(), deleteCartArg)
+		if err != nil {
+			log.Warn("error deleting item from carItem when quantity == 0 in EditCartHandler:", err.Error())
+			http.Error(w, "internal error deleting cartItem when qunatity is made zero", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		msg := "successfully deleted cartItem on zero quantity"
+		w.Write([]byte(msg))
+		return
+	} else if req.Quantity > int(product.Stock) {
 		Err = append(Err, "edit cartItem with more quantity than there is stock. Reallocation the cartItem to the maximum possible")
 		editArg.Quantity = product.Stock
 	} else {
@@ -569,8 +596,11 @@ func (u *User) EditCartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// edit the cartItem
 	editedItem, err := u.DB.EditCartItemByID(context.TODO(), editArg)
-	if err != nil {
-
+	if err == sql.ErrNoRows {
+		log.Warn("no rows edited after successful query in cart at EditCartHandler:", err.Error())
+		http.Error(w, "internal error editing cartItem", http.StatusInternalServerError)
+		return
+	} else if err != nil {
 		log.Warn("internal error editing cartItem: ", editArg, err.Error())
 		http.Error(w, "internal error editing cartItem", http.StatusInternalServerError)
 		return
@@ -638,16 +668,10 @@ func (u *User) DeleteCartHandler(w http.ResponseWriter, r *http.Request) {
 	var deleteArg db.DeleteCartItemByUserIDAndProductIDParams
 	deleteArg.ProductID = product.ID
 	deleteArg.UserID = user.ID
-	k, err := u.DB.DeleteCartItemByUserIDAndProductID(context.TODO(), deleteArg)
+	err = u.DB.DeleteCartItemByUserIDAndProductID(context.TODO(), deleteArg)
 	if err != nil {
 		log.Warn("internal error deleting cartItem with valid productID:", err.Error())
 		http.Error(w, "internal error deleting cartItem", http.StatusInternalServerError)
-		return
-	} else if k == 0 {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Header().Set("Content-Type", "text/plain")
-		message := "there was no cartItem with the said productID. No cartItem deleted"
-		w.Write([]byte(message))
 		return
 	}
 
@@ -676,6 +700,7 @@ func (u *User) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	// respOrderItem struct
 	type respOrderItem struct {
 		OrderItemID uuid.UUID `json:"order_item_id"`
+		Status      string    `json:"order_status"`
 		ProductID   uuid.UUID `json:"product_id"`
 		ProductName string    `json:"product_name"`
 		Price       float64   `json:"price"`
@@ -684,8 +709,10 @@ func (u *User) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// respOrder struct
 	type respOrder struct {
-		OrderID    uuid.UUID       `json:"order_id"`
-		OrderItems []respOrderItem `json:"order_items"`
+		OrderID       uuid.UUID       `json:"order_id"`
+		PaymentMethod string          `json:"payment_method"`
+		PaymentStatus string          `json:"payment_status"`
+		OrderItems    []respOrderItem `json:"order_items"`
 	}
 
 	// var respOrders, errors
@@ -700,9 +727,16 @@ func (u *User) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 			Err = append(Err, "error fetching order by orderID:", o.ID.String())
 		} else {
 			temp.OrderID = o.ID
+			payment, err := u.DB.GetPaymentByOrderID(context.TODO(), o.ID)
+			if err != nil {
+				log.Warn("error fetching payment for orderID in GetOrdersHandler:" + err.Error())
+			}
+			temp.PaymentMethod = payment.Method
+			temp.PaymentStatus = payment.Status
 			for _, oi := range orderItems {
 				var orderItem respOrderItem
 				orderItem.OrderItemID = oi.ID
+				orderItem.Status = oi.Status
 				orderItem.ProductID = oi.ProductID
 				orderItem.ProductName = oi.ProductName
 				orderItem.Price = oi.Price
@@ -851,9 +885,8 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		addArg.ProductID = v.ProductID
 		addArg.Price = v.Price
 		addArg.Quantity = v.Quantity
-		addArg.TotalAmount = v.TotalAmount
 		sumTotal += v.TotalAmount
-		_, err = u.DB.AddOrderITem(context.TODO(), addArg)
+		orderItem, err := u.DB.AddOrderITem(context.TODO(), addArg)
 		if err != nil {
 			log.Warn("error adding cartItem to order_item:", err.Error())
 			http.Error(w, "internal error adding cartItem to order_items", http.StatusInternalServerError)
@@ -864,6 +897,26 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 			log.Warn("no product with matching productId from cartItem:", err.Error())
 		} else if err != nil {
 			log.Warn("error executing GetProductByID query:", err.Error())
+		}
+
+		// get sellerID from OrderItemID
+		sellerID, err := u.DB.GetSellerIDFromOrderItemID(context.TODO(), orderItem.ID)
+		if err != nil {
+			log.Warn("error fetching sellerID from orderItemID:", err.Error())
+		}
+		// add vendor payment for each orderItem
+		var addVendorPayArg db.AddVendorPaymentParams
+		addVendorPayArg.OrderItemID = orderItem.ID
+		addVendorPayArg.SellerID = sellerID
+		addVendorPayArg.Status = utils.StatusVendorPaymentWaiting
+		addVendorPayArg.TotalAmount = orderItem.TotalAmount
+		addVendorPayArg.PlatformFee = orderItem.TotalAmount * utils.PlatformFeePercentage
+		addVendorPayArg.CreditAmount = orderItem.TotalAmount * (1 - utils.PlatformFeePercentage)
+		_, err = u.DB.AddVendorPayment(context.TODO(), addVendorPayArg)
+		if err == sql.ErrNoRows {
+			log.Warn("error no vendorPayment done after successful query:", err.Error())
+		} else if err != nil {
+			log.Warn("error failed addVendorPayment in AddCartToOrderHandler:", err.Error())
 		}
 		var decArg db.DecProductStockByIDParams
 		decArg.ProductID = v.ProductID
@@ -877,6 +930,14 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// update  order total amount
+	var updateOrderArg db.UpdateOrderTotalAmountParams
+	updateOrderArg.ID = order.ID
+	updateOrderArg.TotalAmount = sumTotal
+	_, err = u.DB.UpdateOrderTotalAmount(context.TODO(), updateOrderArg)
+	if err != nil {
+		log.Error("error updating order Total amount:", err.Error())
+	}
 	// deleting cartItems after successfully adding cartItems to order
 	err = u.DB.DeleteCartItemsByUserID(context.TODO(), user.ID)
 	if err != nil {
@@ -887,9 +948,19 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	// add sumTotal to payments for the order_id
 	var payArg db.AddPaymentParams
+
+	// take the payment method from url query
+	paymentMethod := r.URL.Query().Get("payment_method")
+	if paymentMethod == utils.StatusPaymentMethodRpay {
+		payArg.Method = utils.StatusPaymentMethodRpay
+	} else if paymentMethod == utils.StatusPaymentMethodWallet {
+		payArg.Method = utils.StatusPaymentMethodWallet
+	} else {
+		paymentMethod = utils.StatusPaymentMethodCod
+	}
+
 	payArg.OrderID = order.ID
-	payArg.Method = "cod"
-	payArg.Status = "processing"
+	payArg.Status = utils.StatusPaymentProcessing
 	payArg.TotalAmount = sumTotal
 	payment, err := u.DB.AddPayment(context.TODO(), payArg)
 	if err != nil {
@@ -1059,6 +1130,8 @@ func (u *User) CancelOrderHandler(w http.ResponseWriter, r *http.Request) {
 	if user.ID == uuid.Nil {
 		return
 	}
+	var messages []string
+	var errors []string
 
 	// get orderID from request params
 	orderIDStr := r.URL.Query().Get("order_id")
@@ -1088,16 +1161,329 @@ func (u *User) CancelOrderHandler(w http.ResponseWriter, r *http.Request) {
 		log.Warn("error cancelling orderItems by orderID in CancelOrderHandler:", err.Error())
 		http.Error(w, "internal error cancelling orderItems by orderID", http.StatusInternalServerError)
 		return
-	} else {
-		err = u.DB.CancelPaymentByOrderID(context.TODO(), orderID)
+	}
+	payment, err := u.DB.GetPaymentByOrderID(context.TODO(), order.ID)
+	if err != nil {
+		log.Warn("error fetching payment from orderID in CancelOrderHandler")
+	} else if payment.Status == utils.StatusPaymentSuccessful {
+		var arg db.AddSavingsToWalletByUserIDParams
+		arg.Savings = payment.TotalAmount
+		arg.UserID = user.ID
+		_, err = u.DB.AddSavingsToWalletByUserID(context.TODO(), arg)
 		if err != nil {
-			log.Warn("error returning payment by orderID in CancelOrderHandler:", err.Error())
-			http.Error(w, "intenral error cancelling payment by orderID after successfully cancelling orderItems", http.StatusInternalServerError)
-			return
+			log.Warn("error transferring refund amount to wallet:", err.Error())
+			messages = append(messages, "error transferring refund amount to wallet")
+		} else {
+			log.Warn("successfully transferred amount to user wallet")
+			messages = append(messages, fmt.Sprintf("successfully transferred cancellation refund amount: %.2f to wallet", payment.TotalAmount))
+		}
+	}
+	err = u.DB.CancelPaymentByOrderID(context.TODO(), orderID)
+	if err != nil {
+		log.Warn("error returning payment by orderID in CancelOrderHandler:", err.Error())
+		http.Error(w, "intenral error cancelling payment by orderID after successfully cancelling orderItems", http.StatusInternalServerError)
+		return
+	}
+	orderItems, err := u.DB.GetOrderItemsByOrderID(context.TODO(), order.ID)
+	if err != nil {
+		log.Warn("error fetching orderItems by ordreID")
+	} else {
+		for _, oi := range orderItems {
+			var vendorPayArg db.EditVendorPaymentStatusByOrderItemIDParams
+			vendorPayArg.OrderItemID = oi.ID
+			vendorPayArg.Status = utils.StatusVendorPaymentCancelled
+			_, err = u.DB.EditVendorPaymentStatusByOrderItemID(context.TODO(), vendorPayArg)
+			if err != nil {
+				log.Warn("error cancelling vendor payment for orderItem:", order.ID.String())
+			}
 		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	message := "successfully cancelled order and the payment"
-	w.Write([]byte(message))
+	var resp struct {
+		Messages []string `json:"messages"`
+		Errors   []string `json:"errors"`
+	}
+	resp.Messages = append(messages, "successfully cancelled order")
+	resp.Errors = errors
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (u *User) MakeOnlinePaymentHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	orderIDStr := r.URL.Query().Get("order_id")
+	orderID, err := uuid.Parse(orderIDStr)
+	if err != nil {
+		http.Error(w, "invalid orderID", http.StatusInternalServerError)
+		return
+	}
+	order, err := u.DB.GetOrderByID(context.TODO(), orderID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid orderID", http.StatusBadRequest)
+		return
+	}
+
+	// RazorpayData holds the dynamic values to be injected into the HTML template
+	type RazorpayData struct {
+		Key           string
+		Amount        int
+		Currency      string
+		EcomName      string
+		Description   string
+		OrderID       string    // for storing orderID we get from razorpay
+		DBOrderID     uuid.UUID // to store our orderID
+		Username      string
+		Email         string
+		Contact       string
+		Errors        []string
+		DisplayAmount float64
+	}
+
+	payment, err := u.DB.GetPaymentByOrderID(context.TODO(), order.ID)
+	var errors []string
+	if err != nil {
+		http.Error(w, "internal error fetching payment for order", http.StatusInternalServerError)
+		log.Warn("error fetching payment for valid orderID in MakeOnlinePaymentHandler:", err.Error())
+		return
+	} else if payment.Status == utils.StatusPaymentCancelled {
+		http.Error(w, "order already cancelled", http.StatusBadRequest)
+		return
+	} else if payment.Status == utils.StatusPaymentSuccessful {
+		http.Error(w, "order payment already successful", http.StatusBadRequest)
+		return
+	} else if payment.CreatedAt.Before(time.Now().Add(-10 * time.Minute)) {
+		var editPaymentStatusArg db.EditPaymentStatusByIDParams
+		editPaymentStatusArg.ID = payment.ID
+		editPaymentStatusArg.Status = utils.StatusPaymentCancelled
+		_, err := u.DB.EditPaymentStatusByID(context.TODO(), editPaymentStatusArg)
+		if err != nil {
+			errors = append(errors, "internal error updating payment status to cancelled")
+			log.Warn("error updating payment status to cancelled in MakeOnlinePayment Handler")
+		}
+		err = u.DB.CancelOrderByID(context.TODO(), orderID)
+		if err != nil {
+			errors = append(errors, "error cancelling order_items for invalid orderID without timeout payment error")
+			log.Warn("internal error cancelling order items for order placed before 10 minutes for razorpay payment.")
+		}
+
+		orderItems, err := u.DB.GetOrderItemsByOrderID(context.TODO(), orderID)
+		if err != nil {
+			errors = append(errors, "error fetching order_items for invalid orderID without timeout payment error")
+			log.Warn("internal error cancelling order items for order placed before 10 minutes for razorpay payment.")
+		}
+
+		for _, oi := range orderItems {
+			var arg db.IncProductStockByIDParams
+			arg.IncQuantity = oi.Quantity
+			arg.ProductID = oi.ProductID
+			_, err = u.DB.IncProductStockByID(context.TODO(), arg)
+			if err != nil {
+				log.Error("error incrementing stock for cancelled order_item in MakeOnlinePaymentHandler")
+			} else {
+				log.Info("successfully restocked product " + oi.ProductName + " on cancel order:")
+			}
+
+			// cancel vendor payments for the respective orders
+			var vendorPayArg db.EditVendorPaymentStatusByOrderItemIDParams
+			vendorPayArg.OrderItemID = oi.ID
+			vendorPayArg.Status = utils.StatusVendorPaymentCancelled
+			_, err = u.DB.EditVendorPaymentStatusByOrderItemID(context.TODO(), vendorPayArg)
+			if err != nil {
+				log.Warn("error cancelling vendor payment for orderItem:", order.ID.String())
+			}
+		}
+		http.Error(w, "cancelled order and payment since time limit exceeded!"+strings.Join(errors, "\n"), http.StatusBadRequest)
+		return
+	}
+
+	// fetch razorpay to give unique orderID that is to be used with its api
+	// in the rpay template when clicking the pay with razorpay button
+	envM, err := env.Read(".env")
+	if err != nil {
+		log.Fatal("error loading .env file in MakeOnlinePaymentHandler")
+	}
+	rpOrderIDStr, err := helpers.ExecuteRazorpay(payment.TotalAmount)
+	if err != nil {
+		log.Warn("error executing razorpay")
+		http.Error(w, "internal error executing razorpay", http.StatusInternalServerError)
+		return
+	}
+
+	// data for the razorpaytemplate
+	data := RazorpayData{
+		Key:           envM[envname.RPID],
+		Amount:        int(payment.TotalAmount) * 100, // Amount in paise (₹500)
+		Currency:      "INR",
+		EcomName:      utils.EcomName,
+		Description:   "Purchase of toys",
+		OrderID:       rpOrderIDStr,
+		DBOrderID:     order.ID,
+		Username:      user.Name,
+		Email:         user.Email,
+		Contact:       strconv.Itoa(int(user.Phone.Int64)),
+		Errors:        errors,
+		DisplayAmount: payment.TotalAmount,
+	}
+
+	// Parse the template file
+	tmpl, err := template.ParseFiles("./static/template/rpay.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		log.Println("Template parsing error:", err)
+		return
+	}
+
+	// Execute the template and pass data
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+		log.Println("Template execution error:", err)
+	}
+
+}
+
+func (u *User) PaymentSuccessHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("enterd payment success handler")
+	type RazorpayResponse struct {
+		PaymentID    string `json:"payment_id"`
+		OrderID      string `json:"order_id"`
+		Signature    string `json:"signature"`
+		DBOrderIDStr string `json:"db_order_id"`
+	}
+	var resp RazorpayResponse
+	json.NewDecoder(r.Body).Decode(&resp)
+
+	if helpers.VerifyRazorpaySignature(resp.OrderID, resp.PaymentID, resp.Signature) {
+		DBOrderID, err := uuid.Parse(resp.DBOrderIDStr)
+		if err != nil {
+			log.Warn("error fetching the dbOrderID from the razorpayResponse in PaymentSuccessHandler")
+			http.Error(w, "error fetching dbOrderID from razorPay to update payment success", http.StatusInternalServerError)
+			return
+		}
+		var editPaymentArg db.EditPaymentByOrderIDParams
+		editPaymentArg.OrderID = DBOrderID
+		editPaymentArg.Status = utils.StatusPaymentSuccessful
+		editPaymentArg.TransactionID.String = resp.PaymentID
+		editPaymentArg.TransactionID.Valid = true
+		payment, err := u.DB.EditPaymentByOrderID(context.TODO(), editPaymentArg)
+		if err != nil {
+			log.Warn("error updating the payment after successful payment using razorpay")
+			http.Error(w, "internal error updating payment after successful payment using razorpay", http.StatusInternalServerError)
+			return
+		}
+		msg := "successfully updated payment status for the order." +
+			"payment method: " + payment.Method + "\n" +
+			"order id: " + payment.OrderID.String()
+		w.WriteHeader(http.StatusOK)
+		w.Header().Add("Content-Type", "text/plain")
+		w.Write([]byte(msg))
+		fmt.Println("Payment verified successfully:", resp.PaymentID)
+		return
+	} else {
+		w.WriteHeader(http.StatusUnauthorized)
+		msg := "failed to verify payment"
+		w.Write([]byte(msg))
+		log.Info("Payment verification failed:", resp.PaymentID)
+		return
+	}
+}
+
+func (u *User) ReturnOrderHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	orderIdStr := r.URL.Query().Get("order_id")
+	orderID, err := uuid.Parse(orderIdStr)
+	if err != nil {
+		http.Error(w, "wrong orderID format", http.StatusBadRequest)
+		return
+	}
+	order, err := u.DB.GetOrderByID(context.TODO(), orderID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid orderID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Error("error fetching order by orderID")
+		http.Error(w, "internal error fetching order by orderID", http.StatusInternalServerError)
+		return
+	} else if order.UserID != user.ID {
+		http.Error(w, "not the current users's order. Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	payment, err := u.DB.GetPaymentByOrderID(context.TODO(), order.ID)
+	if err != nil {
+		log.Warn("error fetching payemnt from ordreID in return ordr handler")
+		http.Error(w, "internal error fetching payment from orderID", http.StatusInternalServerError)
+		return
+	} else if payment.Status == utils.StatusPaymentReturned {
+		http.Error(w, "items already returned and user is refunded", http.StatusBadRequest)
+		return
+	} else if payment.Status == utils.StatusPaymentSuccessful {
+		// exit else if ladder
+		// as status is payment successful and no need to further check before returning order
+	} else {
+		http.Error(w, "cannot return an order which has not been paid for.", http.StatusBadRequest)
+		return
+	}
+
+	var arg db.AddSavingsToWalletByUserIDParams
+	arg.Savings = order.NetAmount
+	arg.UserID = user.ID
+	fmt.Println(arg)
+	_, err = u.DB.AddSavingsToWalletByUserID(context.TODO(), arg)
+	if err != nil {
+		log.Warn("error adding return refund back to user wallet:", err.Error())
+	} else {
+		// edit payment status to be refunded
+		var editPayArg db.EditPaymentStatusByOrderIDParams
+		editPayArg.OrderID = order.ID
+		editPayArg.Status = utils.StatusPaymentReturned
+		_, err = u.DB.EditPaymentStatusByOrderID(context.TODO(), editPayArg)
+		if err != nil {
+			log.Warn("error changing payment status to returned in return order after successful adding money back to users's wallet")
+		}
+
+		// change order_item status to be returned
+		orderItems, err := u.DB.GetOrderItemsByOrderID(context.TODO(), orderID)
+		if err != nil {
+			log.Warn("error fetching orderItems by orderId in ReturnOrderHandler")
+		} else {
+			// if there are no errors fetching order_items
+			// then change the status of each orderItem
+			// and increment the product back to the stock
+			for _, v := range orderItems {
+				var editOIArg db.EditOrderItemStatusByIDParams
+				editOIArg.ID = v.ID
+				editOIArg.Status = utils.StatusOrderReturned
+				newOI, dbErr := u.DB.EditOrderItemStatusByID(context.TODO(), editOIArg)
+				if dbErr != nil {
+					log.Warn("error editing orderItem status in returnOrderHandler after returning payment:", dbErr.Error())
+				} else {
+					msg := fmt.Sprintf("changed oi status from %s to %s ", v.Status, newOI.Status)
+					log.Info(msg)
+				}
+
+				// increment the products back to stock
+				var incArg db.IncProductStockByIDParams
+				incArg.IncQuantity = v.Quantity
+				incArg.ProductID = v.ProductID
+				product, dbErr := u.DB.IncProductStockByID(context.TODO(), incArg)
+				if dbErr != nil {
+					log.Warn("error incrementing stock after returning order in returnOrderHandler:", dbErr.Error())
+				} else {
+					msg := fmt.Sprintf("incremented product:%s of restock quantity: %d(added: %d)", product.Name, product.Stock, incArg.IncQuantity)
+					log.Info(msg)
+				}
+
+			}
+		}
+	}
+
+	msg := "successfully returned order"
+	w.Header().Add("Content-Type", "text/plain")
+	w.Write([]byte(msg))
 }

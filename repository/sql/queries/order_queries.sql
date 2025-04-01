@@ -31,6 +31,12 @@ insert into orders
 values (@user_id)
 returning *;
 
+-- name: UpdateOrderTotalAmount :one
+update orders
+set total_amount = @total_amount, updated_at = current_timestamp
+where id = @id
+returning *;
+
 -- name: DeleteOrderByID :exec
 delete from orders
 where id = $1;

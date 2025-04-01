@@ -1,6 +1,7 @@
 package seller
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -8,11 +9,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
+	"github.com/jung-kurt/gofpdf"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -638,4 +641,154 @@ func (s *Seller) ChangeOrderStatusHandler(w http.ResponseWriter, r *http.Request
 	resp.Message = "successfully updated orderItem status"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Seller) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	startDateStr := r.URL.Query().Get("start_date")
+	endDateStr := r.URL.Query().Get("end_date")
+
+	startDate, err := time.Parse("2006-01-02", startDateStr)
+	if err != nil {
+		http.Error(w, "Invalid start_date format, use YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", endDateStr)
+	if err != nil {
+		http.Error(w, "Invalid end_date format, use YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+
+	orderItems, err := s.DB.GetOrderItemsBySellerIDAndDateRange(context.TODO(), db.GetOrderItemsBySellerIDAndDateRangeParams{
+		SellerID:  user.ID,
+		StartDate: startDate,
+		EndDate:   endDate,
+	})
+	if err != nil {
+		log.Println("Error fetching order items:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	vendorPayments, err := s.DB.GetVendorPaymentsBySellerIDAndDateRange(context.TODO(), db.GetVendorPaymentsBySellerIDAndDateRangeParams{
+		SellerID:  user.ID,
+		StartDate: startDate,
+		EndDate:   endDate,
+	})
+	if err != nil {
+		log.Println("Error fetching vendor payments:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Aggregated calculations
+	totalSales := 0.0
+	totalProfit := 0.0
+	totalPlatformFee := 0.0
+	productSales := make(map[uuid.UUID]map[string]float64)
+
+	for _, payment := range vendorPayments {
+		totalSales += payment.TotalAmount
+		totalProfit += payment.CreditAmount
+		totalPlatformFee += payment.PlatformFee
+
+		if _, exists := productSales[payment.OrderItemID]; !exists {
+			productSales[payment.OrderItemID] = map[string]float64{"sales": 0, "profit": 0, "platform_fee": 0}
+		}
+		productSales[payment.OrderItemID]["sales"] += payment.TotalAmount
+		productSales[payment.OrderItemID]["profit"] += payment.CreditAmount
+		productSales[payment.OrderItemID]["platform_fee"] += payment.PlatformFee
+	}
+
+	// Generate PDF report
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetMargins(10, 10, 10)
+	pdf.AddPage()
+	pdf.SetFont("Arial", "B", 16)
+	pdf.Cell(190, 10, "Sales Report")
+	pdf.Ln(10)
+
+	// Date range
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(95, 10, fmt.Sprintf("Start Date: %s", startDate.Format("2006-01-02")))
+	pdf.Cell(95, 10, fmt.Sprintf("End Date: %s", endDate.Format("2006-01-02")))
+	pdf.Ln(10)
+
+	// Summary
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(190, 8, "Summary")
+	pdf.Ln(8)
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(95, 8, fmt.Sprintf("Total Sales: $%.2f", totalSales))
+	pdf.Cell(95, 8, fmt.Sprintf("Total Profit: $%.2f", totalProfit))
+	pdf.Ln(8)
+	pdf.Cell(95, 8, fmt.Sprintf("Total Platform Fee: $%.2f", totalPlatformFee))
+	pdf.Ln(10)
+
+	// Table Headers
+	pdf.SetFont("Arial", "B", 12)
+	pdf.SetFillColor(200, 200, 200)
+	pdf.CellFormat(60, 8, "Product ID", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(40, 8, "Sales ($)", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(40, 8, "Profit ($)", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(40, 8, "Platform Fee ($)", "1", 1, "C", true, 0, "")
+
+	// Table Content
+	pdf.SetFont("Arial", "", 10)
+	pdf.SetFillColor(240, 240, 240)
+	fill := false
+
+	for productID, data := range productSales {
+		pdf.CellFormat(60, 8, productID.String(), "1", 0, "L", fill, 0, "")
+		pdf.CellFormat(40, 8, fmt.Sprintf("%.2f", data["sales"]), "1", 0, "C", fill, 0, "")
+		pdf.CellFormat(40, 8, fmt.Sprintf("%.2f", data["profit"]), "1", 0, "C", fill, 0, "")
+		pdf.CellFormat(40, 8, fmt.Sprintf("%.2f", data["platform_fee"]), "1", 1, "C", fill, 0, "")
+		fill = !fill
+	}
+
+	// Check if order items exist
+	if len(orderItems) > 0 {
+		pdf.Ln(10)
+		pdf.SetFont("Arial", "B", 12)
+		pdf.Cell(190, 8, "Order Items Details")
+		pdf.Ln(8)
+
+		// Table Headers for Order Items
+		pdf.SetFont("Arial", "B", 12)
+		pdf.SetFillColor(200, 200, 200)
+		pdf.CellFormat(40, 8, "Order ID", "1", 0, "C", true, 0, "")
+		pdf.CellFormat(60, 8, "Product ID", "1", 0, "C", true, 0, "")
+		pdf.CellFormat(40, 8, "Quantity", "1", 0, "C", true, 0, "")
+		pdf.CellFormat(40, 8, "Price ($)", "1", 1, "C", true, 0, "")
+
+		// Table Content
+		pdf.SetFont("Arial", "", 10)
+		pdf.SetFillColor(240, 240, 240)
+		fill = false
+
+		for _, order := range orderItems {
+			pdf.CellFormat(40, 8, order.OrderID.String(), "1", 0, "L", fill, 0, "")
+			pdf.CellFormat(60, 8, order.ProductID.String(), "1", 0, "L", fill, 0, "")
+			pdf.CellFormat(40, 8, fmt.Sprintf("%d", order.Quantity), "1", 0, "C", fill, 0, "")
+			pdf.CellFormat(40, 8, fmt.Sprintf("%.2f", order.Price), "1", 1, "C", fill, 0, "")
+			fill = !fill
+		}
+	}
+
+	// Output PDF
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		http.Error(w, "Error generating PDF", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", "attachment; filename=sales_report.pdf")
+	w.Write(buf.Bytes())
 }

@@ -10,12 +10,12 @@ where user_id = $1;
 
 -- name: AddSavingsToWalletByUserID :one
 update wallets
-set savings = savings + $2, updated_at = current_timestamp
-where user_id = $1 and (savings + $2) >= 0
+set savings = savings + @savings, updated_at = current_timestamp
+where user_id = @user_id and (savings + @savings) >= 0
 returning id, savings;
 
 -- name: RetractSavingsFromWalletByUserID :one
 update wallets
-set savings = savings - $2, updated_at = current_timestamp
-where user_id = $1
+set savings = savings - @savings, updated_at = current_timestamp
+where user_id = @user_id
 returning id, savings;

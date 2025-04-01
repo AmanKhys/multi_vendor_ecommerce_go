@@ -549,3 +549,31 @@ func (q *Queries) GetUserIDFromOrderItemID(ctx context.Context, id uuid.UUID) (u
 	err := row.Scan(&id)
 	return id, err
 }
+
+const updateOrderTotalAmount = `-- name: UpdateOrderTotalAmount :one
+update orders
+set total_amount = $1, updated_at = current_timestamp
+where id = $2
+returning id, user_id, total_amount, coupon_id, discount_amount, net_amount, created_at, updated_at
+`
+
+type UpdateOrderTotalAmountParams struct {
+	TotalAmount float64   `json:"total_amount"`
+	ID          uuid.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateOrderTotalAmount(ctx context.Context, arg UpdateOrderTotalAmountParams) (Order, error) {
+	row := q.queryRow(ctx, q.updateOrderTotalAmountStmt, updateOrderTotalAmount, arg.TotalAmount, arg.ID)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TotalAmount,
+		&i.CouponID,
+		&i.DiscountAmount,
+		&i.NetAmount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

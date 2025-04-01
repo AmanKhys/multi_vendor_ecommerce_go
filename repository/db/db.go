@@ -36,6 +36,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addCateogryStmt, err = db.PrepareContext(ctx, addCateogry); err != nil {
 		return nil, fmt.Errorf("error preparing query AddCateogry: %w", err)
 	}
+	if q.addCouponStmt, err = db.PrepareContext(ctx, addCoupon); err != nil {
+		return nil, fmt.Errorf("error preparing query AddCoupon: %w", err)
+	}
 	if q.addForgotOTPByUserIDStmt, err = db.PrepareContext(ctx, addForgotOTPByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query AddForgotOTPByUserID: %w", err)
 	}
@@ -123,6 +126,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteCategoryByNameStmt, err = db.PrepareContext(ctx, deleteCategoryByName); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteCategoryByName: %w", err)
 	}
+	if q.deleteCouponByIDStmt, err = db.PrepareContext(ctx, deleteCouponByID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteCouponByID: %w", err)
+	}
 	if q.deleteForgotOTPByEmailStmt, err = db.PrepareContext(ctx, deleteForgotOTPByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteForgotOTPByEmail: %w", err)
 	}
@@ -152,6 +158,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.editCategoryNameByNameStmt, err = db.PrepareContext(ctx, editCategoryNameByName); err != nil {
 		return nil, fmt.Errorf("error preparing query EditCategoryNameByName: %w", err)
+	}
+	if q.editCouponByIDStmt, err = db.PrepareContext(ctx, editCouponByID); err != nil {
+		return nil, fmt.Errorf("error preparing query EditCouponByID: %w", err)
 	}
 	if q.editOrderItemStatusByIDStmt, err = db.PrepareContext(ctx, editOrderItemStatusByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditOrderItemStatusByID: %w", err)
@@ -192,6 +201,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAllCategoriesForAdminStmt, err = db.PrepareContext(ctx, getAllCategoriesForAdmin); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllCategoriesForAdmin: %w", err)
 	}
+	if q.getAllCouponsStmt, err = db.PrepareContext(ctx, getAllCoupons); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAllCoupons: %w", err)
+	}
+	if q.getAllCouponsForAdminStmt, err = db.PrepareContext(ctx, getAllCouponsForAdmin); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAllCouponsForAdmin: %w", err)
+	}
 	if q.getAllOrderForAdminStmt, err = db.PrepareContext(ctx, getAllOrderForAdmin); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllOrderForAdmin: %w", err)
 	}
@@ -230,6 +245,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getCategoryNamesOfProductByIDStmt, err = db.PrepareContext(ctx, getCategoryNamesOfProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCategoryNamesOfProductByID: %w", err)
+	}
+	if q.getCouponByNameStmt, err = db.PrepareContext(ctx, getCouponByName); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCouponByName: %w", err)
 	}
 	if q.getOrderByIDStmt, err = db.PrepareContext(ctx, getOrderByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrderByID: %w", err)
@@ -327,6 +345,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.unblockUserByIDStmt, err = db.PrepareContext(ctx, unblockUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query UnblockUserByID: %w", err)
 	}
+	if q.updateOrderTotalAmountStmt, err = db.PrepareContext(ctx, updateOrderTotalAmount); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateOrderTotalAmount: %w", err)
+	}
 	if q.verifySellerByIDStmt, err = db.PrepareContext(ctx, verifySellerByID); err != nil {
 		return nil, fmt.Errorf("error preparing query VerifySellerByID: %w", err)
 	}
@@ -359,6 +380,11 @@ func (q *Queries) Close() error {
 	if q.addCateogryStmt != nil {
 		if cerr := q.addCateogryStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addCateogryStmt: %w", cerr)
+		}
+	}
+	if q.addCouponStmt != nil {
+		if cerr := q.addCouponStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addCouponStmt: %w", cerr)
 		}
 	}
 	if q.addForgotOTPByUserIDStmt != nil {
@@ -506,6 +532,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteCategoryByNameStmt: %w", cerr)
 		}
 	}
+	if q.deleteCouponByIDStmt != nil {
+		if cerr := q.deleteCouponByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteCouponByIDStmt: %w", cerr)
+		}
+	}
 	if q.deleteForgotOTPByEmailStmt != nil {
 		if cerr := q.deleteForgotOTPByEmailStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteForgotOTPByEmailStmt: %w", cerr)
@@ -554,6 +585,11 @@ func (q *Queries) Close() error {
 	if q.editCategoryNameByNameStmt != nil {
 		if cerr := q.editCategoryNameByNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing editCategoryNameByNameStmt: %w", cerr)
+		}
+	}
+	if q.editCouponByIDStmt != nil {
+		if cerr := q.editCouponByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editCouponByIDStmt: %w", cerr)
 		}
 	}
 	if q.editOrderItemStatusByIDStmt != nil {
@@ -621,6 +657,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getAllCategoriesForAdminStmt: %w", cerr)
 		}
 	}
+	if q.getAllCouponsStmt != nil {
+		if cerr := q.getAllCouponsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAllCouponsStmt: %w", cerr)
+		}
+	}
+	if q.getAllCouponsForAdminStmt != nil {
+		if cerr := q.getAllCouponsForAdminStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAllCouponsForAdminStmt: %w", cerr)
+		}
+	}
 	if q.getAllOrderForAdminStmt != nil {
 		if cerr := q.getAllOrderForAdminStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getAllOrderForAdminStmt: %w", cerr)
@@ -684,6 +730,11 @@ func (q *Queries) Close() error {
 	if q.getCategoryNamesOfProductByIDStmt != nil {
 		if cerr := q.getCategoryNamesOfProductByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCategoryNamesOfProductByIDStmt: %w", cerr)
+		}
+	}
+	if q.getCouponByNameStmt != nil {
+		if cerr := q.getCouponByNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCouponByNameStmt: %w", cerr)
 		}
 	}
 	if q.getOrderByIDStmt != nil {
@@ -846,6 +897,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing unblockUserByIDStmt: %w", cerr)
 		}
 	}
+	if q.updateOrderTotalAmountStmt != nil {
+		if cerr := q.updateOrderTotalAmountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateOrderTotalAmountStmt: %w", cerr)
+		}
+	}
 	if q.verifySellerByIDStmt != nil {
 		if cerr := q.verifySellerByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing verifySellerByIDStmt: %w", cerr)
@@ -904,6 +960,7 @@ type Queries struct {
 	addAndVerifyUserStmt                        *sql.Stmt
 	addCartItemStmt                             *sql.Stmt
 	addCateogryStmt                             *sql.Stmt
+	addCouponStmt                               *sql.Stmt
 	addForgotOTPByUserIDStmt                    *sql.Stmt
 	addOTPStmt                                  *sql.Stmt
 	addOrderStmt                                *sql.Stmt
@@ -933,6 +990,7 @@ type Queries struct {
 	deleteCartItemByUserIDAndProductIDStmt      *sql.Stmt
 	deleteCartItemsByUserIDStmt                 *sql.Stmt
 	deleteCategoryByNameStmt                    *sql.Stmt
+	deleteCouponByIDStmt                        *sql.Stmt
 	deleteForgotOTPByEmailStmt                  *sql.Stmt
 	deleteOTPByEmailStmt                        *sql.Stmt
 	deleteOrderByIDStmt                         *sql.Stmt
@@ -943,6 +1001,7 @@ type Queries struct {
 	editAddressByIDStmt                         *sql.Stmt
 	editCartItemByIDStmt                        *sql.Stmt
 	editCategoryNameByNameStmt                  *sql.Stmt
+	editCouponByIDStmt                          *sql.Stmt
 	editOrderItemStatusByIDStmt                 *sql.Stmt
 	editPaymentByOrderIDStmt                    *sql.Stmt
 	editPaymentStatusByIDStmt                   *sql.Stmt
@@ -956,6 +1015,8 @@ type Queries struct {
 	getAddressesByUserIDStmt                    *sql.Stmt
 	getAllCategoriesStmt                        *sql.Stmt
 	getAllCategoriesForAdminStmt                *sql.Stmt
+	getAllCouponsStmt                           *sql.Stmt
+	getAllCouponsForAdminStmt                   *sql.Stmt
 	getAllOrderForAdminStmt                     *sql.Stmt
 	getAllProductsStmt                          *sql.Stmt
 	getAllProductsForAdminStmt                  *sql.Stmt
@@ -969,6 +1030,7 @@ type Queries struct {
 	getCategoryByIDStmt                         *sql.Stmt
 	getCategoryByNameStmt                       *sql.Stmt
 	getCategoryNamesOfProductByIDStmt           *sql.Stmt
+	getCouponByNameStmt                         *sql.Stmt
 	getOrderByIDStmt                            *sql.Stmt
 	getOrderItemByIDStmt                        *sql.Stmt
 	getOrderItemsByOrderIDStmt                  *sql.Stmt
@@ -1001,6 +1063,7 @@ type Queries struct {
 	incProductStockByIDStmt                     *sql.Stmt
 	retractSavingsFromWalletByUserIDStmt        *sql.Stmt
 	unblockUserByIDStmt                         *sql.Stmt
+	updateOrderTotalAmountStmt                  *sql.Stmt
 	verifySellerByIDStmt                        *sql.Stmt
 	verifySellerEmailByIDStmt                   *sql.Stmt
 	verifyUserByIDStmt                          *sql.Stmt
@@ -1014,6 +1077,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addAndVerifyUserStmt:                        q.addAndVerifyUserStmt,
 		addCartItemStmt:                             q.addCartItemStmt,
 		addCateogryStmt:                             q.addCateogryStmt,
+		addCouponStmt:                               q.addCouponStmt,
 		addForgotOTPByUserIDStmt:                    q.addForgotOTPByUserIDStmt,
 		addOTPStmt:                                  q.addOTPStmt,
 		addOrderStmt:                                q.addOrderStmt,
@@ -1043,6 +1107,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteCartItemByUserIDAndProductIDStmt:      q.deleteCartItemByUserIDAndProductIDStmt,
 		deleteCartItemsByUserIDStmt:                 q.deleteCartItemsByUserIDStmt,
 		deleteCategoryByNameStmt:                    q.deleteCategoryByNameStmt,
+		deleteCouponByIDStmt:                        q.deleteCouponByIDStmt,
 		deleteForgotOTPByEmailStmt:                  q.deleteForgotOTPByEmailStmt,
 		deleteOTPByEmailStmt:                        q.deleteOTPByEmailStmt,
 		deleteOrderByIDStmt:                         q.deleteOrderByIDStmt,
@@ -1053,6 +1118,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		editAddressByIDStmt:                         q.editAddressByIDStmt,
 		editCartItemByIDStmt:                        q.editCartItemByIDStmt,
 		editCategoryNameByNameStmt:                  q.editCategoryNameByNameStmt,
+		editCouponByIDStmt:                          q.editCouponByIDStmt,
 		editOrderItemStatusByIDStmt:                 q.editOrderItemStatusByIDStmt,
 		editPaymentByOrderIDStmt:                    q.editPaymentByOrderIDStmt,
 		editPaymentStatusByIDStmt:                   q.editPaymentStatusByIDStmt,
@@ -1066,6 +1132,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAddressesByUserIDStmt:                    q.getAddressesByUserIDStmt,
 		getAllCategoriesStmt:                        q.getAllCategoriesStmt,
 		getAllCategoriesForAdminStmt:                q.getAllCategoriesForAdminStmt,
+		getAllCouponsStmt:                           q.getAllCouponsStmt,
+		getAllCouponsForAdminStmt:                   q.getAllCouponsForAdminStmt,
 		getAllOrderForAdminStmt:                     q.getAllOrderForAdminStmt,
 		getAllProductsStmt:                          q.getAllProductsStmt,
 		getAllProductsForAdminStmt:                  q.getAllProductsForAdminStmt,
@@ -1079,6 +1147,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getCategoryByIDStmt:                         q.getCategoryByIDStmt,
 		getCategoryByNameStmt:                       q.getCategoryByNameStmt,
 		getCategoryNamesOfProductByIDStmt:           q.getCategoryNamesOfProductByIDStmt,
+		getCouponByNameStmt:                         q.getCouponByNameStmt,
 		getOrderByIDStmt:                            q.getOrderByIDStmt,
 		getOrderItemByIDStmt:                        q.getOrderItemByIDStmt,
 		getOrderItemsByOrderIDStmt:                  q.getOrderItemsByOrderIDStmt,
@@ -1111,6 +1180,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		incProductStockByIDStmt:                     q.incProductStockByIDStmt,
 		retractSavingsFromWalletByUserIDStmt:        q.retractSavingsFromWalletByUserIDStmt,
 		unblockUserByIDStmt:                         q.unblockUserByIDStmt,
+		updateOrderTotalAmountStmt:                  q.updateOrderTotalAmountStmt,
 		verifySellerByIDStmt:                        q.verifySellerByIDStmt,
 		verifySellerEmailByIDStmt:                   q.verifySellerEmailByIDStmt,
 		verifyUserByIDStmt:                          q.verifyUserByIDStmt,

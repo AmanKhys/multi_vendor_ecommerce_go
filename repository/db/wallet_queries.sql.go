@@ -13,14 +13,14 @@ import (
 
 const addSavingsToWalletByUserID = `-- name: AddSavingsToWalletByUserID :one
 update wallets
-set savings = savings + $2, updated_at = current_timestamp
-where user_id = $1 and (savings + $2) >= 0
+set savings = savings + $1, updated_at = current_timestamp
+where user_id = $2 and (savings + $1) >= 0
 returning id, savings
 `
 
 type AddSavingsToWalletByUserIDParams struct {
-	UserID  uuid.UUID `json:"user_id"`
 	Savings float64   `json:"savings"`
+	UserID  uuid.UUID `json:"user_id"`
 }
 
 type AddSavingsToWalletByUserIDRow struct {
@@ -29,7 +29,7 @@ type AddSavingsToWalletByUserIDRow struct {
 }
 
 func (q *Queries) AddSavingsToWalletByUserID(ctx context.Context, arg AddSavingsToWalletByUserIDParams) (AddSavingsToWalletByUserIDRow, error) {
-	row := q.queryRow(ctx, q.addSavingsToWalletByUserIDStmt, addSavingsToWalletByUserID, arg.UserID, arg.Savings)
+	row := q.queryRow(ctx, q.addSavingsToWalletByUserIDStmt, addSavingsToWalletByUserID, arg.Savings, arg.UserID)
 	var i AddSavingsToWalletByUserIDRow
 	err := row.Scan(&i.ID, &i.Savings)
 	return i, err
@@ -73,14 +73,14 @@ func (q *Queries) GetWalletByUserID(ctx context.Context, userID uuid.UUID) (GetW
 
 const retractSavingsFromWalletByUserID = `-- name: RetractSavingsFromWalletByUserID :one
 update wallets
-set savings = savings - $2, updated_at = current_timestamp
-where user_id = $1
+set savings = savings - $1, updated_at = current_timestamp
+where user_id = $2
 returning id, savings
 `
 
 type RetractSavingsFromWalletByUserIDParams struct {
-	UserID  uuid.UUID `json:"user_id"`
 	Savings float64   `json:"savings"`
+	UserID  uuid.UUID `json:"user_id"`
 }
 
 type RetractSavingsFromWalletByUserIDRow struct {
@@ -89,7 +89,7 @@ type RetractSavingsFromWalletByUserIDRow struct {
 }
 
 func (q *Queries) RetractSavingsFromWalletByUserID(ctx context.Context, arg RetractSavingsFromWalletByUserIDParams) (RetractSavingsFromWalletByUserIDRow, error) {
-	row := q.queryRow(ctx, q.retractSavingsFromWalletByUserIDStmt, retractSavingsFromWalletByUserID, arg.UserID, arg.Savings)
+	row := q.queryRow(ctx, q.retractSavingsFromWalletByUserIDStmt, retractSavingsFromWalletByUserID, arg.Savings, arg.UserID)
 	var i RetractSavingsFromWalletByUserIDRow
 	err := row.Scan(&i.ID, &i.Savings)
 	return i, err

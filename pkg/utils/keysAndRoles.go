@@ -13,6 +13,7 @@ const StatusOrderProcessing = "processing"
 const StatusOrderPending = "pending"
 const StatusOrderDelivered = "delivered"
 const StatusOrderCancelled = "cancelled"
+const StatusOrderReturned = "returned"
 
 const StatusPaymentProcessing = "processing"
 const StatusPaymentSuccessful = "successful"

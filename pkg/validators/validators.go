@@ -18,6 +18,8 @@ var (
 	productNameRegex = regexp.MustCompile(`^[a-zA-Z0-9]{3,}[a-zA-Z0-9 ]*$`)
 
 	addressRegex = regexp.MustCompile(`^[a-zA-Z0-9]{3,}[a-zA-Z0-9' ]*$`)
+
+	couponNameRegex = regexp.MustCompile(`^[A-Z0-9]{3,}$`)
 )
 
 func ValidateUUIDStr(uuidStr string) bool {
@@ -77,4 +79,12 @@ func ValidateAddress(address string) bool {
 
 func ValidatePincode(pincode int) bool {
 	return (pincode >= 100000 && pincode <= 999999)
+}
+
+func ValidateCouponName(name string) bool {
+	return couponNameRegex.MatchString(name)
+}
+
+func ValidateCouponPrice(price float64) bool {
+	return price > 0
 }

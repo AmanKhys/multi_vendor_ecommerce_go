@@ -14,5 +14,7 @@ require (
 
 require (
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
+	github.com/jung-kurt/gofpdf v1.16.2 // indirect
+	github.com/razorpay/razorpay-go v1.3.2 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 )

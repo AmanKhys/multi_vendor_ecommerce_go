@@ -210,6 +210,7 @@ CREATE TABLE IF NOT EXISTS coupons (
     name TEXT UNIQUE NOT NULL CHECK (name ~ '^[A-Z0-9]{3,}$'),
     trigger_price NUMERIC(10, 2) NOT NULL CHECK (trigger_price > 0),
     discount_amount NUMERIC(10, 2) NOT NULL CHECK (discount_amount <= trigger_price),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at)
 );

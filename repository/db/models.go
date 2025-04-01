@@ -55,6 +55,7 @@ type Coupon struct {
 	Name           string    `json:"name"`
 	TriggerPrice   float64   `json:"trigger_price"`
 	DiscountAmount float64   `json:"discount_amount"`
+	IsDeleted      bool      `json:"is_deleted"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
