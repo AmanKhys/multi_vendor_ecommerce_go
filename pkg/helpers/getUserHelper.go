@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
@@ -16,6 +15,5 @@ func (h *Helper) GetUserHelper(w http.ResponseWriter, r *http.Request) db.GetUse
 		http.Error(w, "internal server error marshalling user from request context.", http.StatusInternalServerError)
 		return db.GetUserBySessionIDRow{}
 	}
-	fmt.Println(user.ID.String())
 	return user
 }
