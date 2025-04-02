@@ -24,3 +24,9 @@ insert into coupons
 values
 ($1, $2, $3)
 returning *;
+
+-- name: DeleteCouponByName :one
+update coupons
+set is_deleted = true, updated_at = current_timestamp
+where name = $1
+returning *;

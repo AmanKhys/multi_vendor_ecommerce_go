@@ -50,6 +50,28 @@ func (q *Queries) DeleteCouponByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const deleteCouponByName = `-- name: DeleteCouponByName :one
+update coupons
+set is_deleted = true, updated_at = current_timestamp
+where name = $1
+returning id, name, trigger_price, discount_amount, is_deleted, created_at, updated_at
+`
+
+func (q *Queries) DeleteCouponByName(ctx context.Context, name string) (Coupon, error) {
+	row := q.queryRow(ctx, q.deleteCouponByNameStmt, deleteCouponByName, name)
+	var i Coupon
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TriggerPrice,
+		&i.DiscountAmount,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const editCouponByID = `-- name: EditCouponByID :one
 update coupons
 set name = $1, trigger_price = $2, discount_amount = $3,

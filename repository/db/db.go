@@ -129,6 +129,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteCouponByIDStmt, err = db.PrepareContext(ctx, deleteCouponByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteCouponByID: %w", err)
 	}
+	if q.deleteCouponByNameStmt, err = db.PrepareContext(ctx, deleteCouponByName); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteCouponByName: %w", err)
+	}
 	if q.deleteForgotOTPByEmailStmt, err = db.PrepareContext(ctx, deleteForgotOTPByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteForgotOTPByEmail: %w", err)
 	}
@@ -535,6 +538,11 @@ func (q *Queries) Close() error {
 	if q.deleteCouponByIDStmt != nil {
 		if cerr := q.deleteCouponByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteCouponByIDStmt: %w", cerr)
+		}
+	}
+	if q.deleteCouponByNameStmt != nil {
+		if cerr := q.deleteCouponByNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteCouponByNameStmt: %w", cerr)
 		}
 	}
 	if q.deleteForgotOTPByEmailStmt != nil {
@@ -991,6 +999,7 @@ type Queries struct {
 	deleteCartItemsByUserIDStmt                 *sql.Stmt
 	deleteCategoryByNameStmt                    *sql.Stmt
 	deleteCouponByIDStmt                        *sql.Stmt
+	deleteCouponByNameStmt                      *sql.Stmt
 	deleteForgotOTPByEmailStmt                  *sql.Stmt
 	deleteOTPByEmailStmt                        *sql.Stmt
 	deleteOrderByIDStmt                         *sql.Stmt
@@ -1108,6 +1117,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteCartItemsByUserIDStmt:                 q.deleteCartItemsByUserIDStmt,
 		deleteCategoryByNameStmt:                    q.deleteCategoryByNameStmt,
 		deleteCouponByIDStmt:                        q.deleteCouponByIDStmt,
+		deleteCouponByNameStmt:                      q.deleteCouponByNameStmt,
 		deleteForgotOTPByEmailStmt:                  q.deleteForgotOTPByEmailStmt,
 		deleteOTPByEmailStmt:                        q.deleteOTPByEmailStmt,
 		deleteOrderByIDStmt:                         q.deleteOrderByIDStmt,

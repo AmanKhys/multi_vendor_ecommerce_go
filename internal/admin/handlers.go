@@ -527,13 +527,13 @@ func (a *Admin) AddCouponHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "wrong request body format", http.StatusBadRequest)
 		return
 	}
-	if validators.ValidateCouponName(req.Name) {
+	if !validators.ValidateCouponName(req.Name) {
 		errors = append(errors, "invalid name")
 	}
-	if validators.ValidateCouponPrice(req.TriggerPrice) {
+	if !validators.ValidateCouponPrice(req.TriggerPrice) {
 		errors = append(errors, "invalid trigger price")
 	}
-	if validators.ValidateCouponPrice(req.DiscountAmount) {
+	if !validators.ValidateCouponPrice(req.DiscountAmount) {
 		errors = append(errors, "invalid discount amount")
 	}
 	if req.TriggerPrice <= req.DiscountAmount {
@@ -541,7 +541,7 @@ func (a *Admin) AddCouponHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(errors) > 0 {
-		http.Error(w, strings.Join(errors, "/n"), http.StatusBadRequest)
+		http.Error(w, strings.Join(errors, "\n"), http.StatusBadRequest)
 		return
 	}
 
@@ -636,4 +636,26 @@ func (a *Admin) DeleteCouponHandler(w http.ResponseWriter, r *http.Request) {
 	if user.ID == uuid.Nil {
 		return
 	}
+
+	couponName := r.URL.Query().Get("coupon_name")
+	coupon, err := a.DB.DeleteCouponByName(context.TODO(), couponName)
+	if err != nil {
+		log.Error("error soft deleting coupon:", err.Error())
+		http.Error(w, "internal error soft deleting coupon", http.StatusInternalServerError)
+		return
+	} else if coupon.IsDeleted {
+		msg := fmt.Sprintf("coupon %s already deleted.", coupon.Name)
+		http.Error(w, msg, http.StatusForbidden)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	var resp struct {
+		CouponName string `josn:"coupon_name"`
+		Message    string `json:"message"`
+	}
+	resp.CouponName = coupon.Name
+	resp.Message = "coupon has been successfully deleted."
+	json.NewEncoder(w).Encode(resp)
+
 }

@@ -36,10 +36,12 @@ cron jobs /tickers...
 
 
 //detailed pending
-1. cancel order..check payment status/method and act accordingly to add money to wallet
+1. cancel order..check payment status/method and act accordingly to add money to wallet...done
 2. add coupon to create order via couponName. make it so that orderItems cannot be 
 - individually cancelled on that event
-3. cancelOrder/cancelOrderItem to refund money back to wallet when respective conditions are method
+3. cancelOrder/cancelOrderItem to refund money back to wallet when respective conditions are method...
+-- cancelOrder..done
+-- cancelOrderItem... not done
 4. detailed sales report including the summary for the admin
 -- total debited amount through coupons
 -- total earnings/sales happened for all vendors/
