@@ -46,6 +46,8 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
+	// remove void orders and payments according to it;
+	go OrdersCron()
 	log.Printf("Server running on port %d in %s", cfg.port, cfg.env)
 	err = srv.ListenAndServe()
 	if err != nil {

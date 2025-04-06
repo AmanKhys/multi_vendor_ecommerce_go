@@ -93,6 +93,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.cancelPaymentByOrderIDStmt, err = db.PrepareContext(ctx, cancelPaymentByOrderID); err != nil {
 		return nil, fmt.Errorf("error preparing query CancelPaymentByOrderID: %w", err)
 	}
+	if q.cancelVendorPaymentsByOrderIDStmt, err = db.PrepareContext(ctx, cancelVendorPaymentsByOrderID); err != nil {
+		return nil, fmt.Errorf("error preparing query CancelVendorPaymentsByOrderID: %w", err)
+	}
 	if q.changeNameByUserIDStmt, err = db.PrepareContext(ctx, changeNameByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query ChangeNameByUserID: %w", err)
 	}
@@ -165,6 +168,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.editCouponByIDStmt, err = db.PrepareContext(ctx, editCouponByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditCouponByID: %w", err)
 	}
+	if q.editOrderAmountByIDStmt, err = db.PrepareContext(ctx, editOrderAmountByID); err != nil {
+		return nil, fmt.Errorf("error preparing query EditOrderAmountByID: %w", err)
+	}
 	if q.editOrderItemStatusByIDStmt, err = db.PrepareContext(ctx, editOrderItemStatusByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditOrderItemStatusByID: %w", err)
 	}
@@ -210,8 +216,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAllCouponsForAdminStmt, err = db.PrepareContext(ctx, getAllCouponsForAdmin); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllCouponsForAdmin: %w", err)
 	}
-	if q.getAllOrderForAdminStmt, err = db.PrepareContext(ctx, getAllOrderForAdmin); err != nil {
-		return nil, fmt.Errorf("error preparing query GetAllOrderForAdmin: %w", err)
+	if q.getAllOrderItemsForAdminStmt, err = db.PrepareContext(ctx, getAllOrderItemsForAdmin); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAllOrderItemsForAdmin: %w", err)
+	}
+	if q.getAllOrdersStmt, err = db.PrepareContext(ctx, getAllOrders); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAllOrders: %w", err)
 	}
 	if q.getAllProductsStmt, err = db.PrepareContext(ctx, getAllProducts); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAllProducts: %w", err)
@@ -480,6 +489,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing cancelPaymentByOrderIDStmt: %w", cerr)
 		}
 	}
+	if q.cancelVendorPaymentsByOrderIDStmt != nil {
+		if cerr := q.cancelVendorPaymentsByOrderIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing cancelVendorPaymentsByOrderIDStmt: %w", cerr)
+		}
+	}
 	if q.changeNameByUserIDStmt != nil {
 		if cerr := q.changeNameByUserIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing changeNameByUserIDStmt: %w", cerr)
@@ -600,6 +614,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing editCouponByIDStmt: %w", cerr)
 		}
 	}
+	if q.editOrderAmountByIDStmt != nil {
+		if cerr := q.editOrderAmountByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editOrderAmountByIDStmt: %w", cerr)
+		}
+	}
 	if q.editOrderItemStatusByIDStmt != nil {
 		if cerr := q.editOrderItemStatusByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing editOrderItemStatusByIDStmt: %w", cerr)
@@ -675,9 +694,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getAllCouponsForAdminStmt: %w", cerr)
 		}
 	}
-	if q.getAllOrderForAdminStmt != nil {
-		if cerr := q.getAllOrderForAdminStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getAllOrderForAdminStmt: %w", cerr)
+	if q.getAllOrderItemsForAdminStmt != nil {
+		if cerr := q.getAllOrderItemsForAdminStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAllOrderItemsForAdminStmt: %w", cerr)
+		}
+	}
+	if q.getAllOrdersStmt != nil {
+		if cerr := q.getAllOrdersStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAllOrdersStmt: %w", cerr)
 		}
 	}
 	if q.getAllProductsStmt != nil {
@@ -987,6 +1011,7 @@ type Queries struct {
 	blockUserByIDStmt                           *sql.Stmt
 	cancelOrderByIDStmt                         *sql.Stmt
 	cancelPaymentByOrderIDStmt                  *sql.Stmt
+	cancelVendorPaymentsByOrderIDStmt           *sql.Stmt
 	changeNameByUserIDStmt                      *sql.Stmt
 	changeOrderItemStatusByIDStmt               *sql.Stmt
 	changePasswordByUserIDStmt                  *sql.Stmt
@@ -1011,6 +1036,7 @@ type Queries struct {
 	editCartItemByIDStmt                        *sql.Stmt
 	editCategoryNameByNameStmt                  *sql.Stmt
 	editCouponByIDStmt                          *sql.Stmt
+	editOrderAmountByIDStmt                     *sql.Stmt
 	editOrderItemStatusByIDStmt                 *sql.Stmt
 	editPaymentByOrderIDStmt                    *sql.Stmt
 	editPaymentStatusByIDStmt                   *sql.Stmt
@@ -1026,7 +1052,8 @@ type Queries struct {
 	getAllCategoriesForAdminStmt                *sql.Stmt
 	getAllCouponsStmt                           *sql.Stmt
 	getAllCouponsForAdminStmt                   *sql.Stmt
-	getAllOrderForAdminStmt                     *sql.Stmt
+	getAllOrderItemsForAdminStmt                *sql.Stmt
+	getAllOrdersStmt                            *sql.Stmt
 	getAllProductsStmt                          *sql.Stmt
 	getAllProductsForAdminStmt                  *sql.Stmt
 	getAllSessionsByUserIDStmt                  *sql.Stmt
@@ -1105,6 +1132,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		blockUserByIDStmt:                           q.blockUserByIDStmt,
 		cancelOrderByIDStmt:                         q.cancelOrderByIDStmt,
 		cancelPaymentByOrderIDStmt:                  q.cancelPaymentByOrderIDStmt,
+		cancelVendorPaymentsByOrderIDStmt:           q.cancelVendorPaymentsByOrderIDStmt,
 		changeNameByUserIDStmt:                      q.changeNameByUserIDStmt,
 		changeOrderItemStatusByIDStmt:               q.changeOrderItemStatusByIDStmt,
 		changePasswordByUserIDStmt:                  q.changePasswordByUserIDStmt,
@@ -1129,6 +1157,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		editCartItemByIDStmt:                        q.editCartItemByIDStmt,
 		editCategoryNameByNameStmt:                  q.editCategoryNameByNameStmt,
 		editCouponByIDStmt:                          q.editCouponByIDStmt,
+		editOrderAmountByIDStmt:                     q.editOrderAmountByIDStmt,
 		editOrderItemStatusByIDStmt:                 q.editOrderItemStatusByIDStmt,
 		editPaymentByOrderIDStmt:                    q.editPaymentByOrderIDStmt,
 		editPaymentStatusByIDStmt:                   q.editPaymentStatusByIDStmt,
@@ -1144,7 +1173,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAllCategoriesForAdminStmt:                q.getAllCategoriesForAdminStmt,
 		getAllCouponsStmt:                           q.getAllCouponsStmt,
 		getAllCouponsForAdminStmt:                   q.getAllCouponsForAdminStmt,
-		getAllOrderForAdminStmt:                     q.getAllOrderForAdminStmt,
+		getAllOrderItemsForAdminStmt:                q.getAllOrderItemsForAdminStmt,
+		getAllOrdersStmt:                            q.getAllOrdersStmt,
 		getAllProductsStmt:                          q.getAllProductsStmt,
 		getAllProductsForAdminStmt:                  q.getAllProductsForAdminStmt,
 		getAllSessionsByUserIDStmt:                  q.getAllSessionsByUserIDStmt,

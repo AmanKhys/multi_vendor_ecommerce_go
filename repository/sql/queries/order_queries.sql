@@ -1,4 +1,7 @@
--- name: GetAllOrderForAdmin :many
+-- name: GetAllOrders :many
+select * from orders;
+
+-- name: GetAllOrderItemsForAdmin :many
 select * from order_items
 order by created_at desc;
 
@@ -34,6 +37,12 @@ returning *;
 -- name: UpdateOrderTotalAmount :one
 update orders
 set total_amount = @total_amount, updated_at = current_timestamp
+where id = @id
+returning *;
+
+-- name: EditOrderAmountByID :one
+update orders
+set total_amount = @total_amount, discount_amount = @discount_amount, coupon_id = @coupon_id, updated_at = current_timestamp
 where id = @id
 returning *;
 
@@ -95,10 +104,11 @@ set status = $2, updated_at = current_timestamp
 where id = $1
 returning *;
 
--- name: CancelOrderByID :exec
+-- name: CancelOrderByID :many
 update order_items
 set status = 'cancelled', updated_at = current_timestamp
-where order_id = $1;
+where order_id = $1
+returning *;
 
 -- name: GetTotalAmountOfCartItems :one
 select sum(total_amount) as total_amount

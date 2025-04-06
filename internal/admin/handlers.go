@@ -346,7 +346,7 @@ func (a *Admin) GetOrderItemsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// fetch order_items
-	orderItems, err := a.DB.GetAllOrderForAdmin(context.TODO())
+	orderItems, err := a.DB.GetAllOrderItemsForAdmin(context.TODO())
 	if err != nil {
 		log.Warn("error fetching orders for admin in GetOrderItemsHandler:", err.Error())
 		http.Error(w, "internal server error fetching orders for admin", http.StatusInternalServerError)

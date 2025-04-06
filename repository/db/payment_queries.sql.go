@@ -90,15 +90,68 @@ func (q *Queries) AddVendorPayment(ctx context.Context, arg AddVendorPaymentPara
 	return i, err
 }
 
-const cancelPaymentByOrderID = `-- name: CancelPaymentByOrderID :exec
+const cancelPaymentByOrderID = `-- name: CancelPaymentByOrderID :one
 update payments
-set status = 'cancelled', total_amount = 0, updated_at = current_timestamp
+set status = 'cancelled', updated_at = current_timestamp
 where order_id = $1
+returning id, order_id, method, status, total_amount, transaction_id, created_at, updated_at
 `
 
-func (q *Queries) CancelPaymentByOrderID(ctx context.Context, orderID uuid.UUID) error {
-	_, err := q.exec(ctx, q.cancelPaymentByOrderIDStmt, cancelPaymentByOrderID, orderID)
-	return err
+func (q *Queries) CancelPaymentByOrderID(ctx context.Context, orderID uuid.UUID) (Payment, error) {
+	row := q.queryRow(ctx, q.cancelPaymentByOrderIDStmt, cancelPaymentByOrderID, orderID)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Method,
+		&i.Status,
+		&i.TotalAmount,
+		&i.TransactionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const cancelVendorPaymentsByOrderID = `-- name: CancelVendorPaymentsByOrderID :many
+update vendor_payments
+set status = 'cancelled', updated_at = current_timestamp
+where order_item_id in 
+(select id from order_items where order_id = $1)
+returning id, order_item_id, seller_id, status, total_amount, platform_fee, credit_amount, created_at, updated_at
+`
+
+func (q *Queries) CancelVendorPaymentsByOrderID(ctx context.Context, orderID uuid.UUID) ([]VendorPayment, error) {
+	rows, err := q.query(ctx, q.cancelVendorPaymentsByOrderIDStmt, cancelVendorPaymentsByOrderID, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []VendorPayment{}
+	for rows.Next() {
+		var i VendorPayment
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderItemID,
+			&i.SellerID,
+			&i.Status,
+			&i.TotalAmount,
+			&i.PlatformFee,
+			&i.CreditAmount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const decPaymentAmountByOrderItemID = `-- name: DecPaymentAmountByOrderItemID :one

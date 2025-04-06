@@ -123,15 +123,44 @@ func (q *Queries) AddShippingAddress(ctx context.Context, arg AddShippingAddress
 	return i, err
 }
 
-const cancelOrderByID = `-- name: CancelOrderByID :exec
+const cancelOrderByID = `-- name: CancelOrderByID :many
 update order_items
 set status = 'cancelled', updated_at = current_timestamp
 where order_id = $1
+returning id, order_id, product_id, price, quantity, total_amount, status, created_at, updated_at
 `
 
-func (q *Queries) CancelOrderByID(ctx context.Context, orderID uuid.UUID) error {
-	_, err := q.exec(ctx, q.cancelOrderByIDStmt, cancelOrderByID, orderID)
-	return err
+func (q *Queries) CancelOrderByID(ctx context.Context, orderID uuid.UUID) ([]OrderItem, error) {
+	rows, err := q.query(ctx, q.cancelOrderByIDStmt, cancelOrderByID, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrderItem{}
+	for rows.Next() {
+		var i OrderItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.Price,
+			&i.Quantity,
+			&i.TotalAmount,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const changeOrderItemStatusByID = `-- name: ChangeOrderItemStatusByID :one
@@ -173,6 +202,41 @@ func (q *Queries) DeleteOrderByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const editOrderAmountByID = `-- name: EditOrderAmountByID :one
+update orders
+set total_amount = $1, discount_amount = $2, coupon_id = $3, updated_at = current_timestamp
+where id = $4
+returning id, user_id, total_amount, coupon_id, discount_amount, net_amount, created_at, updated_at
+`
+
+type EditOrderAmountByIDParams struct {
+	TotalAmount    float64       `json:"total_amount"`
+	DiscountAmount float64       `json:"discount_amount"`
+	CouponID       uuid.NullUUID `json:"coupon_id"`
+	ID             uuid.UUID     `json:"id"`
+}
+
+func (q *Queries) EditOrderAmountByID(ctx context.Context, arg EditOrderAmountByIDParams) (Order, error) {
+	row := q.queryRow(ctx, q.editOrderAmountByIDStmt, editOrderAmountByID,
+		arg.TotalAmount,
+		arg.DiscountAmount,
+		arg.CouponID,
+		arg.ID,
+	)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TotalAmount,
+		&i.CouponID,
+		&i.DiscountAmount,
+		&i.NetAmount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const editOrderItemStatusByID = `-- name: EditOrderItemStatusByID :one
 update order_items
 set status = $2, updated_at = current_timestamp
@@ -202,13 +266,13 @@ func (q *Queries) EditOrderItemStatusByID(ctx context.Context, arg EditOrderItem
 	return i, err
 }
 
-const getAllOrderForAdmin = `-- name: GetAllOrderForAdmin :many
+const getAllOrderItemsForAdmin = `-- name: GetAllOrderItemsForAdmin :many
 select id, order_id, product_id, price, quantity, total_amount, status, created_at, updated_at from order_items
 order by created_at desc
 `
 
-func (q *Queries) GetAllOrderForAdmin(ctx context.Context) ([]OrderItem, error) {
-	rows, err := q.query(ctx, q.getAllOrderForAdminStmt, getAllOrderForAdmin)
+func (q *Queries) GetAllOrderItemsForAdmin(ctx context.Context) ([]OrderItem, error) {
+	rows, err := q.query(ctx, q.getAllOrderItemsForAdminStmt, getAllOrderItemsForAdmin)
 	if err != nil {
 		return nil, err
 	}
@@ -224,6 +288,42 @@ func (q *Queries) GetAllOrderForAdmin(ctx context.Context) ([]OrderItem, error) 
 			&i.Quantity,
 			&i.TotalAmount,
 			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllOrders = `-- name: GetAllOrders :many
+select id, user_id, total_amount, coupon_id, discount_amount, net_amount, created_at, updated_at from orders
+`
+
+func (q *Queries) GetAllOrders(ctx context.Context) ([]Order, error) {
+	rows, err := q.query(ctx, q.getAllOrdersStmt, getAllOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Order{}
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.TotalAmount,
+			&i.CouponID,
+			&i.DiscountAmount,
+			&i.NetAmount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

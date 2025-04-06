@@ -7,7 +7,7 @@ returning *;
 
 -- name: GetPaymentByOrderID :one
 select * from payments
-where order_id = $1;
+where order_id = @order_id;
 
 -- name: DecPaymentAmountByOrderItemID :one
 WITH cte AS (
@@ -41,10 +41,11 @@ where order_id = $1
 returning *;
 
 
--- name: CancelPaymentByOrderID :exec
+-- name: CancelPaymentByOrderID :one
 update payments
-set status = 'cancelled', total_amount = 0, updated_at = current_timestamp
-where order_id = $1;
+set status = 'cancelled', updated_at = current_timestamp
+where order_id = $1
+returning *;
 
 -- name: AddVendorPayment :one
 insert into vendor_payments
@@ -72,3 +73,10 @@ select *
 from vendor_payments
 where seller_id = $1  and
 created_at between @start_date and @end_date;
+
+-- name: CancelVendorPaymentsByOrderID :many
+update vendor_payments
+set status = 'cancelled', updated_at = current_timestamp
+where order_item_id in 
+(select id from order_items where order_id = @order_id)
+returning *;

@@ -828,6 +828,24 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	// to add and display insignificant errors
 	var Err []string
+
+	// get coupon
+	var isCouponExists bool
+	couponName := r.URL.Query().Get("coupon_name")
+	coupon, err := u.DB.GetCouponByName(context.TODO(), couponName)
+	if couponName == "" {
+		// simply put the if condition to not the ErrNoRows error when the couponName is empty
+	} else if err == sql.ErrNoRows {
+		http.Error(w, "invalid coupon applied. Either leave that empty or apply valid coupons", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Error("error fetching coupon from couponName in AddCartToOrderHandler:", err.Error())
+		http.Error(w, "internal error fetching coupon", http.StatusInternalServerError)
+		return
+	} else {
+		isCouponExists = true
+	}
+
 	// get a valid address for the shipping address
 	address, err := u.DB.GetAddressByID(context.TODO(), ShippingAddressID)
 	if err == sql.ErrNoRows {
@@ -930,11 +948,25 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// update  order total amount
-	var updateOrderArg db.UpdateOrderTotalAmountParams
-	updateOrderArg.ID = order.ID
-	updateOrderArg.TotalAmount = sumTotal
-	_, err = u.DB.UpdateOrderTotalAmount(context.TODO(), updateOrderArg)
+	// check if the coupon is valid if coupon exists
+	var discountAmount float64
+	var isCouponValid bool
+	if isCouponExists && coupon.TriggerPrice <= sumTotal {
+		isCouponValid = true
+		discountAmount = coupon.DiscountAmount
+	} else if isCouponExists {
+		Err = append(Err, "order placed without adding the coupon")
+	}
+	// update order total and discount amount
+	var editOrderAmountArg db.EditOrderAmountByIDParams
+	editOrderAmountArg.ID = order.ID
+	editOrderAmountArg.TotalAmount = sumTotal
+	editOrderAmountArg.DiscountAmount = discountAmount
+	if isCouponValid {
+		editOrderAmountArg.CouponID.Valid = true
+		editOrderAmountArg.CouponID.UUID = coupon.ID
+	}
+	updatedOrder, err := u.DB.EditOrderAmountByID(context.TODO(), editOrderAmountArg)
 	if err != nil {
 		log.Error("error updating order Total amount:", err.Error())
 	}
@@ -961,7 +993,7 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	payArg.OrderID = order.ID
 	payArg.Status = utils.StatusPaymentProcessing
-	payArg.TotalAmount = sumTotal
+	payArg.TotalAmount = updatedOrder.NetAmount
 	payment, err := u.DB.AddPayment(context.TODO(), payArg)
 	if err != nil {
 		log.Warn("error adding payment for the order")
@@ -978,6 +1010,7 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	var resp struct {
 		Message         string                         `json:"message"`
+		Order           db.Order                       `json:"order"`
 		Phone           int                            `json:"phone"`
 		Payment         db.Payment                     `json:"payment"`
 		OrderItems      []db.GetOrderItemsByOrderIDRow `json:"order_items"`
@@ -986,6 +1019,7 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	resp.Phone = int(user.Phone.Int64)
 	resp.Message = "successfully added the cart items to orders"
+	resp.Order = updatedOrder
 	resp.Payment = payment
 	resp.OrderItems = orderItems
 	resp.ShippingAddress = shipAddr
@@ -1156,7 +1190,7 @@ func (u *User) CancelOrderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// cancel orderITems for the orderID
-	err = u.DB.CancelOrderByID(context.TODO(), orderID)
+	_, err = u.DB.CancelOrderByID(context.TODO(), orderID)
 	if err != nil {
 		log.Warn("error cancelling orderItems by orderID in CancelOrderHandler:", err.Error())
 		http.Error(w, "internal error cancelling orderItems by orderID", http.StatusInternalServerError)
@@ -1166,6 +1200,8 @@ func (u *User) CancelOrderHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Warn("error fetching payment from orderID in CancelOrderHandler")
 	} else if payment.Status == utils.StatusPaymentSuccessful {
+		// add money back to wallet on already paid order
+		// and cancel that payment
 		var arg db.AddSavingsToWalletByUserIDParams
 		arg.Savings = payment.TotalAmount
 		arg.UserID = user.ID
@@ -1176,13 +1212,17 @@ func (u *User) CancelOrderHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			log.Warn("successfully transferred amount to user wallet")
 			messages = append(messages, fmt.Sprintf("successfully transferred cancellation refund amount: %.2f to wallet", payment.TotalAmount))
+			// cancel payment on successful addition of money to wallet
+			_, err = u.DB.CancelPaymentByOrderID(context.TODO(), orderID)
+			if err != nil {
+				log.Warn("error returning payment by orderID in CancelOrderHandler:", err.Error())
+				http.Error(w, "intenral error cancelling payment by orderID after successfully cancelling orderItems", http.StatusInternalServerError)
+				return
+			} else {
+				msg := "successfully cancelled payment for the cancelled order"
+				messages = append(messages, msg)
+			}
 		}
-	}
-	err = u.DB.CancelPaymentByOrderID(context.TODO(), orderID)
-	if err != nil {
-		log.Warn("error returning payment by orderID in CancelOrderHandler:", err.Error())
-		http.Error(w, "intenral error cancelling payment by orderID after successfully cancelling orderItems", http.StatusInternalServerError)
-		return
 	}
 	orderItems, err := u.DB.GetOrderItemsByOrderID(context.TODO(), order.ID)
 	if err != nil {
@@ -1263,7 +1303,7 @@ func (u *User) MakeOnlinePaymentHandler(w http.ResponseWriter, r *http.Request) 
 			errors = append(errors, "internal error updating payment status to cancelled")
 			log.Warn("error updating payment status to cancelled in MakeOnlinePayment Handler")
 		}
-		err = u.DB.CancelOrderByID(context.TODO(), orderID)
+		_, err = u.DB.CancelOrderByID(context.TODO(), orderID)
 		if err != nil {
 			errors = append(errors, "error cancelling order_items for invalid orderID without timeout payment error")
 			log.Warn("internal error cancelling order items for order placed before 10 minutes for razorpay payment.")
