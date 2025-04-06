@@ -170,6 +170,26 @@ func (q *Queries) GetAllCouponsForAdmin(ctx context.Context) ([]Coupon, error) {
 	return items, nil
 }
 
+const getCouponByID = `-- name: GetCouponByID :one
+select id, name, trigger_price, discount_amount, is_deleted, created_at, updated_at from coupons
+where id = $1
+`
+
+func (q *Queries) GetCouponByID(ctx context.Context, id uuid.UUID) (Coupon, error) {
+	row := q.queryRow(ctx, q.getCouponByIDStmt, getCouponByID, id)
+	var i Coupon
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TriggerPrice,
+		&i.DiscountAmount,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getCouponByName = `-- name: GetCouponByName :one
 select id, name, trigger_price, discount_amount, is_deleted, created_at, updated_at from coupons
 where name = $1

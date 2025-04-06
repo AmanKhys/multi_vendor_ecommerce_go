@@ -1,3 +1,7 @@
+-- name: GetCouponByID :one
+select * from coupons
+where id = $1;
+
 -- name: GetAllCouponsForAdmin :many
 select * from coupons;
 

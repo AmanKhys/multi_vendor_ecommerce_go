@@ -113,6 +113,17 @@ func (q *Queries) CancelPaymentByOrderID(ctx context.Context, orderID uuid.UUID)
 	return i, err
 }
 
+const cancelVendorPaymentByOrderItemID = `-- name: CancelVendorPaymentByOrderItemID :exec
+update vendor_payments
+set status = 'cancelled', updated_at = current_timestamp
+where order_item_id = $1
+`
+
+func (q *Queries) CancelVendorPaymentByOrderItemID(ctx context.Context, orderItemID uuid.UUID) error {
+	_, err := q.exec(ctx, q.cancelVendorPaymentByOrderItemIDStmt, cancelVendorPaymentByOrderItemID, orderItemID)
+	return err
+}
+
 const cancelVendorPaymentsByOrderID = `-- name: CancelVendorPaymentsByOrderID :many
 update vendor_payments
 set status = 'cancelled', updated_at = current_timestamp

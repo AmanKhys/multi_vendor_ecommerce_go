@@ -1061,6 +1061,15 @@ func (u *User) CancelOrderItemHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not user's orderItemID. User unauthorized.", http.StatusUnauthorized)
 		return
 	}
+	// check if coupon is applied to the given orderItem order
+	// if applied deny request
+	order, err := u.DB.GetOrderByID(context.TODO(), orderItem.OrderID)
+	if err != nil {
+		log.Error("error fetching order by orderItem in CancelOrderItemHandler for user:", err.Error())
+	} else if order.CouponID.Valid {
+		http.Error(w, "coupon applied; cannot cancel a single item from order", http.StatusBadRequest)
+		return
+	}
 
 	// check if the order is shipped or not
 	// if order is processing or pending, cancel order
@@ -1123,6 +1132,10 @@ func (u *User) CancelOrderItemHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				payment.Status = zeroPayment.Status
 			}
+		}
+		err = u.DB.CancelVendorPaymentByOrderItemID(context.TODO(), orderItem.ID)
+		if err != nil {
+			log.Error("error cancelling vendor payment in CancelOrderItem for user:", err.Error())
 		}
 
 		type RespPayment struct {
@@ -1189,13 +1202,6 @@ func (u *User) CancelOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// cancel orderITems for the orderID
-	_, err = u.DB.CancelOrderByID(context.TODO(), orderID)
-	if err != nil {
-		log.Warn("error cancelling orderItems by orderID in CancelOrderHandler:", err.Error())
-		http.Error(w, "internal error cancelling orderItems by orderID", http.StatusInternalServerError)
-		return
-	}
 	payment, err := u.DB.GetPaymentByOrderID(context.TODO(), order.ID)
 	if err != nil {
 		log.Warn("error fetching payment from orderID in CancelOrderHandler")

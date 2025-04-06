@@ -93,6 +93,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.cancelPaymentByOrderIDStmt, err = db.PrepareContext(ctx, cancelPaymentByOrderID); err != nil {
 		return nil, fmt.Errorf("error preparing query CancelPaymentByOrderID: %w", err)
 	}
+	if q.cancelVendorPaymentByOrderItemIDStmt, err = db.PrepareContext(ctx, cancelVendorPaymentByOrderItemID); err != nil {
+		return nil, fmt.Errorf("error preparing query CancelVendorPaymentByOrderItemID: %w", err)
+	}
 	if q.cancelVendorPaymentsByOrderIDStmt, err = db.PrepareContext(ctx, cancelVendorPaymentsByOrderID); err != nil {
 		return nil, fmt.Errorf("error preparing query CancelVendorPaymentsByOrderID: %w", err)
 	}
@@ -257,6 +260,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getCategoryNamesOfProductByIDStmt, err = db.PrepareContext(ctx, getCategoryNamesOfProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCategoryNamesOfProductByID: %w", err)
+	}
+	if q.getCouponByIDStmt, err = db.PrepareContext(ctx, getCouponByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCouponByID: %w", err)
 	}
 	if q.getCouponByNameStmt, err = db.PrepareContext(ctx, getCouponByName); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCouponByName: %w", err)
@@ -487,6 +493,11 @@ func (q *Queries) Close() error {
 	if q.cancelPaymentByOrderIDStmt != nil {
 		if cerr := q.cancelPaymentByOrderIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing cancelPaymentByOrderIDStmt: %w", cerr)
+		}
+	}
+	if q.cancelVendorPaymentByOrderItemIDStmt != nil {
+		if cerr := q.cancelVendorPaymentByOrderItemIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing cancelVendorPaymentByOrderItemIDStmt: %w", cerr)
 		}
 	}
 	if q.cancelVendorPaymentsByOrderIDStmt != nil {
@@ -764,6 +775,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getCategoryNamesOfProductByIDStmt: %w", cerr)
 		}
 	}
+	if q.getCouponByIDStmt != nil {
+		if cerr := q.getCouponByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCouponByIDStmt: %w", cerr)
+		}
+	}
 	if q.getCouponByNameStmt != nil {
 		if cerr := q.getCouponByNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCouponByNameStmt: %w", cerr)
@@ -1011,6 +1027,7 @@ type Queries struct {
 	blockUserByIDStmt                           *sql.Stmt
 	cancelOrderByIDStmt                         *sql.Stmt
 	cancelPaymentByOrderIDStmt                  *sql.Stmt
+	cancelVendorPaymentByOrderItemIDStmt        *sql.Stmt
 	cancelVendorPaymentsByOrderIDStmt           *sql.Stmt
 	changeNameByUserIDStmt                      *sql.Stmt
 	changeOrderItemStatusByIDStmt               *sql.Stmt
@@ -1066,6 +1083,7 @@ type Queries struct {
 	getCategoryByIDStmt                         *sql.Stmt
 	getCategoryByNameStmt                       *sql.Stmt
 	getCategoryNamesOfProductByIDStmt           *sql.Stmt
+	getCouponByIDStmt                           *sql.Stmt
 	getCouponByNameStmt                         *sql.Stmt
 	getOrderByIDStmt                            *sql.Stmt
 	getOrderItemByIDStmt                        *sql.Stmt
@@ -1132,6 +1150,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		blockUserByIDStmt:                           q.blockUserByIDStmt,
 		cancelOrderByIDStmt:                         q.cancelOrderByIDStmt,
 		cancelPaymentByOrderIDStmt:                  q.cancelPaymentByOrderIDStmt,
+		cancelVendorPaymentByOrderItemIDStmt:        q.cancelVendorPaymentByOrderItemIDStmt,
 		cancelVendorPaymentsByOrderIDStmt:           q.cancelVendorPaymentsByOrderIDStmt,
 		changeNameByUserIDStmt:                      q.changeNameByUserIDStmt,
 		changeOrderItemStatusByIDStmt:               q.changeOrderItemStatusByIDStmt,
@@ -1187,6 +1206,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getCategoryByIDStmt:                         q.getCategoryByIDStmt,
 		getCategoryByNameStmt:                       q.getCategoryByNameStmt,
 		getCategoryNamesOfProductByIDStmt:           q.getCategoryNamesOfProductByIDStmt,
+		getCouponByIDStmt:                           q.getCouponByIDStmt,
 		getCouponByNameStmt:                         q.getCouponByNameStmt,
 		getOrderByIDStmt:                            q.getOrderByIDStmt,
 		getOrderItemByIDStmt:                        q.getOrderItemByIDStmt,

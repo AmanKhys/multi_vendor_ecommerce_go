@@ -80,3 +80,8 @@ set status = 'cancelled', updated_at = current_timestamp
 where order_item_id in 
 (select id from order_items where order_id = @order_id)
 returning *;
+
+-- name: CancelVendorPaymentByOrderItemID :exec
+update vendor_payments
+set status = 'cancelled', updated_at = current_timestamp
+where order_item_id = $1;
