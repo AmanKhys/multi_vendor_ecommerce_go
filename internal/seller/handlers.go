@@ -689,13 +689,26 @@ func (s *Seller) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Aggregated calculations
 	totalSales := 0.0
-	totalProfit := 0.0
+	totalCredit := 0.0
 	totalPlatformFee := 0.0
+	orderCancelledCount := 0
+	orderWaitingCount := 0
+	orderPendingCount := 0
 	productSales := make(map[uuid.UUID]map[string]float64)
 
 	for _, payment := range vendorPayments {
+		if payment.Status == utils.StatusVendorPaymentCancelled {
+			orderCancelledCount += 1
+			continue
+		} else if payment.Status == utils.StatusVendorPaymentWaiting {
+			orderWaitingCount += 1
+			continue
+		} else if payment.Status == utils.StatusVendorPaymentPending {
+			orderPendingCount += 1
+			continue
+		}
 		totalSales += payment.TotalAmount
-		totalProfit += payment.CreditAmount
+		totalCredit += payment.CreditAmount
 		totalPlatformFee += payment.PlatformFee
 
 		if _, exists := productSales[payment.OrderItemID]; !exists {
@@ -726,7 +739,7 @@ func (s *Seller) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 	pdf.Ln(8)
 	pdf.SetFont("Arial", "", 12)
 	pdf.Cell(95, 8, fmt.Sprintf("Total Sales: $%.2f", totalSales))
-	pdf.Cell(95, 8, fmt.Sprintf("Total Profit: $%.2f", totalProfit))
+	pdf.Cell(95, 8, fmt.Sprintf("Total Profit: $%.2f", totalCredit))
 	pdf.Ln(8)
 	pdf.Cell(95, 8, fmt.Sprintf("Total Platform Fee: $%.2f", totalPlatformFee))
 	pdf.Ln(10)

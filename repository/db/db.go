@@ -345,6 +345,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getVendorPaymentByOrderItemIDStmt, err = db.PrepareContext(ctx, getVendorPaymentByOrderItemID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetVendorPaymentByOrderItemID: %w", err)
 	}
+	if q.getVendorPaymentsByDateRangeStmt, err = db.PrepareContext(ctx, getVendorPaymentsByDateRange); err != nil {
+		return nil, fmt.Errorf("error preparing query GetVendorPaymentsByDateRange: %w", err)
+	}
 	if q.getVendorPaymentsBySellerIDStmt, err = db.PrepareContext(ctx, getVendorPaymentsBySellerID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetVendorPaymentsBySellerID: %w", err)
 	}
@@ -915,6 +918,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getVendorPaymentByOrderItemIDStmt: %w", cerr)
 		}
 	}
+	if q.getVendorPaymentsByDateRangeStmt != nil {
+		if cerr := q.getVendorPaymentsByDateRangeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getVendorPaymentsByDateRangeStmt: %w", cerr)
+		}
+	}
 	if q.getVendorPaymentsBySellerIDStmt != nil {
 		if cerr := q.getVendorPaymentsBySellerIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getVendorPaymentsBySellerIDStmt: %w", cerr)
@@ -1111,6 +1119,7 @@ type Queries struct {
 	getValidForgotOTPByUserIDStmt               *sql.Stmt
 	getValidOTPByUserIDStmt                     *sql.Stmt
 	getVendorPaymentByOrderItemIDStmt           *sql.Stmt
+	getVendorPaymentsByDateRangeStmt            *sql.Stmt
 	getVendorPaymentsBySellerIDStmt             *sql.Stmt
 	getVendorPaymentsBySellerIDAndDateRangeStmt *sql.Stmt
 	getWalletByUserIDStmt                       *sql.Stmt
@@ -1234,6 +1243,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getValidForgotOTPByUserIDStmt:               q.getValidForgotOTPByUserIDStmt,
 		getValidOTPByUserIDStmt:                     q.getValidOTPByUserIDStmt,
 		getVendorPaymentByOrderItemIDStmt:           q.getVendorPaymentByOrderItemIDStmt,
+		getVendorPaymentsByDateRangeStmt:            q.getVendorPaymentsByDateRangeStmt,
 		getVendorPaymentsBySellerIDStmt:             q.getVendorPaymentsBySellerIDStmt,
 		getVendorPaymentsBySellerIDAndDateRangeStmt: q.getVendorPaymentsBySellerIDAndDateRangeStmt,
 		getWalletByUserIDStmt:                       q.getWalletByUserIDStmt,

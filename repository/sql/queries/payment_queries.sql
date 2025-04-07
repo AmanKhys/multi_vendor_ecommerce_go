@@ -74,6 +74,12 @@ from vendor_payments
 where seller_id = $1  and
 created_at between @start_date and @end_date;
 
+-- name: GetVendorPaymentsByDateRange :many
+select * 
+from vendor_payments
+where 
+created_at between @start_date and @end_date;
+
 -- name: CancelVendorPaymentsByOrderID :many
 update vendor_payments
 set status = 'cancelled', updated_at = current_timestamp

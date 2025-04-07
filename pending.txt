@@ -38,7 +38,7 @@ cron jobs /tickers...
 //detailed pending
 1. cancel order..check payment status/method and act accordingly to add money to wallet...done
 2. add coupon to create order via couponName. make it so that orderItems cannot be 
-- individually cancelled on that event
+- individually cancelled on that event..done
 3. cancelOrder/cancelOrderItem to refund money back to wallet when respective conditions are method...
 -- cancelOrder..done
 -- cancelOrderItem... not done
@@ -50,3 +50,6 @@ cron jobs /tickers...
 -- top 10 products sold(optional)
 
 5. detailed vendor sales report including pending payments
+
+6. pay with wallet
+7. routes to display money in wallet for seller and user

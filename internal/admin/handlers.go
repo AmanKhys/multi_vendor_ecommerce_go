@@ -659,3 +659,69 @@ func (a *Admin) DeleteCouponHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 
 }
+
+func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+	startDateStr := r.URL.Query().Get("start_date")
+	endDateStr := r.URL.Query().Get("end_date")
+
+	startDate, err := time.Parse("2006-01-02", startDateStr)
+	if err != nil {
+		http.Error(w, "Invalid start_date format, use YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", endDateStr)
+	if err != nil {
+		http.Error(w, "Invalid end_date format, use YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+	var dateArg db.GetVendorPaymentsByDateRangeParams
+	dateArg.StartDate = startDate
+	dateArg.EndDate = endDate
+	vendorPayments, err := a.DB.GetVendorPaymentsByDateRange(context.TODO(), dateArg)
+	if err != nil {
+		log.Error("error fetching vendorPayments in SalesReportHandler for admin:", err.Error())
+		http.Error(w, "internal error fetching required data", http.StatusInternalServerError)
+		return
+	}
+
+	// total profit and total goods sale
+	var totalProfit float64
+	var totalSales int
+	var totalCancelledOrders int
+	for _, vp := range vendorPayments {
+		if vp.Status == utils.StatusVendorPaymentCancelled {
+			totalCancelledOrders += 1
+			continue
+		} else {
+			totalSales += 1
+		}
+		totalProfit += vp.PlatformFee
+	}
+
+	orders, err := a.DB.GetAllOrders(context.TODO())
+	if err != nil {
+		log.Error("error fetching orders in SalesReportHandler for admin:", err.Error())
+		http.Error(w, "internal error fetching necessary data", http.StatusInternalServerError)
+		return
+	}
+	// total loss amount
+	var totalLossAmount float64
+	for _, o := range orders {
+		payment, err := a.DB.GetPaymentByOrderID(context.TODO(), o.ID)
+		if err != nil {
+			log.Error("error fetching payment for order in SalesReportHandler for admin:", err.Error())
+			http.Error(w, "internal error fetching necessary data", http.StatusInternalServerError)
+			return
+		}
+		if payment.Status != utils.StatusPaymentSuccessful {
+			continue
+		}
+		totalLossAmount += o.DiscountAmount
+	}
+}

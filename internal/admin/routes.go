@@ -41,4 +41,6 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/coupons/add", middleware.AuthenticateUserMiddleware(a.AddCouponHandler, utils.AdminRole))
 	// mux.HandleFunc("PUT /admin/coupons/edit", middleware.AuthenticateUserMiddleware(a.EditCouponHandler, utils.AdminRole))
 	mux.HandleFunc("DELETE /admin/coupons/delete", middleware.AuthenticateUserMiddleware(a.DeleteCouponHandler, utils.AdminRole))
+
+	mux.HandleFunc("GET /admin/sales_report", middleware.AuthenticateUserMiddleware(a.SalesReportHandler, utils.AdminRole))
 }

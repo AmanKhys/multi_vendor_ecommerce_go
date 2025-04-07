@@ -351,6 +351,51 @@ func (q *Queries) GetVendorPaymentByOrderItemID(ctx context.Context, orderItemID
 	return i, err
 }
 
+const getVendorPaymentsByDateRange = `-- name: GetVendorPaymentsByDateRange :many
+select id, order_item_id, seller_id, status, total_amount, platform_fee, credit_amount, created_at, updated_at 
+from vendor_payments
+where 
+created_at between $1 and $2
+`
+
+type GetVendorPaymentsByDateRangeParams struct {
+	StartDate time.Time `json:"start_date"`
+	EndDate   time.Time `json:"end_date"`
+}
+
+func (q *Queries) GetVendorPaymentsByDateRange(ctx context.Context, arg GetVendorPaymentsByDateRangeParams) ([]VendorPayment, error) {
+	rows, err := q.query(ctx, q.getVendorPaymentsByDateRangeStmt, getVendorPaymentsByDateRange, arg.StartDate, arg.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []VendorPayment{}
+	for rows.Next() {
+		var i VendorPayment
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderItemID,
+			&i.SellerID,
+			&i.Status,
+			&i.TotalAmount,
+			&i.PlatformFee,
+			&i.CreditAmount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getVendorPaymentsBySellerID = `-- name: GetVendorPaymentsBySellerID :many
 select id, order_item_id, seller_id, status, total_amount, platform_fee, credit_amount, created_at, updated_at from vendor_payments
 where seller_id = $1

@@ -23,7 +23,6 @@ func OrdersCron() {
 func cancelVoidOrders() {
 	var dbConn = repository.NewDBConfig()
 	var DB = db.New(dbConn)
-
 	orders, err := DB.GetAllOrders(context.TODO())
 	if err != nil {
 		log.Error("error fetching orders inn CancelVoidOrders:", err.Error())
