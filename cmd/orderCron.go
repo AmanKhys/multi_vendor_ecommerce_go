@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
@@ -45,7 +44,6 @@ func cancelVoidOrders() {
 		// otherwise it is razorpay.. check whether paid
 		// within time limit of 10 minutes; otherwise cancel the order
 		// and cancel the payment, vendor_payments
-		fmt.Println(time.Since(o.CreatedAt), o.CreatedAt)
 		if (payment.Status == utils.StatusPaymentFailed ||
 			payment.Status == utils.StatusPaymentProcessing) &&
 			time.Since(o.CreatedAt) > time.Minute*10 {

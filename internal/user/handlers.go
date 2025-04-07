@@ -41,7 +41,6 @@ func (u *User) EditProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Name = r.URL.Query().Get("name")
 	req.Phone = r.URL.Query().Get("phone")
-	fmt.Println(req)
 
 	// make errors slice for response
 	var Err []string
@@ -1392,7 +1391,6 @@ func (u *User) MakeOnlinePaymentHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (u *User) PaymentSuccessHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("enterd payment success handler")
 	type RazorpayResponse struct {
 		PaymentID    string `json:"payment_id"`
 		OrderID      string `json:"order_id"`
@@ -1426,7 +1424,6 @@ func (u *User) PaymentSuccessHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Add("Content-Type", "text/plain")
 		w.Write([]byte(msg))
-		fmt.Println("Payment verified successfully:", resp.PaymentID)
 		return
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -1479,7 +1476,6 @@ func (u *User) ReturnOrderHandler(w http.ResponseWriter, r *http.Request) {
 	var arg db.AddSavingsToWalletByUserIDParams
 	arg.Savings = order.NetAmount
 	arg.UserID = user.ID
-	fmt.Println(arg)
 	_, err = u.DB.AddSavingsToWalletByUserID(context.TODO(), arg)
 	if err != nil {
 		log.Warn("error adding return refund back to user wallet:", err.Error())

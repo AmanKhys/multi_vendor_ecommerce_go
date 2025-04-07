@@ -53,3 +53,7 @@ cron jobs /tickers...
 
 6. pay with wallet
 7. routes to display money in wallet for seller and user
+8. pie chart for orders and statuses
+9. profit/loss chart for admin/seller
+10. limit = week, day, month for sales report for admin/ seller ..it takes priority over dates
+11. seller sales report platform_fee charged, total profit, total revenue, for each orderItem

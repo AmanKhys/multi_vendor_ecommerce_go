@@ -1,11 +1,13 @@
 package admin
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
+	"github.com/jung-kurt/gofpdf"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -663,6 +666,7 @@ func (a *Admin) DeleteCouponHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)
 	if user.ID == uuid.Nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -674,54 +678,149 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid start_date format, use YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
-
 	endDate, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {
 		http.Error(w, "Invalid end_date format, use YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
-	var dateArg db.GetVendorPaymentsByDateRangeParams
-	dateArg.StartDate = startDate
-	dateArg.EndDate = endDate
+
+	dateArg := db.GetVendorPaymentsByDateRangeParams{
+		StartDate: startDate,
+		EndDate:   endDate,
+	}
 	vendorPayments, err := a.DB.GetVendorPaymentsByDateRange(context.TODO(), dateArg)
 	if err != nil {
-		log.Error("error fetching vendorPayments in SalesReportHandler for admin:", err.Error())
-		http.Error(w, "internal error fetching required data", http.StatusInternalServerError)
+		log.Error("error fetching vendorPayments:", err.Error())
+		http.Error(w, "internal error fetching data", http.StatusInternalServerError)
 		return
 	}
 
-	// total profit and total goods sale
 	var totalProfit float64
 	var totalSales int
 	var totalCancelledOrders int
+	orderItemMap := make(map[uuid.UUID]map[string]float64)
+
 	for _, vp := range vendorPayments {
 		if vp.Status == utils.StatusVendorPaymentCancelled {
-			totalCancelledOrders += 1
+			totalCancelledOrders++
 			continue
-		} else {
-			totalSales += 1
 		}
+		totalSales++
 		totalProfit += vp.PlatformFee
+
+		if _, exists := orderItemMap[vp.OrderItemID]; !exists {
+			orderItemMap[vp.OrderItemID] = map[string]float64{
+				"sales":        0,
+				"platform_fee": 0,
+				"profit":       0,
+			}
+		}
+		orderItemMap[vp.OrderItemID]["sales"] += vp.TotalAmount
+		orderItemMap[vp.OrderItemID]["platform_fee"] += vp.PlatformFee
+		orderItemMap[vp.OrderItemID]["profit"] += vp.CreditAmount
 	}
 
 	orders, err := a.DB.GetAllOrders(context.TODO())
 	if err != nil {
-		log.Error("error fetching orders in SalesReportHandler for admin:", err.Error())
-		http.Error(w, "internal error fetching necessary data", http.StatusInternalServerError)
+		log.Error("error fetching orders:", err.Error())
+		http.Error(w, "internal error fetching orders", http.StatusInternalServerError)
 		return
 	}
-	// total loss amount
+
 	var totalLossAmount float64
 	for _, o := range orders {
-		payment, err := a.DB.GetPaymentByOrderID(context.TODO(), o.ID)
-		if err != nil {
-			log.Error("error fetching payment for order in SalesReportHandler for admin:", err.Error())
-			http.Error(w, "internal error fetching necessary data", http.StatusInternalServerError)
-			return
+		if o.CreatedAt.Before(startDate) || o.CreatedAt.After(endDate) {
+			continue
 		}
-		if payment.Status != utils.StatusPaymentSuccessful {
+		payment, err := a.DB.GetPaymentByOrderID(context.TODO(), o.ID)
+		if err != nil || payment.Status != utils.StatusPaymentSuccessful {
 			continue
 		}
 		totalLossAmount += o.DiscountAmount
 	}
+
+	// Generate PDF
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetMargins(10, 10, 10)
+	pdf.AddPage()
+	pdf.SetFont("Arial", "B", 16)
+	pdf.Cell(190, 10, "Admin Sales Report")
+	pdf.Ln(10)
+
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(95, 10, fmt.Sprintf("Start Date: %s", startDate.Format("2006-01-02")))
+	pdf.Cell(95, 10, fmt.Sprintf("End Date: %s", endDate.Format("2006-01-02")))
+	pdf.Ln(10)
+
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(190, 8, "Summary")
+	pdf.Ln(8)
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(95, 8, fmt.Sprintf("Total Sales: %d", totalSales))
+	pdf.Cell(95, 8, fmt.Sprintf("Total Cancelled Orders: %d", totalCancelledOrders))
+	pdf.Ln(8)
+	pdf.Cell(95, 8, fmt.Sprintf("Total Platform Profit: $%.2f", totalProfit))
+	pdf.Cell(95, 8, fmt.Sprintf("Total Loss by Discounts: $%.2f", totalLossAmount))
+	pdf.Ln(8)
+	pdf.Cell(190, 8, fmt.Sprintf("Net Profit: $%.2f", totalProfit-totalLossAmount))
+	pdf.Ln(10)
+
+	// Table Header
+	pdf.SetFont("Arial", "B", 12)
+	pdf.SetFillColor(200, 200, 200)
+	pdf.CellFormat(75, 8, "OrderItem ID", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(50, 8, "Order Amount ($)", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(50, 8, "Platform Fee ($)", "1", 1, "C", true, 0, "")
+
+	pdf.SetFont("Arial", "", 10)
+	pdf.SetFillColor(240, 240, 240)
+	fill := false
+
+	for id, data := range orderItemMap {
+		pdf.CellFormat(75, 8, id.String(), "1", 0, "L", fill, 0, "")
+		pdf.CellFormat(50, 8, fmt.Sprintf("%.2f", data["sales"]), "1", 0, "C", fill, 0, "")
+		pdf.CellFormat(50, 8, fmt.Sprintf("%.2f", data["platform_fee"]), "1", 1, "C", fill, 0, "")
+		fill = !fill
+	}
+
+	pdf.AddPage()
+	// Table Header
+	pdf.SetFont("Arial", "B", 12)
+	pdf.SetFillColor(200, 200, 200)
+	pdf.CellFormat(100, 8, "Order ID", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(50, 8, "Discount Amount($)", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(40, 8, "Coupon Name", "1", 1, "C", true, 0, "")
+
+	// cells design
+	pdf.SetFont("Arial", "", 10)
+	pdf.SetFillColor(240, 240, 240)
+	fill = false
+	for _, o := range orders {
+		pdf.CellFormat(100, 8, o.ID.String(), "1", 0, "C", fill, 0, "")
+		pdf.CellFormat(50, 8, strconv.FormatFloat(o.DiscountAmount, 'f', -1, 64), "1", 0, "C", fill, 0, "")
+		if !o.CouponID.Valid {
+			pdf.CellFormat(40, 8, "no coupon", "1", 1, "C", fill, 0, "")
+			fill = !fill
+			continue
+		}
+		coupon, err := a.DB.GetCouponByID(context.TODO(), o.CouponID.UUID)
+		if err != nil {
+			log.Error("error fetching coupon by couponID in SalesReportHandler:", err.Error())
+			pdf.CellFormat(40, 8, "no coupon", "1", 1, "C", fill, 0, "")
+			fill = !fill
+			continue
+		}
+		pdf.CellFormat(40, 8, coupon.Name, "1", 1, "C", fill, 0, "")
+		fill = !fill
+	}
+
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		http.Error(w, "Error generating PDF", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", "attachment; filename=admin_sales_report.pdf")
+	w.Write(buf.Bytes())
 }
