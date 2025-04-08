@@ -171,6 +171,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.editCouponByIDStmt, err = db.PrepareContext(ctx, editCouponByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditCouponByID: %w", err)
 	}
+	if q.editCouponByNameStmt, err = db.PrepareContext(ctx, editCouponByName); err != nil {
+		return nil, fmt.Errorf("error preparing query EditCouponByName: %w", err)
+	}
 	if q.editOrderAmountByIDStmt, err = db.PrepareContext(ctx, editOrderAmountByID); err != nil {
 		return nil, fmt.Errorf("error preparing query EditOrderAmountByID: %w", err)
 	}
@@ -317,6 +320,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getSessionDetailsByIDStmt, err = db.PrepareContext(ctx, getSessionDetailsByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSessionDetailsByID: %w", err)
+	}
+	if q.getSumOfCartItemsByUserIDStmt, err = db.PrepareContext(ctx, getSumOfCartItemsByUserID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetSumOfCartItemsByUserID: %w", err)
 	}
 	if q.getTotalAmountOfCartItemsStmt, err = db.PrepareContext(ctx, getTotalAmountOfCartItems); err != nil {
 		return nil, fmt.Errorf("error preparing query GetTotalAmountOfCartItems: %w", err)
@@ -628,6 +634,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing editCouponByIDStmt: %w", cerr)
 		}
 	}
+	if q.editCouponByNameStmt != nil {
+		if cerr := q.editCouponByNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing editCouponByNameStmt: %w", cerr)
+		}
+	}
 	if q.editOrderAmountByIDStmt != nil {
 		if cerr := q.editOrderAmountByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing editOrderAmountByIDStmt: %w", cerr)
@@ -873,6 +884,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getSessionDetailsByIDStmt: %w", cerr)
 		}
 	}
+	if q.getSumOfCartItemsByUserIDStmt != nil {
+		if cerr := q.getSumOfCartItemsByUserIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getSumOfCartItemsByUserIDStmt: %w", cerr)
+		}
+	}
 	if q.getTotalAmountOfCartItemsStmt != nil {
 		if cerr := q.getTotalAmountOfCartItemsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getTotalAmountOfCartItemsStmt: %w", cerr)
@@ -1061,6 +1077,7 @@ type Queries struct {
 	editCartItemByIDStmt                        *sql.Stmt
 	editCategoryNameByNameStmt                  *sql.Stmt
 	editCouponByIDStmt                          *sql.Stmt
+	editCouponByNameStmt                        *sql.Stmt
 	editOrderAmountByIDStmt                     *sql.Stmt
 	editOrderItemStatusByIDStmt                 *sql.Stmt
 	editPaymentByOrderIDStmt                    *sql.Stmt
@@ -1110,6 +1127,7 @@ type Queries struct {
 	getSellerByProductIDStmt                    *sql.Stmt
 	getSellerIDFromOrderItemIDStmt              *sql.Stmt
 	getSessionDetailsByIDStmt                   *sql.Stmt
+	getSumOfCartItemsByUserIDStmt               *sql.Stmt
 	getTotalAmountOfCartItemsStmt               *sql.Stmt
 	getUserByEmailStmt                          *sql.Stmt
 	getUserByIdStmt                             *sql.Stmt
@@ -1185,6 +1203,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		editCartItemByIDStmt:                        q.editCartItemByIDStmt,
 		editCategoryNameByNameStmt:                  q.editCategoryNameByNameStmt,
 		editCouponByIDStmt:                          q.editCouponByIDStmt,
+		editCouponByNameStmt:                        q.editCouponByNameStmt,
 		editOrderAmountByIDStmt:                     q.editOrderAmountByIDStmt,
 		editOrderItemStatusByIDStmt:                 q.editOrderItemStatusByIDStmt,
 		editPaymentByOrderIDStmt:                    q.editPaymentByOrderIDStmt,
@@ -1234,6 +1253,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getSellerByProductIDStmt:                    q.getSellerByProductIDStmt,
 		getSellerIDFromOrderItemIDStmt:              q.getSellerIDFromOrderItemIDStmt,
 		getSessionDetailsByIDStmt:                   q.getSessionDetailsByIDStmt,
+		getSumOfCartItemsByUserIDStmt:               q.getSumOfCartItemsByUserIDStmt,
 		getTotalAmountOfCartItemsStmt:               q.getTotalAmountOfCartItemsStmt,
 		getUserByEmailStmt:                          q.getUserByEmailStmt,
 		getUserByIdStmt:                             q.getUserByIdStmt,

@@ -18,6 +18,7 @@ var helper = helpers.Helper{
 }
 
 func RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /user/profile", middleware.AuthenticateUserMiddleware(u.GetProfileHandler, utils.UserRole))
 	mux.HandleFunc("PUT /user/profile/edit", middleware.AuthenticateUserMiddleware(u.EditProfileHandler, utils.UserRole))
 
 	mux.HandleFunc("GET /user/products", u.ProductsHandler)

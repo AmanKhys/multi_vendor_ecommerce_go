@@ -100,6 +100,41 @@ func (q *Queries) EditCouponByID(ctx context.Context, arg EditCouponByIDParams) 
 	return i, err
 }
 
+const editCouponByName = `-- name: EditCouponByName :one
+update coupons
+set name = $1, trigger_price = $2,
+ discount_amount = $3, updated_at = current_timestamp
+where name = $4
+returning id, name, trigger_price, discount_amount, is_deleted, created_at, updated_at
+`
+
+type EditCouponByNameParams struct {
+	NewName        string  `json:"new_name"`
+	TriggerPrice   float64 `json:"trigger_price"`
+	DiscountAmount float64 `json:"discount_amount"`
+	OldName        string  `json:"old_name"`
+}
+
+func (q *Queries) EditCouponByName(ctx context.Context, arg EditCouponByNameParams) (Coupon, error) {
+	row := q.queryRow(ctx, q.editCouponByNameStmt, editCouponByName,
+		arg.NewName,
+		arg.TriggerPrice,
+		arg.DiscountAmount,
+		arg.OldName,
+	)
+	var i Coupon
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TriggerPrice,
+		&i.DiscountAmount,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAllCoupons = `-- name: GetAllCoupons :many
 select id, name, trigger_price, discount_amount, is_deleted, created_at, updated_at from coupons where is_deleted = false
 `

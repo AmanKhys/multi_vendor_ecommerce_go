@@ -579,60 +579,90 @@ func (a *Admin) AddCouponHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-// /////////////////////////////////////////////////////////////////
-// remove editCouponHandler as it interrupts with the business logic
-//
-// func (a *Admin) EditCouponHandler(w http.ResponseWriter, r *http.Request) {
-// 	user := helper.GetUserHelper(w, r)
-// 	if user.ID == uuid.Nil {
-// 		return
-// 	}
+func (a *Admin) EditCouponHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
 
-// 	// get and validate request body values
-// 	var req struct {
-// 		OldName        string  `json:"old_name"`
-// 		NewName        string  `json:"new_name"`
-// 		TriggerPrice   float64 `json:"trigger_price"`
-// 		DiscountAmount float64 `json:"discount_amount"`
-// 	}
-// 	var errors []string
-// 	err := json.NewDecoder(r.Body).Decode(&req)
-// 	if err != nil {
-// 		http.Error(w, "wrong json request format", http.StatusBadRequest)
-// 		return
-// 	}
-// 	if !validators.ValidateCouponName(req.OldName) {
-// 		errors = append(errors, "invalid coupon name to edit")
-// 	}
-// 	if !validators.ValidateCouponName(req.NewName) {
-// 		errors = append(errors, "invalid new coupon name")
-// 	}
-// 	if !validators.ValidateCouponPrice(req.TriggerPrice) {
-// 		errors = append(errors, "invalid trigger price")
-// 	}
-// 	if !validators.ValidateCouponPrice(req.DiscountAmount) {
-// 		errors = append(errors, "invalid discount price")
-// 	}
-// 	if req.DiscountAmount >= req.TriggerPrice {
-// 		errors = append(errors, "not allowed: discount price more than or equal to trigger price")
-// 	}
-// 	if len(errors) > 0 {
-// 		http.Error(w, strings.Join(errors, "\n"), http.StatusBadRequest)
-// 		return
-// 	}
+	// get and validate request body values
+	var req struct {
+		OldName        string  `json:"old_name"`
+		NewName        string  `json:"new_name"`
+		TriggerPrice   float64 `json:"trigger_price"`
+		DiscountAmount float64 `json:"discount_amount"`
+	}
+	var errors []string
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "wrong json request format", http.StatusBadRequest)
+		return
+	}
+	if !validators.ValidateCouponName(req.OldName) {
+		errors = append(errors, "invalid coupon name to edit")
+	}
+	if !validators.ValidateCouponName(req.NewName) {
+		errors = append(errors, "invalid new coupon name")
+	}
+	if !validators.ValidateCouponPrice(req.TriggerPrice) {
+		errors = append(errors, "invalid trigger price")
+	}
+	if !validators.ValidateCouponPrice(req.DiscountAmount) {
+		errors = append(errors, "invalid discount price")
+	}
+	if req.DiscountAmount >= req.TriggerPrice {
+		errors = append(errors, "not allowed: discount price more than or equal to trigger price")
+	}
+	if len(errors) > 0 {
+		http.Error(w, strings.Join(errors, "\n"), http.StatusBadRequest)
+		return
+	}
 
-// 	// fetch if the coupon exists
-// 	coupon, err := a.DB.GetCouponByName(context.TODO(), req.OldName)
-// 	if err == sql.ErrNoRows {
-// 		http.Error(w, "coupon does not exist", http.StatusBadRequest)
-// 		return
-// 	} else if err != nil {
-// 		log.Error("error fetching coupon to edit in EditCouponHandler in Admin:", err.Error())
-// 		http.Error(w, "internal error fetching coupon to edit", http.StatusInternalServerError)
-// 		return
-// 	}
+	// // fetch if the coupon exists
+	// coupon, err := a.DB.GetCouponByName(context.TODO(), req.OldName)
+	// if err == sql.ErrNoRows {
+	// 	http.Error(w, "coupon does not exist", http.StatusBadRequest)
+	// 	return
+	// } else if err != nil {
+	// 	log.Error("error fetching coupon to edit in EditCouponHandler in Admin:", err.Error())
+	// 	http.Error(w, "internal error fetching coupon to edit", http.StatusInternalServerError)
+	// 	return
+	// }
 
-// }
+	var editCouponArg db.EditCouponByNameParams
+	editCouponArg.OldName = req.OldName
+	editCouponArg.NewName = req.NewName
+	editCouponArg.TriggerPrice = req.TriggerPrice
+	editCouponArg.DiscountAmount = req.DiscountAmount
+	editedCoupon, err := a.DB.EditCouponByName(context.TODO(), editCouponArg)
+	if err == sql.ErrNoRows {
+		http.Error(w, "coupon does not exist to edit", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Error("error updating editCouponByName:", err.Error())
+		http.Error(w, "internal error editing coupon", http.StatusInternalServerError)
+		return
+	}
+
+	var data struct {
+		CouponID       uuid.UUID `json:"coupon_id"`
+		NewName        string    `json:"new_name"`
+		OldName        string    `json:"old_name"`
+		TriggerPrice   float64   `json:"trigger_price"`
+		DiscountAmount float64   `json:"discount_amount"`
+		Message        string    `json:"message"`
+	}
+	data.CouponID = editedCoupon.ID
+	data.NewName = editedCoupon.Name
+	data.OldName = editCouponArg.OldName
+	data.TriggerPrice = editedCoupon.TriggerPrice
+	data.DiscountAmount = editedCoupon.DiscountAmount
+	data.Message = "successfully updated coupon"
+
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
+
+}
 
 func (a *Admin) DeleteCouponHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)

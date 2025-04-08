@@ -26,6 +26,73 @@ type User struct {
 	DB *db.Queries
 }
 
+// get User profile Handler
+func (u *User) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+	wallet, err := u.DB.GetWalletByUserID(context.TODO(), user.ID)
+	if err == sql.ErrNoRows {
+		log.Error("error no wallet assinged to user; error in GetPRofileHandler for user:", err.Error())
+		http.Error(w, "internal error: no wallet assigned to user", http.StatusInternalServerError)
+		return
+	} else if err != nil {
+		log.Error("error fetching wallet for user in GetProfileHandler for user:", err.Error())
+		http.Error(w, "internal error: unable to fetch necessary data", http.StatusInternalServerError)
+		return
+	}
+
+	addresses, err := u.DB.GetAddressesByUserID(context.TODO(), user.ID)
+	if err != nil {
+		log.Error("error fetching addresses for user in GetProfileHandler:", err.Error())
+		http.Error(w, "internal error: unable to fetch necessary data", http.StatusInternalServerError)
+		return
+	}
+
+	type addressResp struct {
+		ID           uuid.UUID `json:"id"`
+		BuildingName string    `json:"building_name"`
+		StreetName   string    `json:"street_name"`
+		Town         string    `json:"town"`
+		District     string    `json:"district"`
+		State        string    `json:"state"`
+		Pincode      int32     `json:"pincode"`
+	}
+
+	var addressesResp []addressResp
+	for _, v := range addresses {
+		var temp addressResp
+		temp.ID = v.ID
+		temp.BuildingName = v.BuildingName
+		temp.StreetName = v.StreetName
+		temp.Town = v.Town
+		temp.District = v.District
+		temp.Pincode = v.Pincode
+		temp.State = v.State
+
+		addressesResp = append(addressesResp, temp)
+	}
+
+	var resp struct {
+		ID        uuid.UUID     `json:"user_id"`
+		Name      string        `json:"name"`
+		Phone     sql.NullInt64 `json:"phone"`
+		Email     string        `json:"email"`
+		Wallet    float64       `json:"wallet_savings"`
+		Addresses []addressResp `json:"addresses"`
+	}
+	resp.ID = user.ID
+	resp.Name = user.Name
+	resp.Phone = user.Phone
+	resp.Email = user.Email
+	resp.Wallet = wallet.Savings
+	resp.Addresses = addressesResp
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
 // ///////////////////////////////////
 // edit profile handler
 func (u *User) EditProfileHandler(w http.ResponseWriter, r *http.Request) {
@@ -827,9 +894,10 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	// to add and display insignificant errors
 	var Err []string
+	var Messages []string
 
 	// get coupon
-	var isCouponExists bool
+	var ifCouponExists bool
 	couponName := r.URL.Query().Get("coupon_name")
 	coupon, err := u.DB.GetCouponByName(context.TODO(), couponName)
 	if couponName == "" {
@@ -842,7 +910,7 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error fetching coupon", http.StatusInternalServerError)
 		return
 	} else {
-		isCouponExists = true
+		ifCouponExists = true
 	}
 
 	// get a valid address for the shipping address
@@ -852,6 +920,39 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		log.Warn("error fetching address by id for order:", err.Error())
+	}
+
+	// take the payment method from url query
+	paymentMethod := r.URL.Query().Get("payment_method")
+	if paymentMethod == utils.StatusPaymentMethodWallet {
+		wallet, err := u.DB.GetWalletByUserID(context.TODO(), user.ID)
+		if err == sql.ErrNoRows {
+			log.Error("error no wallet exists for user in AddCartToOrderHandler for user:", err.Error())
+			http.Error(w, "internal error. Wallet is yet to be provided for the user", http.StatusInternalServerError)
+			return
+		} else if err != nil {
+			log.Error("error fetching wallet for user in AddCartToOrderHandler for user:", err.Error())
+			http.Error(w, "internal error: failed to fetch wallet for user", http.StatusInternalServerError)
+			return
+		}
+
+		var totalAmount float64
+		totalAmount, err = u.DB.GetSumOfCartItemsByUserID(context.TODO(), user.ID)
+		if err != nil {
+			log.Error("error fetching totalAmount for user in AddCartToOrderHandler:", err.Error())
+			http.Error(w, "internal error fetching necessary data", http.StatusInternalServerError)
+			return
+		}
+		if ifCouponExists && coupon.TriggerPrice <= totalAmount {
+			totalAmount = totalAmount - coupon.DiscountAmount
+		}
+		if wallet.Savings < totalAmount {
+			msg := fmt.Sprintf("not enough money in wallet to buy product \n"+
+				"Needed: %0.2f; Your wallet has %0.2f", totalAmount, wallet.Savings)
+			http.Error(w, msg, http.StatusBadRequest)
+			return
+		}
+
 	}
 
 	// get the cart items
@@ -949,11 +1050,11 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	// check if the coupon is valid if coupon exists
 	var discountAmount float64
-	var isCouponValid bool
-	if isCouponExists && coupon.TriggerPrice <= sumTotal {
-		isCouponValid = true
+	var ifCouponValid bool
+	if ifCouponExists && coupon.TriggerPrice <= sumTotal {
+		ifCouponValid = true
 		discountAmount = coupon.DiscountAmount
-	} else if isCouponExists {
+	} else if ifCouponExists {
 		Err = append(Err, "order placed without adding the coupon")
 	}
 	// update order total and discount amount
@@ -961,7 +1062,7 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 	editOrderAmountArg.ID = order.ID
 	editOrderAmountArg.TotalAmount = sumTotal
 	editOrderAmountArg.DiscountAmount = discountAmount
-	if isCouponValid {
+	if ifCouponValid {
 		editOrderAmountArg.CouponID.Valid = true
 		editOrderAmountArg.CouponID.UUID = coupon.ID
 	}
@@ -980,8 +1081,6 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 	// add sumTotal to payments for the order_id
 	var payArg db.AddPaymentParams
 
-	// take the payment method from url query
-	paymentMethod := r.URL.Query().Get("payment_method")
 	if paymentMethod == utils.StatusPaymentMethodRpay {
 		payArg.Method = utils.StatusPaymentMethodRpay
 	} else if paymentMethod == utils.StatusPaymentMethodWallet {
@@ -1007,6 +1106,24 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		Err = append(Err, message)
 	}
 
+	// update wallet total savings if the payment is done through wallet
+	if paymentMethod == utils.StatusPaymentMethodWallet {
+		var retractArg db.RetractSavingsFromWalletByUserIDParams
+		retractArg.Savings = order.NetAmount
+		retractArg.UserID = user.ID
+		updatedWallet, err := u.DB.RetractSavingsFromWalletByUserID(context.TODO(), retractArg)
+		if err != nil {
+			log.Error(
+				"error retracting savings from wallet after placing order"+
+					"via wallet in AddCartToOrderHandler:", err.Error())
+		} else {
+			msg := fmt.Sprintf("retracted %0.2f from wallet;\n", order.NetAmount) +
+				fmt.Sprintf("Wallet balance: %0.2f ", updatedWallet.Savings)
+			Messages = append(Messages, msg)
+		}
+	}
+
+	Messages = append(Messages, "successfully added the cart items to orders")
 	var resp struct {
 		Message         string                         `json:"message"`
 		Order           db.Order                       `json:"order"`
@@ -1015,14 +1132,16 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		OrderItems      []db.GetOrderItemsByOrderIDRow `json:"order_items"`
 		ShippingAddress db.AddShippingAddressRow       `json:"shipping_address"`
 		Err             []string                       `json:"error"`
+		Messages        []string                       `json:"messages"`
 	}
+
 	resp.Phone = int(user.Phone.Int64)
-	resp.Message = "successfully added the cart items to orders"
 	resp.Order = updatedOrder
 	resp.Payment = payment
 	resp.OrderItems = orderItems
 	resp.ShippingAddress = shipAddr
 	resp.Err = Err
+	resp.Messages = Messages
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }

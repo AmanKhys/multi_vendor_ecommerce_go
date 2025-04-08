@@ -34,3 +34,10 @@ update coupons
 set is_deleted = true, updated_at = current_timestamp
 where name = $1
 returning *;
+
+-- name: EditCouponByName :one
+update coupons
+set name = @new_name, trigger_price = @trigger_price,
+ discount_amount = @discount_amount, updated_at = current_timestamp
+where name = @old_name
+returning *;

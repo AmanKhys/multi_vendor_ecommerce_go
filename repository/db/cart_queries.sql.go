@@ -223,3 +223,17 @@ func (q *Queries) GetProductNameAndQuantityFromCartsByID(ctx context.Context, id
 	err := row.Scan(&i.ProductName, &i.Quantity)
 	return i, err
 }
+
+const getSumOfCartItemsByUserID = `-- name: GetSumOfCartItemsByUserID :one
+select cast(sum(p.price * cast(c.quantity as float)) as double precision) as total_amount
+from carts c 
+inner join products p on p.id = c.product_id
+where c.user_id = $1
+`
+
+func (q *Queries) GetSumOfCartItemsByUserID(ctx context.Context, userID uuid.UUID) (float64, error) {
+	row := q.queryRow(ctx, q.getSumOfCartItemsByUserIDStmt, getSumOfCartItemsByUserID, userID)
+	var total_amount float64
+	err := row.Scan(&total_amount)
+	return total_amount, err
+}

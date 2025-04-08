@@ -23,6 +23,70 @@ type Seller struct {
 	DB *db.Queries
 }
 
+// get Seller profile Handler
+func (u *Seller) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+	wallet, err := u.DB.GetWalletByUserID(context.TODO(), user.ID)
+	if err == sql.ErrNoRows {
+		log.Error("error no wallet assinged to user; error in GetPRofileHandler for seller:", err.Error())
+		http.Error(w, "internal error: no wallet assigned to user", http.StatusInternalServerError)
+		return
+	} else if err != nil {
+		log.Error("error fetching wallet for seller in GetProfileHandler for seller:", err.Error())
+		http.Error(w, "internal error: unable to fetch necessary data", http.StatusInternalServerError)
+		return
+	}
+
+	address, err := u.DB.GetAddressBySellerID(context.TODO(), user.ID)
+	if err != nil {
+		log.Error("error fetching address for seller in GetProfileHandler:", err.Error())
+		http.Error(w, "internal error: unable to fetch necessary data", http.StatusInternalServerError)
+		return
+	}
+
+	type addressResp struct {
+		ID           uuid.UUID `json:"id"`
+		BuildingName string    `json:"building_name"`
+		StreetName   string    `json:"street_name"`
+		Town         string    `json:"town"`
+		District     string    `json:"district"`
+		State        string    `json:"state"`
+		Pincode      int32     `json:"pincode"`
+	}
+
+	var respAddress addressResp
+	respAddress.ID = address.ID
+	respAddress.BuildingName = address.BuildingName
+	respAddress.StreetName = address.StreetName
+	respAddress.Town = address.Town
+	respAddress.District = address.District
+	respAddress.Pincode = address.Pincode
+	respAddress.State = address.State
+
+	var resp struct {
+		ID      uuid.UUID   `json:"user_id"`
+		Name    string      `json:"name"`
+		About   string      `json:"about"`
+		Phone   int         `json:"phone"`
+		Email   string      `json:"email"`
+		Wallet  float64     `json:"wallet_savings"`
+		Address addressResp `json:"addresses"`
+	}
+	resp.ID = user.ID
+	resp.Name = user.Name
+	resp.About = user.About.String
+	resp.Phone = int(user.Phone.Int64)
+	resp.Email = user.Email
+	resp.Wallet = wallet.Savings
+	resp.Address = respAddress
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
 // edit profile handler
 func (s *Seller) EditProfileHandler(w http.ResponseWriter, r *http.Request) {
 	user := helper.GetUserHelper(w, r)

@@ -46,3 +46,9 @@ where user_id = $1 and product_id = $2;
 -- name: DeleteCartItemsByUserID :exec
 delete from carts
 where user_id = $1;
+
+-- name: GetSumOfCartItemsByUserID :one
+select cast(sum(p.price * cast(c.quantity as float)) as double precision) as total_amount
+from carts c 
+inner join products p on p.id = c.product_id
+where c.user_id = @user_id;
