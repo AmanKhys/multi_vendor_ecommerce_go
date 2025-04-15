@@ -1189,6 +1189,10 @@ func (u *User) CancelOrderItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// make Err, Messages slice to give for response errors, messages
+	var Err []string
+	var Messages []string
+
 	// check if the order is shipped or not
 	// if order is processing or pending, cancel order
 	if orderItem.Status == utils.StatusOrderCancelled {
@@ -1211,6 +1215,28 @@ func (u *User) CancelOrderItemHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "internal error editing orderItemStatus", http.StatusInternalServerError)
 			return
 		}
+		// add money to wallet in case it is already paid
+		payment, err := u.DB.GetPaymentByOrderID(context.TODO(), order.ID)
+		if err != nil {
+			log.Error("error fetching payment from orderID in CancelOrderItemHandler:", err.Error())
+			http.Error(w, "internal error fetching necessary items to cancel order", http.StatusInternalServerError)
+			return
+		}
+		if payment.Status == utils.StatusPaymentSuccessful {
+			wallet, err := u.DB.AddSavingsToWalletByUserID(context.TODO(), db.AddSavingsToWalletByUserIDParams{
+				Savings: orderItem.TotalAmount,
+				UserID:  user.ID,
+			})
+			if err != nil {
+				log.Error("error updating money back to wallet on cancelling orderItem:", err.Error())
+				Err = append(Err, "error adding money to wallet after cancelling order")
+			} else {
+				msg := fmt.Sprintf("successfully added amount: %0.2f back to wallet.\nCurrent balance: %0.2f",
+					orderItem.TotalAmount, wallet.Savings)
+				Messages = append(Messages, msg)
+			}
+
+		}
 		// increment product stock after cancelling order
 		var incArg db.IncProductStockByIDParams
 		incArg.ProductID = orderItem.ProductID
@@ -1231,10 +1257,8 @@ func (u *User) CancelOrderItemHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// make Err slice to give for response errors
-		var Err []string
 		// decrement payment on cancelling order
-		payment, err := u.DB.DecPaymentAmountByOrderItemID(context.TODO(), orderItem.ID)
+		payment, err = u.DB.DecPaymentAmountByOrderItemID(context.TODO(), orderItem.ID)
 		if err != nil {
 			log.Warn("error updating payment for the order:", err.Error())
 			Err = append(Err, "error updating payment for the order after cancelling item")
@@ -1271,12 +1295,12 @@ func (u *User) CancelOrderItemHandler(w http.ResponseWriter, r *http.Request) {
 		// send response after successful order cancellation
 		var resp struct {
 			OrderItemID uuid.UUID   `json:"order_item_id"`
-			Message     string      `json:"message"`
+			Messages    []string    `json:"messages"`
 			Err         []string    `json:"errors"`
 			NewPayment  RespPayment `json:"new_payment"`
 		}
 		resp.OrderItemID = orderItem.ID
-		resp.Message = "order_item has been cancelled."
+		resp.Messages = append(Messages, "order_item has been cancelled.")
 		resp.Err = Err
 		resp.NewPayment = rPay
 		w.Header().Set("Content-Type", "application/json")
