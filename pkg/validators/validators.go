@@ -20,6 +20,8 @@ var (
 	addressRegex = regexp.MustCompile(`^[a-zA-Z0-9]{3,}[a-zA-Z0-9' ]*$`)
 
 	couponNameRegex = regexp.MustCompile(`^[A-Z0-9]{3,}$`)
+
+	reviewRatingRegex = regexp.MustCompile(`^[1-5]$`)
 )
 
 func ValidateUUIDStr(uuidStr string) bool {
@@ -87,4 +89,8 @@ func ValidateCouponName(name string) bool {
 
 func ValidateCouponPrice(price float64) bool {
 	return price > 0
+}
+
+func ValidateReviewRating(rating string) bool {
+	return reviewRatingRegex.MatchString(rating)
 }

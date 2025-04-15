@@ -57,6 +57,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addProductStmt, err = db.PrepareContext(ctx, addProduct); err != nil {
 		return nil, fmt.Errorf("error preparing query AddProduct: %w", err)
 	}
+	if q.addProductReviewWithCommmentStmt, err = db.PrepareContext(ctx, addProductReviewWithCommment); err != nil {
+		return nil, fmt.Errorf("error preparing query AddProductReviewWithCommment: %w", err)
+	}
+	if q.addProductReviewWithoutCommentStmt, err = db.PrepareContext(ctx, addProductReviewWithoutComment); err != nil {
+		return nil, fmt.Errorf("error preparing query AddProductReviewWithoutComment: %w", err)
+	}
 	if q.addProductToCategoryByCategoryNameStmt, err = db.PrepareContext(ctx, addProductToCategoryByCategoryName); err != nil {
 		return nil, fmt.Errorf("error preparing query AddProductToCategoryByCategoryName: %w", err)
 	}
@@ -276,6 +282,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getOrderItemByIDStmt, err = db.PrepareContext(ctx, getOrderItemByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrderItemByID: %w", err)
 	}
+	if q.getOrderItemByUserAndProductIDStmt, err = db.PrepareContext(ctx, getOrderItemByUserAndProductID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetOrderItemByUserAndProductID: %w", err)
+	}
 	if q.getOrderItemsByOrderIDStmt, err = db.PrepareContext(ctx, getOrderItemsByOrderID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrderItemsByOrderID: %w", err)
 	}
@@ -297,6 +306,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getProductAndCategoryNameByIDStmt, err = db.PrepareContext(ctx, getProductAndCategoryNameByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductAndCategoryNameByID: %w", err)
 	}
+	if q.getProductAverageRatingAndTotalRatingStmt, err = db.PrepareContext(ctx, getProductAverageRatingAndTotalRating); err != nil {
+		return nil, fmt.Errorf("error preparing query GetProductAverageRatingAndTotalRating: %w", err)
+	}
 	if q.getProductByIDStmt, err = db.PrepareContext(ctx, getProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductByID: %w", err)
 	}
@@ -306,11 +318,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getProductNameAndQuantityFromCartsByIDStmt, err = db.PrepareContext(ctx, getProductNameAndQuantityFromCartsByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductNameAndQuantityFromCartsByID: %w", err)
 	}
+	if q.getProductReviewsStmt, err = db.PrepareContext(ctx, getProductReviews); err != nil {
+		return nil, fmt.Errorf("error preparing query GetProductReviews: %w", err)
+	}
 	if q.getProductsByCategoryNameStmt, err = db.PrepareContext(ctx, getProductsByCategoryName); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductsByCategoryName: %w", err)
 	}
 	if q.getProductsBySellerIDStmt, err = db.PrepareContext(ctx, getProductsBySellerID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductsBySellerID: %w", err)
+	}
+	if q.getReviewByUserAndProductIDStmt, err = db.PrepareContext(ctx, getReviewByUserAndProductID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetReviewByUserAndProductID: %w", err)
 	}
 	if q.getSellerByProductIDStmt, err = db.PrepareContext(ctx, getSellerByProductID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSellerByProductID: %w", err)
@@ -442,6 +460,16 @@ func (q *Queries) Close() error {
 	if q.addProductStmt != nil {
 		if cerr := q.addProductStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addProductStmt: %w", cerr)
+		}
+	}
+	if q.addProductReviewWithCommmentStmt != nil {
+		if cerr := q.addProductReviewWithCommmentStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addProductReviewWithCommmentStmt: %w", cerr)
+		}
+	}
+	if q.addProductReviewWithoutCommentStmt != nil {
+		if cerr := q.addProductReviewWithoutCommentStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addProductReviewWithoutCommentStmt: %w", cerr)
 		}
 	}
 	if q.addProductToCategoryByCategoryNameStmt != nil {
@@ -809,6 +837,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getOrderItemByIDStmt: %w", cerr)
 		}
 	}
+	if q.getOrderItemByUserAndProductIDStmt != nil {
+		if cerr := q.getOrderItemByUserAndProductIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getOrderItemByUserAndProductIDStmt: %w", cerr)
+		}
+	}
 	if q.getOrderItemsByOrderIDStmt != nil {
 		if cerr := q.getOrderItemsByOrderIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getOrderItemsByOrderIDStmt: %w", cerr)
@@ -844,6 +877,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getProductAndCategoryNameByIDStmt: %w", cerr)
 		}
 	}
+	if q.getProductAverageRatingAndTotalRatingStmt != nil {
+		if cerr := q.getProductAverageRatingAndTotalRatingStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getProductAverageRatingAndTotalRatingStmt: %w", cerr)
+		}
+	}
 	if q.getProductByIDStmt != nil {
 		if cerr := q.getProductByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getProductByIDStmt: %w", cerr)
@@ -859,6 +897,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getProductNameAndQuantityFromCartsByIDStmt: %w", cerr)
 		}
 	}
+	if q.getProductReviewsStmt != nil {
+		if cerr := q.getProductReviewsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getProductReviewsStmt: %w", cerr)
+		}
+	}
 	if q.getProductsByCategoryNameStmt != nil {
 		if cerr := q.getProductsByCategoryNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getProductsByCategoryNameStmt: %w", cerr)
@@ -867,6 +910,11 @@ func (q *Queries) Close() error {
 	if q.getProductsBySellerIDStmt != nil {
 		if cerr := q.getProductsBySellerIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getProductsBySellerIDStmt: %w", cerr)
+		}
+	}
+	if q.getReviewByUserAndProductIDStmt != nil {
+		if cerr := q.getReviewByUserAndProductIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getReviewByUserAndProductIDStmt: %w", cerr)
 		}
 	}
 	if q.getSellerByProductIDStmt != nil {
@@ -1039,6 +1087,8 @@ type Queries struct {
 	addOrderITemStmt                            *sql.Stmt
 	addPaymentStmt                              *sql.Stmt
 	addProductStmt                              *sql.Stmt
+	addProductReviewWithCommmentStmt            *sql.Stmt
+	addProductReviewWithoutCommentStmt          *sql.Stmt
 	addProductToCategoryByCategoryNameStmt      *sql.Stmt
 	addProductToCategoryByIDStmt                *sql.Stmt
 	addSavingsToWalletByUserIDStmt              *sql.Stmt
@@ -1112,6 +1162,7 @@ type Queries struct {
 	getCouponByNameStmt                         *sql.Stmt
 	getOrderByIDStmt                            *sql.Stmt
 	getOrderItemByIDStmt                        *sql.Stmt
+	getOrderItemByUserAndProductIDStmt          *sql.Stmt
 	getOrderItemsByOrderIDStmt                  *sql.Stmt
 	getOrderItemsBySellerIDStmt                 *sql.Stmt
 	getOrderItemsBySellerIDAndDateRangeStmt     *sql.Stmt
@@ -1119,11 +1170,14 @@ type Queries struct {
 	getOrdersByUserIDStmt                       *sql.Stmt
 	getPaymentByOrderIDStmt                     *sql.Stmt
 	getProductAndCategoryNameByIDStmt           *sql.Stmt
+	getProductAverageRatingAndTotalRatingStmt   *sql.Stmt
 	getProductByIDStmt                          *sql.Stmt
 	getProductFromCartByIDStmt                  *sql.Stmt
 	getProductNameAndQuantityFromCartsByIDStmt  *sql.Stmt
+	getProductReviewsStmt                       *sql.Stmt
 	getProductsByCategoryNameStmt               *sql.Stmt
 	getProductsBySellerIDStmt                   *sql.Stmt
+	getReviewByUserAndProductIDStmt             *sql.Stmt
 	getSellerByProductIDStmt                    *sql.Stmt
 	getSellerIDFromOrderItemIDStmt              *sql.Stmt
 	getSessionDetailsByIDStmt                   *sql.Stmt
@@ -1165,6 +1219,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addOrderITemStmt:                            q.addOrderITemStmt,
 		addPaymentStmt:                              q.addPaymentStmt,
 		addProductStmt:                              q.addProductStmt,
+		addProductReviewWithCommmentStmt:            q.addProductReviewWithCommmentStmt,
+		addProductReviewWithoutCommentStmt:          q.addProductReviewWithoutCommentStmt,
 		addProductToCategoryByCategoryNameStmt:      q.addProductToCategoryByCategoryNameStmt,
 		addProductToCategoryByIDStmt:                q.addProductToCategoryByIDStmt,
 		addSavingsToWalletByUserIDStmt:              q.addSavingsToWalletByUserIDStmt,
@@ -1238,6 +1294,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getCouponByNameStmt:                         q.getCouponByNameStmt,
 		getOrderByIDStmt:                            q.getOrderByIDStmt,
 		getOrderItemByIDStmt:                        q.getOrderItemByIDStmt,
+		getOrderItemByUserAndProductIDStmt:          q.getOrderItemByUserAndProductIDStmt,
 		getOrderItemsByOrderIDStmt:                  q.getOrderItemsByOrderIDStmt,
 		getOrderItemsBySellerIDStmt:                 q.getOrderItemsBySellerIDStmt,
 		getOrderItemsBySellerIDAndDateRangeStmt:     q.getOrderItemsBySellerIDAndDateRangeStmt,
@@ -1245,11 +1302,14 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getOrdersByUserIDStmt:                       q.getOrdersByUserIDStmt,
 		getPaymentByOrderIDStmt:                     q.getPaymentByOrderIDStmt,
 		getProductAndCategoryNameByIDStmt:           q.getProductAndCategoryNameByIDStmt,
+		getProductAverageRatingAndTotalRatingStmt:   q.getProductAverageRatingAndTotalRatingStmt,
 		getProductByIDStmt:                          q.getProductByIDStmt,
 		getProductFromCartByIDStmt:                  q.getProductFromCartByIDStmt,
 		getProductNameAndQuantityFromCartsByIDStmt:  q.getProductNameAndQuantityFromCartsByIDStmt,
+		getProductReviewsStmt:                       q.getProductReviewsStmt,
 		getProductsByCategoryNameStmt:               q.getProductsByCategoryNameStmt,
 		getProductsBySellerIDStmt:                   q.getProductsBySellerIDStmt,
+		getReviewByUserAndProductIDStmt:             q.getReviewByUserAndProductIDStmt,
 		getSellerByProductIDStmt:                    q.getSellerByProductIDStmt,
 		getSellerIDFromOrderItemIDStmt:              q.getSellerIDFromOrderItemIDStmt,
 		getSessionDetailsByIDStmt:                   q.getSessionDetailsByIDStmt,

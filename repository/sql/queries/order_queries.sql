@@ -122,3 +122,18 @@ inner join products p on oi.product_id = p.id
 where p.seller_id = $1 
   and oi.created_at between @start_date and @end_date
 order by oi.created_at desc;
+
+-- name: GetOrderItemByUserAndProductID :one
+select oi.*
+from order_items oi
+inner join orders o
+on oi.order_id = o.id
+where oi.product_id = @product_id and 
+o.user_id = @user_id and
+(oi.status = 'delivered' or oi.status = 'returned')
+limit 1;
+
+-- name: GetReviewByUserAndProductID :one
+select *
+from reviews r
+where r.user_id = $1 and r.product_id = $2;

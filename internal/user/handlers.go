@@ -296,16 +296,151 @@ func (u *User) ProductHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "wrong productID format", http.StatusBadRequest)
 		return
 	}
+
+	var Err []string
+	var Messages []string
+
 	product, err := u.DB.GetProductByID(context.TODO(), id)
 	if err != nil {
 		http.Error(w, "no such product exists", http.StatusNotFound)
 		return
 	}
-	type Response struct {
-		Data db.Product `json:"data"`
+	reviews, err := u.DB.GetProductReviews(context.TODO(), product.ID)
+	var averageRating float64
+	var totalRating int
+	type respReview struct {
+		ReviewID uuid.UUID      `json:"review_id"`
+		Rating   int            `json:"rating"`
+		Comment  sql.NullString `json:"comment"`
 	}
+	var respReviews []respReview
+	if err != nil {
+		Messages = append(Messages, "no reveiws added for this product as of yet")
+	} else {
+		result, err := u.DB.GetProductAverageRatingAndTotalRating(context.TODO(), product.ID)
+		if err != nil {
+			Err = append(Err, "error fetching average rating for the product")
+		}
+		averageRating = result.AverageRating
+		totalRating = int(result.TotalRating)
+
+		for _, r := range reviews {
+			var temp respReview
+			temp.ReviewID = r.ID
+			temp.Rating = int(r.Rating)
+			temp.Comment = r.Comment
+			respReviews = append(respReviews, temp)
+		}
+	}
+
+	var resp struct {
+		ProductID     uuid.UUID       `json:"product_id"`
+		Name          string          `json:"name"`
+		Price         float64         `json:"price"`
+		AverageRating sql.NullFloat64 `json:"average_rating"`
+		RatingCount   int             `json:"rating_count"`
+		Reviews       []respReview    `json:"reviews"`
+		Err           []string        `json:"errors"`
+		Messages      []string        `json:"messages"`
+	}
+	resp.ProductID = product.ID
+	resp.Name = product.Name
+	resp.Price = product.Price
+	if averageRating != 0 {
+		resp.AverageRating.Float64 = averageRating
+		resp.AverageRating.Valid = true
+	}
+	resp.RatingCount = totalRating
+	resp.Reviews = respReviews
+	resp.Err = Err
+	resp.Messages = Messages
+
 	w.Header().Set("Content-Type", "application/json")
-	resp := Response{Data: product}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (u *User) AddProductReviewHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+	productIDStr := r.URL.Query().Get("product_id")
+	ratingStr := r.URL.Query().Get("rating")
+	comment := r.URL.Query().Get("comment")
+	productID, err := uuid.Parse(productIDStr)
+	if err != nil {
+		http.Error(w, "invalid productID", http.StatusBadRequest)
+		return
+	}
+
+	review, err := u.DB.GetReviewByUserAndProductID(context.TODO(), db.GetReviewByUserAndProductIDParams{
+		UserID:    user.ID,
+		ProductID: productID,
+	})
+	if err == nil {
+		http.Error(w, "user already added review. Kindly Edit review if further changes are to be done.", http.StatusBadRequest)
+		return
+	}
+	_, err = u.DB.GetOrderItemByUserAndProductID(context.TODO(), db.GetOrderItemByUserAndProductIDParams{
+		UserID:    user.ID,
+		ProductID: productID,
+	})
+	if err == sql.ErrNoRows {
+		http.Error(w, "cannot add rating to unpurchased item", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Error("error fetching orderItem in AddProductReviewHandler:", err.Error())
+		http.Error(w, "internal error fetching necessary item to add review", http.StatusInternalServerError)
+		return
+	}
+
+	if !validators.ValidateReviewRating(ratingStr) {
+		http.Error(w, "Invalid review rating. Rate from 1-5", http.StatusBadRequest)
+		return
+	}
+	rating, _ := strconv.Atoi(ratingStr)
+	if len(comment) == 0 {
+		review, err = u.DB.AddProductReviewWithoutComment(context.TODO(), db.AddProductReviewWithoutCommentParams{
+			UserID:    user.ID,
+			ProductID: productID,
+			Rating:    int32(rating),
+		})
+		if err != nil {
+			log.Error("error adding review in AddProductReviewHandler:", err.Error())
+			http.Error(w, "internal error adding review", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		review, err = u.DB.AddProductReviewWithCommment(context.TODO(), db.AddProductReviewWithCommmentParams{
+			UserID:    user.ID,
+			ProductID: productID,
+			Rating:    int32(rating),
+			Comment: sql.NullString{
+				String: comment,
+				Valid:  true,
+			},
+		})
+		if err != nil {
+			log.Error("error adding review in AddProductReviewHandler:", err.Error())
+			http.Error(w, "internal error adding review", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	var resp struct {
+		ProductID uuid.UUID      `json:"product_id"`
+		Rating    int            `json:"rating"`
+		Comment   sql.NullString `json:"comment"`
+		Message   string         `json:"message"`
+		IsEdited  bool           `json:"is_edited"`
+	}
+	resp.ProductID = productID
+	resp.Rating = int(review.Rating)
+	resp.Comment = review.Comment
+	resp.IsEdited = review.IsEdited
+	resp.Message = "successfully added review to the product"
+	w.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
 
@@ -1671,4 +1806,32 @@ func (u *User) ReturnOrderHandler(w http.ResponseWriter, r *http.Request) {
 	msg := "successfully returned order"
 	w.Header().Add("Content-Type", "text/plain")
 	w.Write([]byte(msg))
+}
+
+func (u *User) GetWishListHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+}
+
+func (u *User) AddProductToWishListHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+}
+
+func (u *User) RemoveWishListItemHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+}
+
+func (u *User) RemoveAllWishListHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
 }

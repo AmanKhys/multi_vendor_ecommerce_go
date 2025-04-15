@@ -71,3 +71,28 @@ on ci.product_id = p.id
 inner join categories c
 on ci.category_id = c.id
 where p.id = $1;
+
+-- name: AddProductReviewWithCommment :one
+insert into reviews
+(user_id, product_id, rating, comment)
+values
+($1, $2, $3, $4)
+returning *;
+
+-- name: AddProductReviewWithoutComment :one
+insert into reviews
+(user_id, product_id, rating)
+values
+($1, $2, $3)
+returning *;
+
+-- name: GetProductReviews :many
+select * from reviews
+where product_id = $1;
+
+-- name: GetProductAverageRatingAndTotalRating :one
+select avg(rating) as average_rating, count(*) as total_rating
+from reviews 
+where product_id = $1;
+
+-- name: EditProductReviewByUserAndProductID :one

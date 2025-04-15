@@ -383,6 +383,39 @@ func (q *Queries) GetOrderItemByID(ctx context.Context, id uuid.UUID) (OrderItem
 	return i, err
 }
 
+const getOrderItemByUserAndProductID = `-- name: GetOrderItemByUserAndProductID :one
+select oi.id, oi.order_id, oi.product_id, oi.price, oi.quantity, oi.total_amount, oi.status, oi.created_at, oi.updated_at
+from order_items oi
+inner join orders o
+on oi.order_id = o.id
+where oi.product_id = $1 and 
+o.user_id = $2 and
+(oi.status = 'delivered' or oi.status = 'returned')
+limit 1
+`
+
+type GetOrderItemByUserAndProductIDParams struct {
+	ProductID uuid.UUID `json:"product_id"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetOrderItemByUserAndProductID(ctx context.Context, arg GetOrderItemByUserAndProductIDParams) (OrderItem, error) {
+	row := q.queryRow(ctx, q.getOrderItemByUserAndProductIDStmt, getOrderItemByUserAndProductID, arg.ProductID, arg.UserID)
+	var i OrderItem
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.ProductID,
+		&i.Price,
+		&i.Quantity,
+		&i.TotalAmount,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getOrderItemsByOrderID = `-- name: GetOrderItemsByOrderID :many
 select oi.id, oi.order_id, oi.product_id, oi.price, oi.quantity, oi.total_amount, oi.status, oi.created_at, oi.updated_at, p.name as product_name
 from order_items oi
@@ -606,6 +639,34 @@ func (q *Queries) GetOrdersByUserID(ctx context.Context, userID uuid.UUID) ([]Or
 		return nil, err
 	}
 	return items, nil
+}
+
+const getReviewByUserAndProductID = `-- name: GetReviewByUserAndProductID :one
+select id, user_id, product_id, rating, comment, is_deleted, is_edited, created_at, updated_at
+from reviews r
+where r.user_id = $1 and r.product_id = $2
+`
+
+type GetReviewByUserAndProductIDParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	ProductID uuid.UUID `json:"product_id"`
+}
+
+func (q *Queries) GetReviewByUserAndProductID(ctx context.Context, arg GetReviewByUserAndProductIDParams) (Review, error) {
+	row := q.queryRow(ctx, q.getReviewByUserAndProductIDStmt, getReviewByUserAndProductID, arg.UserID, arg.ProductID)
+	var i Review
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProductID,
+		&i.Rating,
+		&i.Comment,
+		&i.IsDeleted,
+		&i.IsEdited,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getSellerIDFromOrderItemID = `-- name: GetSellerIDFromOrderItemID :one

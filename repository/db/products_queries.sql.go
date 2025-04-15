@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,6 +45,74 @@ func (q *Queries) AddProduct(ctx context.Context, arg AddProductParams) (Product
 		&i.Stock,
 		&i.SellerID,
 		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const addProductReviewWithCommment = `-- name: AddProductReviewWithCommment :one
+insert into reviews
+(user_id, product_id, rating, comment)
+values
+($1, $2, $3, $4)
+returning id, user_id, product_id, rating, comment, is_deleted, is_edited, created_at, updated_at
+`
+
+type AddProductReviewWithCommmentParams struct {
+	UserID    uuid.UUID      `json:"user_id"`
+	ProductID uuid.UUID      `json:"product_id"`
+	Rating    int32          `json:"rating"`
+	Comment   sql.NullString `json:"comment"`
+}
+
+func (q *Queries) AddProductReviewWithCommment(ctx context.Context, arg AddProductReviewWithCommmentParams) (Review, error) {
+	row := q.queryRow(ctx, q.addProductReviewWithCommmentStmt, addProductReviewWithCommment,
+		arg.UserID,
+		arg.ProductID,
+		arg.Rating,
+		arg.Comment,
+	)
+	var i Review
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProductID,
+		&i.Rating,
+		&i.Comment,
+		&i.IsDeleted,
+		&i.IsEdited,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const addProductReviewWithoutComment = `-- name: AddProductReviewWithoutComment :one
+insert into reviews
+(user_id, product_id, rating)
+values
+($1, $2, $3)
+returning id, user_id, product_id, rating, comment, is_deleted, is_edited, created_at, updated_at
+`
+
+type AddProductReviewWithoutCommentParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	ProductID uuid.UUID `json:"product_id"`
+	Rating    int32     `json:"rating"`
+}
+
+func (q *Queries) AddProductReviewWithoutComment(ctx context.Context, arg AddProductReviewWithoutCommentParams) (Review, error) {
+	row := q.queryRow(ctx, q.addProductReviewWithoutCommentStmt, addProductReviewWithoutComment, arg.UserID, arg.ProductID, arg.Rating)
+	var i Review
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProductID,
+		&i.Rating,
+		&i.Comment,
+		&i.IsDeleted,
+		&i.IsEdited,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -349,6 +418,24 @@ func (q *Queries) GetProductAndCategoryNameByID(ctx context.Context, id uuid.UUI
 	return i, err
 }
 
+const getProductAverageRatingAndTotalRating = `-- name: GetProductAverageRatingAndTotalRating :one
+select avg(rating) as average_rating, count(*) as total_rating
+from reviews 
+where product_id = $1
+`
+
+type GetProductAverageRatingAndTotalRatingRow struct {
+	AverageRating float64 `json:"average_rating"`
+	TotalRating   int64   `json:"total_rating"`
+}
+
+func (q *Queries) GetProductAverageRatingAndTotalRating(ctx context.Context, productID uuid.UUID) (GetProductAverageRatingAndTotalRatingRow, error) {
+	row := q.queryRow(ctx, q.getProductAverageRatingAndTotalRatingStmt, getProductAverageRatingAndTotalRating, productID)
+	var i GetProductAverageRatingAndTotalRatingRow
+	err := row.Scan(&i.AverageRating, &i.TotalRating)
+	return i, err
+}
+
 const getProductByID = `-- name: GetProductByID :one
 select id, name, description, price, stock, seller_id, is_deleted, created_at, updated_at from products
 where id = $1 and is_deleted = false
@@ -369,6 +456,44 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getProductReviews = `-- name: GetProductReviews :many
+select id, user_id, product_id, rating, comment, is_deleted, is_edited, created_at, updated_at from reviews
+where product_id = $1
+`
+
+func (q *Queries) GetProductReviews(ctx context.Context, productID uuid.UUID) ([]Review, error) {
+	rows, err := q.query(ctx, q.getProductReviewsStmt, getProductReviews, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Review{}
+	for rows.Next() {
+		var i Review
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ProductID,
+			&i.Rating,
+			&i.Comment,
+			&i.IsDeleted,
+			&i.IsEdited,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getProductsBySellerID = `-- name: GetProductsBySellerID :many

@@ -59,3 +59,5 @@ cron jobs /tickers...
 9. profit/loss chart for admin/seller.. done
 10. limit = week, day, month for sales report for admin/ seller ..it takes priority over dates
 11. seller sales report platform_fee charged, total profit, total revenue, for each orderItem..done
+12. wishlist get, add, remove item, all delete
+13. Check order shipping_address is of user
