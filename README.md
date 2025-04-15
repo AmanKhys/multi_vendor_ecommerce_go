@@ -37,6 +37,38 @@ go run cmd/main.go  # Direct execution
 ## Database Setup
 Ensure that PostgreSQL is running and configured properly. Use SQLC to generate database queries and schema before running the application.
 
+## Environment Setup
+Add the respective environment variables in the .env file at the root directory.
+Refer to pkg/envname package for reference
+
+Eg:  
+// .env file  
+port=0000  
+host=localhost  
+
+db_name=ecommerce  
+db_host=localhost  
+db_driver=postgres  
+db_user=admin4  
+db_password=password  
+db_port=5432  
+db_time_zone=Asia/Kolkata
+
+
+smtp_server=smtp.gmail.com:587  
+smtp_email=example@email.com  
+smtp_password=password  
+smtp_host=smtp.gmail.com  
+smtp_identity=ecom  
+
+crypt_secret_key=cipher_secret_key  
+aes_iv=xxxxooooxxxxoooo // some 16 or 24 byte string  
+
+google_client_id=example.apps.googleusercontent.com  
+google_secret_key=example_secret_key  
+
+rpay_key_id=rzp_test_example_key  
+rpay_secret_key=example_secret_key  
 ## Contributing
 Contributions are welcome! Feel free to open issues or submit pull requests.
 
