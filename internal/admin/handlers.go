@@ -702,16 +702,41 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	startDateStr := r.URL.Query().Get("start_date")
 	endDateStr := r.URL.Query().Get("end_date")
+	timeLimit := r.URL.Query().Get("time_limit")
 
-	startDate, err := time.Parse("2006-01-02", startDateStr)
-	if err != nil {
-		http.Error(w, "Invalid start_date format, use YYYY-MM-DD", http.StatusBadRequest)
-		return
-	}
-	endDate, err := time.Parse("2006-01-02", endDateStr)
-	if err != nil {
-		http.Error(w, "Invalid end_date format, use YYYY-MM-DD", http.StatusBadRequest)
-		return
+	var startDate time.Time
+	var endDate time.Time
+
+	if timeLimit == "day" {
+		startDate = time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+		endDate = time.Now()
+	} else if timeLimit == "week" {
+		startDate = time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+		day := int(time.Now().Weekday())
+		realStartDate := startDate.AddDate(0, 0, -day)
+		startDate = realStartDate
+		endDate = time.Now()
+	} else if timeLimit == "month" {
+		startDate = time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.Now().Location())
+		endDate = time.Now()
+	} else if timeLimit == "year" {
+		startDate = time.Date(time.Now().Year(), time.January, 1, 0, 0, 0, 0, time.Now().Location())
+		endDate = time.Now()
+	} else {
+		sd, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			http.Error(w, "Invalid start_date format, use YYYY-MM-DD", http.StatusBadRequest)
+			return
+		}
+
+		ed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			http.Error(w, "Invalid end_date format, use YYYY-MM-DD", http.StatusBadRequest)
+			return
+		}
+
+		startDate = sd
+		endDate = ed
 	}
 
 	dateArg := db.GetVendorPaymentsByDateRangeParams{StartDate: startDate, EndDate: endDate}
