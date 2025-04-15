@@ -1,10 +1,12 @@
 package chartGen
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
 	"github.com/google/uuid"
+	"github.com/jung-kurt/gofpdf"
 	"github.com/wcharczuk/go-chart/v2"
 	"github.com/wcharczuk/go-chart/v2/drawing"
 )
@@ -14,7 +16,7 @@ type PaymentStat struct {
 	Amount float64
 }
 
-func GenerateCharts(orderStatusCounts map[string]int, paymentStatusCounts map[string]PaymentStat, platformFees, netProfit float64) (string, string, error) {
+func GenerateChartsForSeller(orderStatusCounts map[string]int, paymentStatusCounts map[string]PaymentStat, platformFees, netProfit float64) (string, string, error) {
 	pieChart := chart.PieChart{
 		Width:  512,
 		Height: 512,
@@ -90,4 +92,49 @@ func GenerateCharts(orderStatusCounts map[string]int, paymentStatusCounts map[st
 	}
 
 	return pieChartPath, barChartPath, nil
+}
+
+func GenerateOrderStatusPieChartForAdmin(pending, processing, shipped, delivered, cancelled, returned int) ([]byte, error) {
+	values := []chart.Value{
+		{Value: float64(pending), Label: "Pending"},
+		{Value: float64(processing), Label: "Processing"},
+		{Value: float64(shipped), Label: "Shipped"},
+		{Value: float64(delivered), Label: "Delivered"},
+		{Value: float64(cancelled), Label: "Cancelled"},
+		{Value: float64(returned), Label: "Returned"},
+	}
+
+	pie := chart.PieChart{
+		Width:  500,
+		Height: 400,
+		Values: values,
+	}
+
+	var buf bytes.Buffer
+	err := pie.Render(chart.PNG, &buf)
+	return buf.Bytes(), err
+}
+
+func GenerateProfitLossBarChartForAdmin(profit, loss float64) ([]byte, error) {
+	graph := chart.BarChart{
+		Title:      "Profit vs Loss",
+		TitleStyle: chart.StyleTextDefaults(),
+		Height:     400,
+		BarWidth:   60,
+		Bars: []chart.Value{
+			{Value: profit, Label: "Profit"},
+			{Value: loss, Label: "Loss"},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := graph.Render(chart.PNG, &buf)
+	return buf.Bytes(), err
+}
+
+func AddChartToPDFForAdmin(pdf *gofpdf.Fpdf, imgBytes []byte, name string, x, y, width float64) error {
+	opt := gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: false}
+	pdf.RegisterImageOptionsReader(name, opt, bytes.NewReader(imgBytes))
+	pdf.ImageOptions(name, x, y, width, 0, false, opt, 0, "")
+	return nil
 }

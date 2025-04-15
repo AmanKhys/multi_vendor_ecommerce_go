@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/chartGen.go"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
@@ -714,10 +714,7 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dateArg := db.GetVendorPaymentsByDateRangeParams{
-		StartDate: startDate,
-		EndDate:   endDate,
-	}
+	dateArg := db.GetVendorPaymentsByDateRangeParams{StartDate: startDate, EndDate: endDate}
 	vendorPayments, err := a.DB.GetVendorPaymentsByDateRange(context.TODO(), dateArg)
 	if err != nil {
 		log.Error("error fetching vendorPayments:", err.Error())
@@ -725,38 +722,24 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var totalProfit float64
-	var totalSales int
-	var totalOrders int
-	var totalCancelledOrderItems int
-	var totalPendingOrderItems int
-	var totalProcessingOrderItems int
-	var totalReturnedOrderItems int
-	var totalDeliveredOrderItems int
-	var totalShippedOrderItems int
 	orderItems, err := a.DB.GetAllOrderItemsForAdmin(context.TODO())
 	if err != nil {
-		log.Error("error fetching orderItems in SalesReportHandler for admin:", err.Error())
-		http.Error(w, "internal error fetching orderItems to produce sales report", http.StatusInternalServerError)
+		log.Error("error fetching orderItems:", err.Error())
+		http.Error(w, "internal error fetching orderItems", http.StatusInternalServerError)
 		return
 	}
+
+	var (
+		totalProfit, totalLossAmount float64
+		totalSales, totalOrders      int
+		statusCount                  = make(map[string]int)
+		orderItemMap                 = make(map[uuid.UUID]map[string]float64)
+	)
+
 	totalOrders = len(orderItems)
 	for _, oi := range orderItems {
-		if oi.Status == utils.StatusOrderCancelled {
-			totalCancelledOrderItems++
-		} else if oi.Status == utils.StatusOrderReturned {
-			totalReturnedOrderItems++
-		} else if oi.Status == utils.StatusOrderPending {
-			totalPendingOrderItems++
-		} else if oi.Status == utils.StatusOrderProcessing {
-			totalProcessingOrderItems++
-		} else if oi.Status == utils.StatusOrderShipped {
-			totalShippedOrderItems++
-		} else if oi.Status == utils.StatusOrderDelivered {
-			totalDeliveredOrderItems++
-		}
+		statusCount[oi.Status]++
 	}
-	orderItemMap := make(map[uuid.UUID]map[string]float64)
 
 	for _, vp := range vendorPayments {
 		if vp.Status == utils.StatusVendorPaymentCancelled {
@@ -764,12 +747,8 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		totalSales++
 		totalProfit += vp.PlatformFee
-
 		if _, exists := orderItemMap[vp.OrderItemID]; !exists {
-			orderItemMap[vp.OrderItemID] = map[string]float64{
-				"sales":        0,
-				"platform_fee": 0,
-			}
+			orderItemMap[vp.OrderItemID] = map[string]float64{"sales": 0, "platform_fee": 0}
 		}
 		orderItemMap[vp.OrderItemID]["sales"] += vp.TotalAmount
 		orderItemMap[vp.OrderItemID]["platform_fee"] += vp.PlatformFee
@@ -782,7 +761,6 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var totalLossAmount float64
 	for _, o := range orders {
 		if o.CreatedAt.Before(startDate) || o.CreatedAt.After(endDate) {
 			continue
@@ -794,57 +772,90 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		totalLossAmount += o.DiscountAmount
 	}
 
-	// Generate PDF
+	// === Begin PDF ===
 	pdf := gofpdf.New("P", "mm", "A4", "")
-	pdf.SetMargins(10, 10, 10)
+	pdf.SetMargins(15, 15, 15)
 	pdf.AddPage()
-	pdf.SetFont("Arial", "B", 16)
-	pdf.Cell(190, 10, "Admin Sales Report")
-	pdf.Ln(10)
+
+	pdf.SetFont("Arial", "B", 18)
+	pdf.Cell(0, 10, "Admin Sales Report")
+	pdf.Ln(12)
 
 	pdf.SetFont("Arial", "", 12)
-	pdf.Cell(95, 10, fmt.Sprintf("Start Date: %s", startDate.Format("2006-01-02")))
-	pdf.Cell(95, 10, fmt.Sprintf("End Date: %s", endDate.Format("2006-01-02")))
+	pdf.Cell(95, 8, fmt.Sprintf("Start Date: %s", startDate.Format("2006-01-02")))
+	pdf.Cell(95, 8, fmt.Sprintf("End Date: %s", endDate.Format("2006-01-02")))
+	pdf.Ln(12)
+
+	pdf.SetLineWidth(0.3)
+	pdf.Line(15, pdf.GetY(), 195, pdf.GetY())
+	pdf.Ln(5)
+
+	// Summary Section
+	pdf.SetFont("Arial", "B", 14)
+	pdf.Cell(0, 10, "Summary")
 	pdf.Ln(10)
 
-	pdf.SetFont("Arial", "B", 12)
-	pdf.Cell(190, 8, "Summary")
-	pdf.Ln(8)
 	pdf.SetFont("Arial", "", 12)
 	pdf.Cell(95, 8, fmt.Sprintf("Total Orders: %d", totalOrders))
 	pdf.Cell(95, 8, fmt.Sprintf("Total Sales: %d", totalSales))
 	pdf.Ln(8)
-	pdf.Cell(95, 8, fmt.Sprintf("Total Pending Orders: %d", totalPendingOrderItems))
-	pdf.Cell(95, 8, fmt.Sprintf("Total Processing Orders: %d", totalProcessingOrderItems))
+	pdf.Cell(95, 8, fmt.Sprintf("Pending Orders: %d", statusCount[utils.StatusOrderPending]))
+	pdf.Cell(95, 8, fmt.Sprintf("Processing Orders: %d", statusCount[utils.StatusOrderProcessing]))
 	pdf.Ln(8)
-	pdf.Cell(95, 8, fmt.Sprintf("Total Shipped Orders: %d", totalShippedOrderItems))
-	pdf.Cell(95, 8, fmt.Sprintf("Total Delivered Orders: %d", totalDeliveredOrderItems))
+	pdf.Cell(95, 8, fmt.Sprintf("Shipped Orders: %d", statusCount[utils.StatusOrderShipped]))
+	pdf.Cell(95, 8, fmt.Sprintf("Delivered Orders: %d", statusCount[utils.StatusOrderDelivered]))
 	pdf.Ln(8)
-	pdf.Cell(95, 8, fmt.Sprintf("Total Cancelled Orders: %d", totalCancelledOrderItems))
-	pdf.Cell(95, 8, fmt.Sprintf("Total Returned Orders: %d", totalReturnedOrderItems))
+	pdf.Cell(95, 8, fmt.Sprintf("Cancelled Orders: %d", statusCount[utils.StatusOrderCancelled]))
+	pdf.Cell(95, 8, fmt.Sprintf("Returned Orders: %d", statusCount[utils.StatusOrderReturned]))
 	pdf.Ln(8)
-	pdf.Cell(95, 8, fmt.Sprintf("Total Platform Profit: $%.2f", totalProfit))
-	pdf.Cell(95, 8, fmt.Sprintf("Total Loss by Discounts: $%.2f", totalLossAmount))
+	pdf.Cell(95, 8, fmt.Sprintf("Platform Profit: $%.2f", totalProfit))
+	pdf.Cell(95, 8, fmt.Sprintf("Discount Loss: $%.2f", totalLossAmount))
 	pdf.Ln(8)
+	pdf.SetFont("Arial", "B", 12)
 	pdf.Cell(190, 8, fmt.Sprintf("Net Profit: $%.2f", totalProfit-totalLossAmount))
+	pdf.Ln(12)
+
+	// Charts
+	pieChart, err := chartGen.GenerateOrderStatusPieChartForAdmin(
+		statusCount[utils.StatusOrderPending],
+		statusCount[utils.StatusOrderProcessing],
+		statusCount[utils.StatusOrderShipped],
+		statusCount[utils.StatusOrderDelivered],
+		statusCount[utils.StatusOrderCancelled],
+		statusCount[utils.StatusOrderReturned],
+	)
+	if err == nil {
+		pdf.SetFont("Arial", "B", 12)
+		pdf.Cell(0, 8, "Order Status Distribution")
+		pdf.Ln(8)
+		chartGen.AddChartToPDFForAdmin(pdf, pieChart, "order_status_chart", 15, pdf.GetY(), 90)
+		pdf.Ln(75)
+	}
+
+	barChart, err := chartGen.GenerateProfitLossBarChartForAdmin(totalProfit, totalLossAmount)
+	if err == nil {
+		pdf.SetFont("Arial", "B", 12)
+		pdf.Cell(0, 8, "Profit vs Loss Chart")
+		pdf.Ln(8)
+		chartGen.AddChartToPDFForAdmin(pdf, barChart, "profit_loss_chart", 15, pdf.GetY(), 180)
+		pdf.Ln(80)
+	}
+
+	// Sales Table
+	pdf.AddPage()
+	pdf.SetFont("Arial", "B", 14)
+	pdf.Cell(0, 10, "Order Item Sales Breakdown")
 	pdf.Ln(10)
 
-	pdf.Ln(10)
-	pdf.Ln(10)
-	pdf.SetFont("Arial", "B", 12)
-	pdf.Cell(190, 8, "Orders and Discounts")
-	pdf.Ln(8)
-	// Table Header
-	pdf.SetFont("Arial", "B", 12)
-	pdf.SetFillColor(200, 200, 200)
-	pdf.CellFormat(75, 8, "OrderItem ID", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(50, 8, "Order Amount ($)", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(50, 8, "Platform Fee ($)", "1", 1, "C", true, 0, "")
+	pdf.SetFont("Arial", "B", 11)
+	pdf.SetFillColor(220, 220, 220)
+	pdf.CellFormat(100, 8, "OrderItem ID", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(50, 8, "Total Amount ($)", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(40, 8, "Platform Fee ($)", "1", 1, "C", true, 0, "")
 
 	pdf.SetFont("Arial", "", 10)
-	pdf.SetFillColor(240, 240, 240)
 	fill := false
-
+	pdf.SetFillColor(245, 245, 245)
 	for id, data := range orderItemMap {
 		pdf.CellFormat(100, 8, id.String(), "1", 0, "L", fill, 0, "")
 		pdf.CellFormat(50, 8, fmt.Sprintf("%.2f", data["sales"]), "1", 0, "C", fill, 0, "")
@@ -852,34 +863,32 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		fill = !fill
 	}
 
-	// pdf.AddPage()
-	// Table Header
-	pdf.SetFont("Arial", "B", 12)
-	pdf.SetFillColor(200, 200, 200)
-	pdf.CellFormat(100, 8, "Order ID", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(50, 8, "Discount Amount($)", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(40, 8, "Coupon Name", "1", 1, "C", true, 0, "")
+	// Discounts Table
+	pdf.Ln(10)
+	pdf.SetFont("Arial", "B", 14)
+	pdf.Cell(0, 10, "Discounted Orders")
+	pdf.Ln(10)
 
-	// cells design
+	pdf.SetFont("Arial", "B", 11)
+	pdf.SetFillColor(220, 220, 220)
+	pdf.CellFormat(100, 8, "Order ID", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(50, 8, "Discount ($)", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(40, 8, "Coupon", "1", 1, "C", true, 0, "")
+
 	pdf.SetFont("Arial", "", 10)
-	pdf.SetFillColor(240, 240, 240)
 	fill = false
+	pdf.SetFillColor(245, 245, 245)
 	for _, o := range orders {
 		pdf.CellFormat(100, 8, o.ID.String(), "1", 0, "C", fill, 0, "")
-		pdf.CellFormat(50, 8, strconv.FormatFloat(o.DiscountAmount, 'f', -1, 64), "1", 0, "C", fill, 0, "")
-		if !o.CouponID.Valid {
-			pdf.CellFormat(40, 8, "no coupon", "1", 1, "C", fill, 0, "")
-			fill = !fill
-			continue
+		pdf.CellFormat(50, 8, fmt.Sprintf("%.2f", o.DiscountAmount), "1", 0, "C", fill, 0, "")
+		couponName := "no coupon"
+		if o.CouponID.Valid {
+			coupon, err := a.DB.GetCouponByID(context.TODO(), o.CouponID.UUID)
+			if err == nil {
+				couponName = coupon.Name
+			}
 		}
-		coupon, err := a.DB.GetCouponByID(context.TODO(), o.CouponID.UUID)
-		if err != nil {
-			log.Error("error fetching coupon by couponID in SalesReportHandler:", err.Error())
-			pdf.CellFormat(40, 8, "no coupon", "1", 1, "C", fill, 0, "")
-			fill = !fill
-			continue
-		}
-		pdf.CellFormat(40, 8, coupon.Name, "1", 1, "C", fill, 0, "")
+		pdf.CellFormat(40, 8, couponName, "1", 1, "C", fill, 0, "")
 		fill = !fill
 	}
 

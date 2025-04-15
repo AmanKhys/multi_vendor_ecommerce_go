@@ -778,9 +778,6 @@ func (s *Seller) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 			orderStatusCounts["Cancelled"]++
 		}
 
-		// add a new row of the orderItem with OrderID, orderItemID, productID, status
-		// add it to the pdf table for eachOrderItem
-
 	}
 
 	paymentStatusCounts := map[string]chartGen.PaymentStat{
@@ -791,7 +788,6 @@ func (s *Seller) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		"Cancelled": {Count: 0, Amount: 0},
 	}
 
-	// make a table of the details of every vendorPayment as a table before the graph of vendorPayments
 	var platformFees float64
 	for _, vp := range vendorPayments {
 		switch vp.Status {
@@ -823,13 +819,11 @@ func (s *Seller) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 			paymentStatusCounts["Cancelled"] = entry
 		}
 
-		// add a new row to the vendorPayments table
-		// with all the necessary details orderItemID, VendorPaymentID, total amount, credit amount, platform fee
 	}
 
 	netProfit := paymentStatusCounts["Received"].Amount - platformFees
 
-	pieChartPath, barChartPath, err := chartGen.GenerateCharts(orderStatusCounts, paymentStatusCounts, platformFees, netProfit)
+	pieChartPath, barChartPath, err := chartGen.GenerateChartsForSeller(orderStatusCounts, paymentStatusCounts, platformFees, netProfit)
 	if err != nil {
 		log.Println("Failed to generate charts:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

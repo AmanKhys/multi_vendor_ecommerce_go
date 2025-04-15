@@ -43,7 +43,7 @@ cron jobs /tickers...
 - individually cancelled on that event..done
 3. cancelOrder/cancelOrderItem to refund money back to wallet when respective conditions are method...
 -- cancelOrder..done
--- cancelOrderItem... not done
+-- cancelOrderItem... done
 4. detailed sales report including the summary for the admin
 -- total debited amount through coupons
 -- total earnings/sales happened for all vendors/
@@ -51,11 +51,11 @@ cron jobs /tickers...
 -- top three sellers(optional)
 -- top 10 products sold(optional)
 
-5. detailed vendor sales report including pending payments
+5. detailed vendor sales report including pending payments..done
 
 6. pay with wallet...done
 7. routes to display money in wallet for seller and user..done
-8. pie chart for orders and statuses
-9. profit/loss chart for admin/seller
+8. pie chart for orders and statuses.. done 
+9. profit/loss chart for admin/seller.. done
 10. limit = week, day, month for sales report for admin/ seller ..it takes priority over dates
-11. seller sales report platform_fee charged, total profit, total revenue, for each orderItem
+11. seller sales report platform_fee charged, total profit, total revenue, for each orderItem..done
