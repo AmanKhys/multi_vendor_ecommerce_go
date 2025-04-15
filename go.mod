@@ -14,7 +14,10 @@ require (
 
 require (
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/jung-kurt/gofpdf v1.16.2 // indirect
 	github.com/razorpay/razorpay-go v1.3.2 // indirect
+	github.com/wcharczuk/go-chart/v2 v2.1.2 // indirect
+	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 )

@@ -727,12 +727,39 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	var totalProfit float64
 	var totalSales int
-	var totalCancelledOrders int
+	var totalOrders int
+	var totalCancelledOrderItems int
+	var totalPendingOrderItems int
+	var totalProcessingOrderItems int
+	var totalReturnedOrderItems int
+	var totalDeliveredOrderItems int
+	var totalShippedOrderItems int
+	orderItems, err := a.DB.GetAllOrderItemsForAdmin(context.TODO())
+	if err != nil {
+		log.Error("error fetching orderItems in SalesReportHandler for admin:", err.Error())
+		http.Error(w, "internal error fetching orderItems to produce sales report", http.StatusInternalServerError)
+		return
+	}
+	totalOrders = len(orderItems)
+	for _, oi := range orderItems {
+		if oi.Status == utils.StatusOrderCancelled {
+			totalCancelledOrderItems++
+		} else if oi.Status == utils.StatusOrderReturned {
+			totalReturnedOrderItems++
+		} else if oi.Status == utils.StatusOrderPending {
+			totalPendingOrderItems++
+		} else if oi.Status == utils.StatusOrderProcessing {
+			totalProcessingOrderItems++
+		} else if oi.Status == utils.StatusOrderShipped {
+			totalShippedOrderItems++
+		} else if oi.Status == utils.StatusOrderDelivered {
+			totalDeliveredOrderItems++
+		}
+	}
 	orderItemMap := make(map[uuid.UUID]map[string]float64)
 
 	for _, vp := range vendorPayments {
 		if vp.Status == utils.StatusVendorPaymentCancelled {
-			totalCancelledOrders++
 			continue
 		}
 		totalSales++
@@ -742,12 +769,10 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 			orderItemMap[vp.OrderItemID] = map[string]float64{
 				"sales":        0,
 				"platform_fee": 0,
-				"profit":       0,
 			}
 		}
 		orderItemMap[vp.OrderItemID]["sales"] += vp.TotalAmount
 		orderItemMap[vp.OrderItemID]["platform_fee"] += vp.PlatformFee
-		orderItemMap[vp.OrderItemID]["profit"] += vp.CreditAmount
 	}
 
 	orders, err := a.DB.GetAllOrders(context.TODO())
@@ -786,8 +811,17 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 	pdf.Cell(190, 8, "Summary")
 	pdf.Ln(8)
 	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(95, 8, fmt.Sprintf("Total Orders: %d", totalOrders))
 	pdf.Cell(95, 8, fmt.Sprintf("Total Sales: %d", totalSales))
-	pdf.Cell(95, 8, fmt.Sprintf("Total Cancelled Orders: %d", totalCancelledOrders))
+	pdf.Ln(8)
+	pdf.Cell(95, 8, fmt.Sprintf("Total Pending Orders: %d", totalPendingOrderItems))
+	pdf.Cell(95, 8, fmt.Sprintf("Total Processing Orders: %d", totalProcessingOrderItems))
+	pdf.Ln(8)
+	pdf.Cell(95, 8, fmt.Sprintf("Total Shipped Orders: %d", totalShippedOrderItems))
+	pdf.Cell(95, 8, fmt.Sprintf("Total Delivered Orders: %d", totalDeliveredOrderItems))
+	pdf.Ln(8)
+	pdf.Cell(95, 8, fmt.Sprintf("Total Cancelled Orders: %d", totalCancelledOrderItems))
+	pdf.Cell(95, 8, fmt.Sprintf("Total Returned Orders: %d", totalReturnedOrderItems))
 	pdf.Ln(8)
 	pdf.Cell(95, 8, fmt.Sprintf("Total Platform Profit: $%.2f", totalProfit))
 	pdf.Cell(95, 8, fmt.Sprintf("Total Loss by Discounts: $%.2f", totalLossAmount))
@@ -795,6 +829,11 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 	pdf.Cell(190, 8, fmt.Sprintf("Net Profit: $%.2f", totalProfit-totalLossAmount))
 	pdf.Ln(10)
 
+	pdf.Ln(10)
+	pdf.Ln(10)
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(190, 8, "Orders and Discounts")
+	pdf.Ln(8)
 	// Table Header
 	pdf.SetFont("Arial", "B", 12)
 	pdf.SetFillColor(200, 200, 200)
@@ -807,13 +846,13 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 	fill := false
 
 	for id, data := range orderItemMap {
-		pdf.CellFormat(75, 8, id.String(), "1", 0, "L", fill, 0, "")
+		pdf.CellFormat(100, 8, id.String(), "1", 0, "L", fill, 0, "")
 		pdf.CellFormat(50, 8, fmt.Sprintf("%.2f", data["sales"]), "1", 0, "C", fill, 0, "")
-		pdf.CellFormat(50, 8, fmt.Sprintf("%.2f", data["platform_fee"]), "1", 1, "C", fill, 0, "")
+		pdf.CellFormat(40, 8, fmt.Sprintf("%.2f", data["platform_fee"]), "1", 1, "C", fill, 0, "")
 		fill = !fill
 	}
 
-	pdf.AddPage()
+	// pdf.AddPage()
 	// Table Header
 	pdf.SetFont("Arial", "B", 12)
 	pdf.SetFillColor(200, 200, 200)

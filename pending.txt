@@ -33,6 +33,8 @@ add the transactionId on payment..done
 1. make sales report .. with custom date...rudimentary done 
 
 cron jobs /tickers...
+1. to cancel voidOrders...done
+2. to transfer vendorPayments after 3 days of orderItem status devliered...not done
 
 
 //detailed pending
@@ -51,8 +53,8 @@ cron jobs /tickers...
 
 5. detailed vendor sales report including pending payments
 
-6. pay with wallet
-7. routes to display money in wallet for seller and user
+6. pay with wallet...done
+7. routes to display money in wallet for seller and user..done
 8. pie chart for orders and statuses
 9. profit/loss chart for admin/seller
 10. limit = week, day, month for sales report for admin/ seller ..it takes priority over dates

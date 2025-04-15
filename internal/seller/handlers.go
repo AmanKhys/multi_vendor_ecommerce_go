@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/chartGen.go"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
@@ -751,117 +753,219 @@ func (s *Seller) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Aggregated calculations
-	totalSales := 0.0
-	totalCredit := 0.0
-	totalPlatformFee := 0.0
-	orderCancelledCount := 0
-	orderWaitingCount := 0
-	orderPendingCount := 0
-	productSales := make(map[uuid.UUID]map[string]float64)
-
-	for _, payment := range vendorPayments {
-		if payment.Status == utils.StatusVendorPaymentCancelled {
-			orderCancelledCount += 1
-			continue
-		} else if payment.Status == utils.StatusVendorPaymentWaiting {
-			orderWaitingCount += 1
-			continue
-		} else if payment.Status == utils.StatusVendorPaymentPending {
-			orderPendingCount += 1
-			continue
+	// get a table of the details of each orderItem
+	orderStatusCounts := map[string]int{
+		"Pending":    0,
+		"Processing": 0,
+		"Shipped":    0,
+		"Delivered":  0,
+		"Returned":   0,
+		"Cancelled":  0,
+	}
+	for _, oi := range orderItems {
+		switch oi.Status {
+		case utils.StatusOrderPending:
+			orderStatusCounts["Pending"]++
+		case utils.StatusOrderProcessing:
+			orderStatusCounts["Processing"]++
+		case utils.StatusOrderShipped:
+			orderStatusCounts["Shipped"]++
+		case utils.StatusOrderDelivered:
+			orderStatusCounts["Delivered"]++
+		case utils.StatusOrderReturned:
+			orderStatusCounts["Returned"]++
+		case utils.StatusOrderCancelled:
+			orderStatusCounts["Cancelled"]++
 		}
-		totalSales += payment.TotalAmount
-		totalCredit += payment.CreditAmount
-		totalPlatformFee += payment.PlatformFee
 
-		if _, exists := productSales[payment.OrderItemID]; !exists {
-			productSales[payment.OrderItemID] = map[string]float64{"sales": 0, "profit": 0, "platform_fee": 0}
-		}
-		productSales[payment.OrderItemID]["sales"] += payment.TotalAmount
-		productSales[payment.OrderItemID]["profit"] += payment.CreditAmount
-		productSales[payment.OrderItemID]["platform_fee"] += payment.PlatformFee
+		// add a new row of the orderItem with OrderID, orderItemID, productID, status
+		// add it to the pdf table for eachOrderItem
+
 	}
 
-	// Generate PDF report
-	pdf := gofpdf.New("P", "mm", "A4", "")
+	paymentStatusCounts := map[string]chartGen.PaymentStat{
+		"Pending":   {Count: 0, Amount: 0},
+		"Waiting":   {Count: 0, Amount: 0},
+		"Failed":    {Count: 0, Amount: 0},
+		"Received":  {Count: 0, Amount: 0},
+		"Cancelled": {Count: 0, Amount: 0},
+	}
+
+	// make a table of the details of every vendorPayment as a table before the graph of vendorPayments
+	var platformFees float64
+	for _, vp := range vendorPayments {
+		switch vp.Status {
+		case utils.StatusVendorPaymentPending:
+			entry := paymentStatusCounts["Pending"]
+			entry.Count++
+			entry.Amount += vp.CreditAmount
+			paymentStatusCounts["Pending"] = entry
+		case utils.StatusVendorPaymentWaiting:
+			entry := paymentStatusCounts["Waiting"]
+			entry.Count++
+			entry.Amount += vp.CreditAmount
+			paymentStatusCounts["Waiting"] = entry
+		case utils.StatusVendorPaymentFailed:
+			entry := paymentStatusCounts["Failed"]
+			entry.Count++
+			entry.Amount += vp.CreditAmount
+			paymentStatusCounts["Failed"] = entry
+		case utils.StatusVendorPaymentReceived:
+			entry := paymentStatusCounts["Received"]
+			entry.Count++
+			entry.Amount += vp.CreditAmount
+			paymentStatusCounts["Received"] = entry
+			platformFees += vp.PlatformFee
+		case utils.StatusVendorPaymentCancelled:
+			entry := paymentStatusCounts["Cancelled"]
+			entry.Count++
+			entry.Amount += vp.CreditAmount
+			paymentStatusCounts["Cancelled"] = entry
+		}
+
+		// add a new row to the vendorPayments table
+		// with all the necessary details orderItemID, VendorPaymentID, total amount, credit amount, platform fee
+	}
+
+	netProfit := paymentStatusCounts["Received"].Amount - platformFees
+
+	pieChartPath, barChartPath, err := chartGen.GenerateCharts(orderStatusCounts, paymentStatusCounts, platformFees, netProfit)
+	if err != nil {
+		log.Println("Failed to generate charts:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer os.Remove(pieChartPath)
+	defer os.Remove(barChartPath)
+
+	pdf := gofpdf.New("P", "mm", "A3", "")
 	pdf.SetMargins(10, 10, 10)
 	pdf.AddPage()
+
+	// Main title
+	pdf.SetFont("Arial", "B", 18)
+	pdf.CellFormat(0, 12, "Seller Sales Report", "", 1, "C", false, 0, "")
+	pdf.Ln(2)
+
+	// Report Date Range
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(95, 8, fmt.Sprintf("Start Date: %s", startDate.Format("02 Jan 2006")))
+	pdf.Cell(95, 8, fmt.Sprintf("End Date: %s", endDate.Format("02 Jan 2006")))
+	pdf.Ln(12)
+
+	// ========== ORDER ITEMS SECTION ========== //
 	pdf.SetFont("Arial", "B", 16)
-	pdf.Cell(190, 10, "Sales Report")
+	pdf.CellFormat(0, 10, "Product Sales Report", "", 1, "", false, 0, "")
+	pdf.SetDrawColor(200, 200, 200)
+	pdf.Line(10, pdf.GetY(), 290, pdf.GetY())
+	pdf.Ln(6)
+
+	// Order Items Summary
+	pdf.SetFont("Arial", "B", 13)
+	pdf.Cell(0, 8, "Order Items Summary")
 	pdf.Ln(10)
 
-	// Date range
-	pdf.SetFont("Arial", "", 12)
-	pdf.Cell(95, 10, fmt.Sprintf("Start Date: %s", startDate.Format("2006-01-02")))
-	pdf.Cell(95, 10, fmt.Sprintf("End Date: %s", endDate.Format("2006-01-02")))
-	pdf.Ln(10)
-
-	// Summary
-	pdf.SetFont("Arial", "B", 12)
-	pdf.Cell(190, 8, "Summary")
-	pdf.Ln(8)
-	pdf.SetFont("Arial", "", 12)
-	pdf.Cell(95, 8, fmt.Sprintf("Total Sales: $%.2f", totalSales))
-	pdf.Cell(95, 8, fmt.Sprintf("Total Profit: $%.2f", totalCredit))
-	pdf.Ln(8)
-	pdf.Cell(95, 8, fmt.Sprintf("Total Platform Fee: $%.2f", totalPlatformFee))
-	pdf.Ln(10)
-
-	// Table Headers
-	pdf.SetFont("Arial", "B", 12)
-	pdf.SetFillColor(200, 200, 200)
-	pdf.CellFormat(60, 8, "Product ID", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(40, 8, "Sales ($)", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(40, 8, "Profit ($)", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(40, 8, "Platform Fee ($)", "1", 1, "C", true, 0, "")
-
-	// Table Content
-	pdf.SetFont("Arial", "", 10)
-	pdf.SetFillColor(240, 240, 240)
-	fill := false
-
-	for productID, data := range productSales {
-		pdf.CellFormat(60, 8, productID.String(), "1", 0, "L", fill, 0, "")
-		pdf.CellFormat(40, 8, fmt.Sprintf("%.2f", data["sales"]), "1", 0, "C", fill, 0, "")
-		pdf.CellFormat(40, 8, fmt.Sprintf("%.2f", data["profit"]), "1", 0, "C", fill, 0, "")
-		pdf.CellFormat(40, 8, fmt.Sprintf("%.2f", data["platform_fee"]), "1", 1, "C", fill, 0, "")
-		fill = !fill
-	}
-
-	// Check if order items exist
-	if len(orderItems) > 0 {
-		pdf.Ln(10)
-		pdf.SetFont("Arial", "B", 12)
-		pdf.Cell(190, 8, "Order Items Details")
-		pdf.Ln(8)
-
-		// Table Headers for Order Items
-		pdf.SetFont("Arial", "B", 12)
-		pdf.SetFillColor(200, 200, 200)
-		pdf.CellFormat(40, 8, "Order ID", "1", 0, "C", true, 0, "")
-		pdf.CellFormat(60, 8, "Product ID", "1", 0, "C", true, 0, "")
-		pdf.CellFormat(40, 8, "Quantity", "1", 0, "C", true, 0, "")
-		pdf.CellFormat(40, 8, "Price ($)", "1", 1, "C", true, 0, "")
-
-		// Table Content
-		pdf.SetFont("Arial", "", 10)
-		pdf.SetFillColor(240, 240, 240)
-		fill = false
-
-		for _, order := range orderItems {
-			pdf.CellFormat(40, 8, order.OrderID.String(), "1", 0, "L", fill, 0, "")
-			pdf.CellFormat(60, 8, order.ProductID.String(), "1", 0, "L", fill, 0, "")
-			pdf.CellFormat(40, 8, fmt.Sprintf("%d", order.Quantity), "1", 0, "C", fill, 0, "")
-			pdf.CellFormat(40, 8, fmt.Sprintf("%.2f", order.Price), "1", 1, "C", fill, 0, "")
-			fill = !fill
+	pdf.SetFont("Arial", "", 11)
+	linBreakFlag := false
+	for k, v := range orderStatusCounts {
+		pdf.Cell(95, 8, fmt.Sprintf("%-10s : %d", k, v))
+		if linBreakFlag {
+			pdf.Ln(8)
 		}
+		linBreakFlag = !linBreakFlag
+	}
+	pdf.Ln(12)
+
+	// Table Header
+	pdf.SetFont("Arial", "B", 12)
+	pdf.SetFillColor(230, 230, 230)
+	pdf.CellFormat(10, 10, "No.", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(80, 10, "OrderItem ID", "1", 0, "", true, 0, "")
+	pdf.CellFormat(80, 10, "Product ID", "1", 0, "", true, 0, "")
+	pdf.CellFormat(25, 10, "Status", "1", 0, "", true, 0, "")
+	pdf.CellFormat(25, 10, "Qty", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(25, 10, "Price", "1", 1, "R", true, 0, "")
+
+	pdf.SetFont("Arial", "", 11)
+	slno := 1
+	var fillFlag bool
+	for _, oi := range orderItems {
+		pdf.CellFormat(10, 8, fmt.Sprintf("%d", slno), "1", 0, "C", fillFlag, 0, "")
+		pdf.CellFormat(80, 8, oi.ID.String(), "1", 0, "", !fillFlag, 0, "")
+		pdf.CellFormat(80, 8, oi.ProductID.String(), "1", 0, "", fillFlag, 0, "")
+		pdf.CellFormat(25, 8, oi.Status, "1", 0, "", !fillFlag, 0, "")
+		pdf.CellFormat(25, 8, fmt.Sprintf("%d", oi.Quantity), "1", 0, "C", fillFlag, 0, "")
+		pdf.CellFormat(25, 8, fmt.Sprintf("%.2f", oi.Price), "1", 1, "R", !fillFlag, 0, "")
+		slno++
+		fillFlag = !fillFlag
 	}
 
-	// Output PDF
+	// ========== PAYMENT SECTION ========== //
+	pdf.Ln(10)
+	pdf.SetFont("Arial", "B", 16)
+	pdf.CellFormat(0, 10, "Payments Report", "", 1, "", false, 0, "")
+	pdf.Line(10, pdf.GetY(), 290, pdf.GetY())
+	pdf.Ln(6)
+
+	// Payment Summary
+	pdf.SetFont("Arial", "B", 13)
+	pdf.Cell(0, 8, "Vendor Payments Summary")
+	pdf.Ln(10)
+
+	pdf.SetFont("Arial", "", 11)
+	linBreakFlag = false
+	for k, v := range paymentStatusCounts {
+		pdf.Cell(95, 8, fmt.Sprintf("%-10s : %d ($%.2f)", k, v.Count, v.Amount))
+		if linBreakFlag {
+			pdf.Ln(8)
+		}
+		linBreakFlag = !linBreakFlag
+	}
+	pdf.Ln(8)
+	pdf.Cell(0, 8, fmt.Sprintf("Debited Platform Fee: $%.2f", platformFees))
+	pdf.Ln(6)
+	pdf.Cell(0, 8, fmt.Sprintf("Net Profit: $%.2f", netProfit))
+	pdf.Ln(12)
+
+	// Vendor Payments Table
+	pdf.SetFont("Arial", "B", 12)
+	pdf.SetFillColor(230, 230, 230)
+	pdf.CellFormat(10, 8, "No.", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(80, 8, "Order Item ID", "1", 0, "", true, 0, "")
+	pdf.CellFormat(80, 8, "Vendor Payment ID", "1", 0, "", true, 0, "")
+	pdf.CellFormat(25, 8, "Status", "1", 0, "", true, 0, "")
+	pdf.CellFormat(25, 8, "Total", "1", 0, "R", true, 0, "")
+	pdf.CellFormat(25, 8, "Credit", "1", 0, "R", true, 0, "")
+	pdf.CellFormat(25, 8, "Ptf Fee", "1", 1, "R", true, 0, "")
+
+	pdf.SetFont("Arial", "", 11)
+	slno = 1
+	fillFlag = false
+	for _, vp := range vendorPayments {
+		pdf.CellFormat(10, 8, fmt.Sprintf("%d", slno), "1", 0, "C", fillFlag, 0, "")
+		pdf.CellFormat(80, 8, vp.OrderItemID.String(), "1", 0, "", !fillFlag, 0, "")
+		pdf.CellFormat(80, 8, vp.ID.String(), "1", 0, "", fillFlag, 0, "")
+		pdf.CellFormat(25, 8, vp.Status, "1", 0, "", !fillFlag, 0, "")
+		pdf.CellFormat(25, 8, fmt.Sprintf("%.2f", vp.TotalAmount), "1", 0, "R", fillFlag, 0, "")
+		pdf.CellFormat(25, 8, fmt.Sprintf("%.2f", vp.CreditAmount), "1", 0, "R", !fillFlag, 0, "")
+		pdf.CellFormat(25, 8, fmt.Sprintf("%.2f", vp.PlatformFee), "1", 1, "R", fillFlag, 0, "")
+		slno++
+		fillFlag = !fillFlag
+	}
+
+	// ========== CHARTS ========== //
+	pdf.AddPage()
+	pdf.Ln(10)
+	pdf.SetFont("Arial", "B", 14)
+	pdf.Cell(0, 10, "Visual Summary")
+	pdf.Ln(10)
+	pdf.Image(pieChartPath, 20, pdf.GetY(), 120, 0, false, "", 0, "")
+	pdf.Image(barChartPath, 150, pdf.GetY(), 120, 0, false, "", 0, "")
+
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
-		http.Error(w, "Error generating PDF", http.StatusInternalServerError)
+		log.Println("Error generating PDF:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
