@@ -35,6 +35,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /user/wishlist/add", middleware.AuthenticateUserMiddleware(u.AddProductToWishListHandler, utils.UserRole))
 	mux.HandleFunc("DELETE /user/wishlist/item/delete", middleware.AuthenticateUserMiddleware(u.RemoveWishListItemHandler, utils.UserRole))
 	mux.HandleFunc("DELETE /user/wishlist/delete", middleware.AuthenticateUserMiddleware(u.RemoveAllWishListHandler, utils.UserRole))
+	mux.HandleFunc("POST /user/wishlist/add_to_cart", middleware.AuthenticateUserMiddleware(u.AddWishListToCartHandler, utils.UserRole))
 
 	mux.HandleFunc("GET /user/cart", middleware.AuthenticateUserMiddleware(u.GetCartHandler, utils.UserRole))
 	mux.HandleFunc("POST /user/cart/add", middleware.AuthenticateUserMiddleware(u.AddCartHandler, utils.UserRole))

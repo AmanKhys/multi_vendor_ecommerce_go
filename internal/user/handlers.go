@@ -1055,6 +1055,9 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		log.Warn("error fetching address by id for order:", err.Error())
+	} else if address.UserID != user.ID {
+		http.Error(w, "shipping_addresss_id is not a valid id for the user", http.StatusBadRequest)
+		return
 	}
 
 	// take the payment method from url query
@@ -1260,7 +1263,6 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	Messages = append(Messages, "successfully added the cart items to orders")
 	var resp struct {
-		Message         string                         `json:"message"`
 		Order           db.Order                       `json:"order"`
 		Phone           int                            `json:"phone"`
 		Payment         db.Payment                     `json:"payment"`
@@ -1813,6 +1815,35 @@ func (u *User) GetWishListHandler(w http.ResponseWriter, r *http.Request) {
 	if user.ID == uuid.Nil {
 		return
 	}
+	wishListItems, err := u.DB.GetAllWishListItemsWithProductNameByUserID(context.TODO(), user.ID)
+	if err != nil {
+		log.Error("error fetching wishlist items in GetWishListHandler:", err.Error())
+		http.Error(w, "internal error fetching wishList items", http.StatusInternalServerError)
+		return
+	}
+
+	type respWItem struct {
+		ID          uuid.UUID `json:"id"`
+		ProductID   uuid.UUID `json:"product_id"`
+		ProductName string    `json:"product_name"`
+	}
+	var respWItems []respWItem
+	for _, w := range wishListItems {
+		var temp respWItem
+		temp.ID = w.ID
+		temp.ProductID = w.ProductID
+		temp.ProductName = w.ProductName
+		respWItems = append(respWItems, temp)
+	}
+
+	var resp struct {
+		Data    []respWItem `json:"data"`
+		Message string      `json:"message"`
+	}
+	resp.Data = respWItems
+	resp.Message = "successfully fetched wishlist items"
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (u *User) AddProductToWishListHandler(w http.ResponseWriter, r *http.Request) {
@@ -1820,6 +1851,44 @@ func (u *User) AddProductToWishListHandler(w http.ResponseWriter, r *http.Reques
 	if user.ID == uuid.Nil {
 		return
 	}
+	productIDStr := r.URL.Query().Get("product_id")
+	productID, err := uuid.Parse(productIDStr)
+	if err != nil {
+		http.Error(w, "product_id not valid", http.StatusBadRequest)
+		return
+	}
+	product, err := u.DB.GetProductByID(context.TODO(), productID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid product_id", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Error("error fetching product in ADdProdutToWishListHandler:", err.Error())
+		http.Error(w, "internal error adding product to wishlist", http.StatusInternalServerError)
+		return
+	}
+
+	wishlistItem, err := u.DB.AddWishListItem(context.TODO(), db.AddWishListItemParams{
+		UserID:    user.ID,
+		ProductID: productID,
+	})
+	if err != nil {
+		log.Error("error adding wishlistItem in ADdProdutToWishlistHandler:", err.Error())
+		http.Error(w, "internal error adding wishlist item", http.StatusInternalServerError)
+		return
+	}
+
+	var resp struct {
+		ID          uuid.UUID `json:"id"`
+		ProductID   uuid.UUID `josn:"product_id"`
+		ProductName string    `json:"product_name"`
+		Message     string    `json:"message"`
+	}
+	resp.ID = wishlistItem.ID
+	resp.ProductID = wishlistItem.ProductID
+	resp.ProductName = product.Name
+	resp.Message = "successfully added wishlistItem"
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (u *User) RemoveWishListItemHandler(w http.ResponseWriter, r *http.Request) {
@@ -1827,6 +1896,50 @@ func (u *User) RemoveWishListItemHandler(w http.ResponseWriter, r *http.Request)
 	if user.ID == uuid.Nil {
 		return
 	}
+	productIDStr := r.URL.Query().Get("product_id")
+	productID, err := uuid.Parse(productIDStr)
+	if err != nil {
+		http.Error(w, "product_id not valid", http.StatusBadRequest)
+		return
+	}
+	product, err := u.DB.GetProductByID(context.TODO(), productID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid product_id", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Error("error fetching product in ADdProdutToWishListHandler:", err.Error())
+		http.Error(w, "internal error adding product to wishlist", http.StatusInternalServerError)
+		return
+	}
+	_, err = u.DB.GetWishListItemByUserAndProductID(context.TODO(), db.GetWishListItemByUserAndProductIDParams{
+		UserID:    user.ID,
+		ProductID: product.ID,
+	})
+	if err == sql.ErrNoRows {
+		http.Error(w, "the product is not added in wishlist to delete the item", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Error("error fetching wishlistItem in RemoveWishListItemHandler:", err.Error())
+		http.Error(w, "Internal error removing wishlist item", http.StatusInternalServerError)
+		return
+	}
+	k, err := u.DB.DeleteWishListItemByUserAndProductID(context.TODO(), db.DeleteWishListItemByUserAndProductIDParams{
+		UserID:    user.ID,
+		ProductID: product.ID,
+	})
+	if err != nil {
+		log.Error("error deleting wishlistItem in RemoveWishListItemHandler:", err.Error())
+		http.Error(w, "internal errror removing wishlistItem", http.StatusInternalServerError)
+		return
+	} else if k == 0 {
+		log.Error("error no rows affected after query execution in RemoveWishListItemHandler")
+		http.Error(w, "internal errror removing wishlistItem", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "text/plain")
+	msg := "successfully deleted wishlistItem"
+	w.Write([]byte(msg))
 }
 
 func (u *User) RemoveAllWishListHandler(w http.ResponseWriter, r *http.Request) {
@@ -1834,4 +1947,61 @@ func (u *User) RemoveAllWishListHandler(w http.ResponseWriter, r *http.Request) 
 	if user.ID == uuid.Nil {
 		return
 	}
+
+	err := u.DB.DeleteAllWishListItemsByUserID(context.TODO(), user.ID)
+	if err != nil {
+		log.Error("error deleting all wishlist items for user in RemoveAllWishListHandler:", err.Error())
+		http.Error(w, "internal error clearing all wishlist items", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-Type", "application/json")
+	msg := "successfully deleted all wishlist items for the user"
+	w.Write([]byte(msg))
+}
+
+func (u *User) AddWishListToCartHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+	cartItems, err := u.DB.AddAllWishListItemsToCarts(context.TODO(), user.ID)
+	if err != nil {
+		log.Error("error adding wishListItems to cart in AddWishListToCartHandler:", err.Error())
+		http.Error(w, "internal server error adding wishlist items to cart", http.StatusInternalServerError)
+		return
+	} else if len(cartItems) == 0 {
+		http.Error(w, "no items in wishlist to add to cart", http.StatusBadRequest)
+		return
+	} else {
+		err = u.DB.DeleteAllWishListItemsByUserID(context.TODO(), user.ID)
+		if err != nil {
+			log.Error("error removing wishlistItems after adding it to cart in AddWishListToCartHandler:", err.Error())
+		}
+	}
+
+	type respCart struct {
+		CartItemID uuid.UUID `json:"cart_item_id"`
+		ProductID  uuid.UUID `json:"product_id"`
+		Quantity   int       `json:"quantity"`
+	}
+
+	var respItems []respCart
+	for _, ci := range cartItems {
+		var temp respCart
+		temp.CartItemID = ci.ID
+		temp.ProductID = ci.ProductID
+		temp.Quantity = int(ci.Quantity)
+		respItems = append(respItems, temp)
+	}
+
+	var resp struct {
+		Data    []respCart `json:"data"`
+		Message string     `json:"message"`
+	}
+
+	resp.Data = respItems
+	resp.Message = "successfully added wishlistItems to cart"
+
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }

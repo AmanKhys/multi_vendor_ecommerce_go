@@ -57,7 +57,21 @@ cron jobs /tickers...
 7. routes to display money in wallet for seller and user..done
 8. pie chart for orders and statuses.. done 
 9. profit/loss chart for admin/seller.. done
-10. limit = week, day, month for sales report for admin/ seller ..it takes priority over dates
+10. limit = week, day, month for sales report for admin/ seller ..it takes priority over dates..done
 11. seller sales report platform_fee charged, total profit, total revenue, for each orderItem..done
-12. wishlist get, add, remove item, all delete
-13. Check order shipping_address is of user
+12. wishlist get, add, remove item, all delete..done
+13. Check order shipping_address is of user...done
+
+-- Week 5
+Pendings
+1. Wishlist is not there...done
+2. Use variable in postman for tokens
+3. Use proper naming 
+4. Add provision for percentage value in coupon
+5. Start date and end date in coupon creation
+6. If phone  number is required to make an order. Try to get it from the time of registration ...done
+7. Shipping address should be have some validation...done
+8. Remove unwanted msgs on response.. check all handlers
+9. Prepare for review...done
+10. Prepare sales report page with all possible filters...done
+11. Add sample env in readme... done
