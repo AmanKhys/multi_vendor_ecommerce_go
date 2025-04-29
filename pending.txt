@@ -65,7 +65,7 @@ cron jobs /tickers...
 -- Week 5
 Pendings
 1. Wishlist is not there...done
-2. Use variable in postman for tokens
+2. Use variable in postman for tokens...done
 3. Use proper naming 
 4. Add provision for percentage value in coupon
 5. Start date and end date in coupon creation

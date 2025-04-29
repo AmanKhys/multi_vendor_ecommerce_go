@@ -1867,7 +1867,24 @@ func (u *User) AddProductToWishListHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	wishlistItem, err := u.DB.AddWishListItem(context.TODO(), db.AddWishListItemParams{
+	// check if the product is already in the wishlist
+	wishlistItem, err := u.DB.GetWishListItemByUserAndProductID(context.TODO(), db.GetWishListItemByUserAndProductIDParams{
+		UserID:    user.ID,
+		ProductID: product.ID,
+	})
+	if err == sql.ErrNoRows {
+		// to make sure there are no duplicate items in wishlist
+	} else if err != nil {
+		log.Error("error fetching wishListItem in AddProductToWishListHandler:", err.Error())
+		http.Error(w, "internal server error adding wishlistItem", http.StatusInternalServerError)
+		return
+	} else {
+		msg := fmt.Sprintf("product: %s already exists in wishlist", product.Name)
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+
+	wishlistItem, err = u.DB.AddWishListItem(context.TODO(), db.AddWishListItemParams{
 		UserID:    user.ID,
 		ProductID: productID,
 	})

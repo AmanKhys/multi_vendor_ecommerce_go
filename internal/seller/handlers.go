@@ -212,15 +212,13 @@ func (s *Seller) OwnProductsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		ProductID uuid.UUID `json:"product_id"`
-	}
-	err := json.NewDecoder(r.Body).Decode(&req)
+	productIDStr := r.URL.Query().Get("product_id")
+	productID, err := uuid.Parse(productIDStr)
 	if err != nil {
-		http.Error(w, "invalid request format", http.StatusBadRequest)
+		http.Error(w, "not a valid product_id", http.StatusBadRequest)
 		return
 	}
-	product, err := s.DB.GetProductByID(context.TODO(), req.ProductID)
+	product, err := s.DB.GetProductByID(context.TODO(), productID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "not a valid productID", http.StatusBadRequest)
 		return
@@ -229,7 +227,6 @@ func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error fetching product", http.StatusInternalServerError)
 		return
 	}
-
 	var Err []string
 	categories, err := s.DB.GetCategoryNamesOfProductByID(context.TODO(), product.ID)
 	if err == sql.ErrNoRows {

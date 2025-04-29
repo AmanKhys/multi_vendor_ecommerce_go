@@ -11,7 +11,6 @@ import (
 func (h *Helper) GetUserHelper(w http.ResponseWriter, r *http.Request) db.GetUserBySessionIDRow {
 	user, ok := r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
 	if !ok {
-		log.Info(user, ".................", r.Context().Value(utils.UserKey))
 		log.Warn("error fetching user from request context for user")
 		http.Error(w, "internal server error marshalling user from request context.", http.StatusInternalServerError)
 		return db.GetUserBySessionIDRow{}
