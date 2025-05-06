@@ -77,7 +77,7 @@ Pendings
 11. Add sample env in readme... done
 
 taks:
-1. invoice download
-2. ban 1000> order for cod
+1. invoice download...done
+2. ban 1000> order for cod..done
 3. chart with filter..done
 4. best selling products, seller

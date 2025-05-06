@@ -92,6 +92,11 @@ values
 ($1, $2, $3, $4, $5,$6, $7)
 returning id, house_name, street_name, town, district, state, pincode;
 
+-- name: GetShippingAddressByOrderID :one
+select id, house_name, street_name, town, district, state, pincode
+from shipping_address
+where order_id = $1;
+
 -- name: ChangeOrderItemStatusByID :one
 update order_items oi
 set status =  $2

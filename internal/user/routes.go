@@ -51,4 +51,5 @@ func RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc("GET /user/orders/makepayment", middleware.AuthenticateUserMiddleware(u.MakeOnlinePaymentHandler, utils.UserRole))
 	mux.HandleFunc("POST /user/orders/makepayment/success", middleware.AuthenticateUserMiddleware(u.PaymentSuccessHandler, utils.UserRole))
+	mux.HandleFunc("GET /user/orders/invoice", middleware.AuthenticateUserMiddleware(u.InvoiceHandler, utils.UserRole))
 }

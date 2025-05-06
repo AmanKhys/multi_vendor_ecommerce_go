@@ -683,6 +683,37 @@ func (q *Queries) GetSellerIDFromOrderItemID(ctx context.Context, id uuid.UUID) 
 	return seller_id, err
 }
 
+const getShippingAddressByOrderID = `-- name: GetShippingAddressByOrderID :one
+select id, house_name, street_name, town, district, state, pincode
+from shipping_address
+where order_id = $1
+`
+
+type GetShippingAddressByOrderIDRow struct {
+	ID         uuid.UUID `json:"id"`
+	HouseName  string    `json:"house_name"`
+	StreetName string    `json:"street_name"`
+	Town       string    `json:"town"`
+	District   string    `json:"district"`
+	State      string    `json:"state"`
+	Pincode    int32     `json:"pincode"`
+}
+
+func (q *Queries) GetShippingAddressByOrderID(ctx context.Context, orderID uuid.UUID) (GetShippingAddressByOrderIDRow, error) {
+	row := q.queryRow(ctx, q.getShippingAddressByOrderIDStmt, getShippingAddressByOrderID, orderID)
+	var i GetShippingAddressByOrderIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.HouseName,
+		&i.StreetName,
+		&i.Town,
+		&i.District,
+		&i.State,
+		&i.Pincode,
+	)
+	return i, err
+}
+
 const getTotalAmountOfCartItems = `-- name: GetTotalAmountOfCartItems :one
 select sum(total_amount) as total_amount
 from carts

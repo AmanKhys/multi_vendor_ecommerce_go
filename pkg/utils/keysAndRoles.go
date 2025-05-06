@@ -27,6 +27,7 @@ const StatusVendorPaymentCancelled = "cancelled"
 const StatusVendorPaymentReceived = "received"
 const StatusVendorPaymentFailed = "failed"
 const PlatformFeePercentage = 0.15
+const OrderTaxPercentage = 0.12
 
 const StatusPaymentMethodCod = "cod"
 const StatusPaymentMethodWallet = "wallet"

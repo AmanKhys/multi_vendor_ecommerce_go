@@ -1,6 +1,7 @@
 package user
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -19,6 +20,7 @@ import (
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
 	env "github.com/joho/godotenv"
+	"github.com/jung-kurt/gofpdf"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -2033,4 +2035,230 @@ func (u *User) AddWishListToCartHandler(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func (u *User) InvoiceHandler(w http.ResponseWriter, r *http.Request) {
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
+		return
+	}
+
+	orderIDStr := r.URL.Query().Get("order_id")
+	orderID, err := uuid.Parse(orderIDStr)
+	if err != nil {
+		http.Error(w, "invalid order_id", http.StatusBadRequest)
+		return
+	}
+	order, err := u.DB.GetOrderByID(context.TODO(), orderID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid order_id", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Error("error fetching order in InvoiceHandler")
+		http.Error(w, "internal error fetching order", http.StatusInternalServerError)
+		return
+	} else if order.UserID != user.ID {
+		http.Error(w, "not user's order. Forbidden", http.StatusForbidden)
+		return
+	}
+
+	payment, err := u.DB.GetPaymentByOrderID(context.TODO(), order.ID)
+	if err != nil {
+		log.Error("error fetching payment by Order in InvoiceHandler")
+		http.Error(w, "internal error producing invoice", http.StatusInternalServerError)
+		return
+	} else if payment.Status == utils.StatusPaymentReturned {
+		http.Error(w, "order returned", http.StatusBadRequest)
+		return
+	} else if payment.Status == utils.StatusPaymentCancelled {
+		http.Error(w, "order cancelled", http.StatusBadRequest)
+		return
+	} else if payment.Status != utils.StatusPaymentSuccessful {
+		http.Error(w, "order not paid", http.StatusBadRequest)
+		return
+	}
+
+	orderItems, err := u.DB.GetOrderItemsByOrderID(context.TODO(), order.ID)
+	if err != nil {
+		log.Error("error fetching order items in InvoiceHandler")
+		http.Error(w, "internal error producing invoice", http.StatusInternalServerError)
+		return
+	}
+
+	shippingAddress, err := u.DB.GetShippingAddressByOrderID(context.TODO(), order.ID)
+	if err != nil {
+		log.Error("error fetching shipping address by orderID in InvoiceHandler")
+		http.Error(w, "internal error fetching order invoice", http.StatusInternalServerError)
+		return
+	}
+
+	type respData struct {
+		OrderItemID uuid.UUID
+		ProductName string
+		ProductID   uuid.UUID
+		SellerName  string
+		Price       float64
+		Quantity    int
+		TaxAmount   float64
+		NetAmount   float64
+		TotalAmount float64
+	}
+	var resp []respData
+	for _, oi := range orderItems {
+		seller, err := u.DB.GetSellerByProductID(context.TODO(), oi.ProductID)
+		if err != nil {
+			log.Error("error fetching seller in InvoiceHandler")
+			http.Error(w, "internal error producing invoice", http.StatusInternalServerError)
+			return
+		}
+		tax := oi.TotalAmount * utils.OrderTaxPercentage
+		resp = append(resp, respData{
+			OrderItemID: oi.ID,
+			ProductName: oi.ProductName,
+			ProductID:   oi.ProductID,
+			SellerName:  seller.Name,
+			Price:       oi.Price,
+			Quantity:    int(oi.Quantity),
+			TaxAmount:   tax,
+			NetAmount:   oi.TotalAmount - tax,
+			TotalAmount: oi.TotalAmount,
+		})
+	}
+
+	// Begin PDF generation
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.AddPage()
+
+	// Font setup
+	pdf.SetFont("Arial", "", 12)
+	pdf.SetAutoPageBreak(true, 10)
+
+	// Header with branding
+	pdf.SetFont("Arial", "B", 20)
+	pdf.Cell(0, 10, "Toy Stores Ecom")
+	pdf.Ln(8)
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(0, 8, "Email: toystores@gmail.com")
+	pdf.Ln(4)
+	pdf.Cell(0, 8, fmt.Sprintf("Invoice Date: %s", time.Now().Format("02 Jan 2006")))
+	pdf.Ln(6)
+	pdf.Line(10, pdf.GetY(), 200, pdf.GetY())
+	pdf.Ln(6)
+
+	// Order Info
+	pdf.SetFont("Arial", "B", 14)
+	pdf.Cell(0, 8, fmt.Sprintf("Invoice for Order ID: %s", order.ID))
+	pdf.Ln(6)
+
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(0, 8, fmt.Sprintf("Payment Status: %s", payment.Status))
+	pdf.Ln(12)
+
+	// Customer Details
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(0, 8, "Customer Information:")
+	pdf.Ln(6)
+	pdf.SetFont("Arial", "", 11)
+	pdf.Cell(0, 6, fmt.Sprintf("Name: %s", user.Name))
+	pdf.Ln(5)
+	pdf.Cell(0, 6, fmt.Sprintf("Email: %s", user.Email))
+	pdf.Ln(5)
+	if user.Phone.Valid {
+		pdf.Cell(0, 6, fmt.Sprintf("Phone: %d", user.Phone.Int64))
+	} else {
+		pdf.Cell(0, 6, "Phone: N/A")
+	}
+	pdf.Ln(10)
+
+	// Shipping Address
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(0, 8, "Shipping Address:")
+	pdf.Ln(6)
+	pdf.SetFont("Arial", "", 11)
+	address := fmt.Sprintf("%s, %s, %s, %s, %s - %d",
+		shippingAddress.HouseName, shippingAddress.StreetName, shippingAddress.Town,
+		shippingAddress.District, shippingAddress.State, shippingAddress.Pincode)
+	pdf.MultiCell(0, 6, address, "", "", false)
+	pdf.Ln(6)
+
+	// Payment Details
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(0, 8, "Payment Details:")
+	pdf.Ln(6)
+	pdf.SetFont("Arial", "", 11)
+	pdf.Cell(0, 6, fmt.Sprintf("Method: %s", payment.Method))
+	pdf.Ln(5)
+	if payment.TransactionID.Valid {
+		pdf.Cell(0, 6, fmt.Sprintf("Transaction ID: %s", payment.TransactionID.String))
+	} else {
+		pdf.Cell(0, 6, "Transaction ID: N/A")
+	}
+	pdf.Ln(12)
+
+	// Table: Order Items
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(0, 8, "Order Items")
+	pdf.Ln(8)
+
+	// Table Headers
+	headers := []string{"Product", "Seller", "Price", "Qty", "Tax", "Net", "Total"}
+	widths := []float64{40, 35, 20, 15, 20, 25, 25}
+
+	pdf.SetFillColor(230, 230, 230)
+	pdf.SetFont("Arial", "B", 11)
+	for i, h := range headers {
+		pdf.CellFormat(widths[i], 8, h, "1", 0, "C", true, 0, "")
+	}
+	pdf.Ln(-1)
+
+	// Table Rows
+	pdf.SetFont("Arial", "", 10)
+	fill := false
+	for _, item := range resp {
+		pdf.SetFillColor(245, 245, 245)
+		pdf.CellFormat(widths[0], 8, item.ProductName, "1", 0, "", fill, 0, "")
+		pdf.CellFormat(widths[1], 8, item.SellerName, "1", 0, "", fill, 0, "")
+		pdf.CellFormat(widths[2], 8, fmt.Sprintf("%.2f", item.Price), "1", 0, "R", fill, 0, "")
+		pdf.CellFormat(widths[3], 8, fmt.Sprintf("%d", item.Quantity), "1", 0, "C", fill, 0, "")
+		pdf.CellFormat(widths[4], 8, fmt.Sprintf("%.2f", item.TaxAmount), "1", 0, "R", fill, 0, "")
+		pdf.CellFormat(widths[5], 8, fmt.Sprintf("%.2f", item.NetAmount), "1", 0, "R", fill, 0, "")
+		pdf.CellFormat(widths[6], 8, fmt.Sprintf("%.2f", item.TotalAmount), "1", 0, "R", fill, 0, "")
+		pdf.Ln(-1)
+		fill = !fill
+	}
+
+	// Summary
+	pdf.Ln(8)
+	pdf.SetFont("Arial", "B", 11)
+	pdf.Cell(130, 8, "Subtotal:")
+	pdf.Cell(40, 8, fmt.Sprintf("%.2f", order.TotalAmount))
+	pdf.Ln(6)
+
+	if order.DiscountAmount > 0 {
+		pdf.Cell(130, 8, "Discount:")
+		pdf.Cell(40, 8, fmt.Sprintf("-%.2f", order.DiscountAmount))
+		pdf.Ln(6)
+	}
+
+	pdf.Cell(130, 8, "Total Paid:")
+	pdf.Cell(40, 8, fmt.Sprintf("%.2f", order.NetAmount))
+	pdf.Ln(10)
+
+	// Footer
+	pdf.SetY(-20)
+	pdf.SetFont("Arial", "I", 9)
+	pdf.Cell(0, 10, "Thank you for shopping with Toy Stores Ecom!")
+
+	// Output PDF
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		http.Error(w, "failed to generate invoice PDF", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=invoice-%s.pdf", order.ID.String()))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(buf.Bytes())
+
 }
