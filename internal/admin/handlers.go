@@ -490,8 +490,12 @@ func (a *Admin) AdminCouponsHandler(w http.ResponseWriter, r *http.Request) {
 	type respCoupon struct {
 		ID             uuid.UUID `json:"id"`
 		Name           string    `json:"name"`
+		IsDeleted      bool      `json:"is_deleted"`
 		TriggerPrice   float64   `json:"trigger_price"`
 		DiscountAmount float64   `json:"discount_amount"`
+		DiscountType   string    `json:"discount_type"`
+		StartDate      time.Time `json:"start_date"`
+		EndDate        time.Time `json:"end_date"`
 	}
 
 	var respCoupons []respCoupon
@@ -499,8 +503,12 @@ func (a *Admin) AdminCouponsHandler(w http.ResponseWriter, r *http.Request) {
 		var temp respCoupon
 		temp.ID = v.ID
 		temp.Name = v.Name
+		temp.IsDeleted = v.IsDeleted
 		temp.TriggerPrice = v.TriggerPrice
 		temp.DiscountAmount = v.DiscountAmount
+		temp.DiscountType = v.DiscountType
+		temp.StartDate = v.StartDate
+		temp.EndDate = v.EndDate
 		respCoupons = append(respCoupons, temp)
 	}
 
@@ -522,6 +530,9 @@ func (a *Admin) AddCouponHandler(w http.ResponseWriter, r *http.Request) {
 		Name           string  `json:"name"`
 		TriggerPrice   float64 `json:"trigger_price"`
 		DiscountAmount float64 `json:"discount_amount"`
+		DiscountType   string  `json:"discount_type"`
+		StartDate      string  `json:"start_date"`
+		EndDate        string  `json:"end_date"`
 	}
 
 	var errors []string
@@ -542,16 +553,48 @@ func (a *Admin) AddCouponHandler(w http.ResponseWriter, r *http.Request) {
 	if req.TriggerPrice <= req.DiscountAmount {
 		errors = append(errors, "error: trigger price less than or equal to discount amount")
 	}
+	if req.DiscountType != utils.CouponDiscountTypeFlat && req.DiscountType != utils.CouponDiscountTypePercentage {
+		errors = append(errors, "invalid discount type")
+	}
+
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		errors = append(errors, "invalid start date")
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		errors = append(errors, "invalid end date")
+	}
+	if startDate.After(endDate) {
+		errors = append(errors, "start date largert than end date")
+	}
+	// check request start_date and end_date now
 
 	if len(errors) > 0 {
 		http.Error(w, strings.Join(errors, "\n"), http.StatusBadRequest)
 		return
 	}
 
+	coupon, err := a.DB.GetCouponByName(context.TODO(), req.Name)
+	if err == sql.ErrNoRows {
+	} else if err != nil {
+		log.Error("error checking whether coupon already exists")
+		http.Error(w, "internal error checking whether coupon already exists", http.StatusInternalServerError)
+		return
+	} else if coupon.IsDeleted {
+		http.Error(w, "trying to create a coupon that already exists and is disabled by admin", http.StatusBadRequest)
+		return
+	} else if !coupon.IsDeleted {
+		http.Error(w, "trying to create a coupon that already exists", http.StatusBadRequest)
+	}
+
 	var addCouponArg db.AddCouponParams
 	addCouponArg.Name = req.Name
 	addCouponArg.TriggerPrice = req.TriggerPrice
 	addCouponArg.DiscountAmount = req.DiscountAmount
+	addCouponArg.DiscountType = req.DiscountType
+	addCouponArg.StartDate = startDate
+	addCouponArg.EndDate = endDate
 	addedCoupon, err := a.DB.AddCoupon(context.TODO(), addCouponArg)
 	if err != nil {
 		log.Error("error adding coupon after successful validation:", err.Error())
@@ -560,14 +603,22 @@ func (a *Admin) AddCouponHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type respCoupon struct {
-		Name           string  `json:"name"`
-		TriggerPrice   float64 `json:"trigger_price"`
-		DiscountAmount float64 `json:"discount_amount"`
+		Name           string    `json:"name"`
+		TriggerPrice   float64   `json:"trigger_price"`
+		DiscountAmount float64   `json:"discount_amount"`
+		DiscountType   string    `json:"discount_type"`
+		StartDate      time.Time `json:"start_date"`
+		EndDate        time.Time `json:"end_date"`
 	}
+
 	var respCouponData respCoupon
 	respCouponData.Name = addedCoupon.Name
 	respCouponData.TriggerPrice = addedCoupon.TriggerPrice
 	respCouponData.DiscountAmount = addedCoupon.DiscountAmount
+	respCouponData.DiscountType = addedCoupon.DiscountType
+	respCouponData.StartDate = addedCoupon.StartDate
+	respCouponData.EndDate = addedCoupon.EndDate
+
 	var resp struct {
 		Data    respCoupon `json:"data"`
 		Message string     `json:"message"`
@@ -591,7 +642,11 @@ func (a *Admin) EditCouponHandler(w http.ResponseWriter, r *http.Request) {
 		NewName        string  `json:"new_name"`
 		TriggerPrice   float64 `json:"trigger_price"`
 		DiscountAmount float64 `json:"discount_amount"`
+		DiscountType   string  `json:"discount_type"`
+		StartDate      string  `json:"start_date"`
+		EndDate        string  `json:"end_date"`
 	}
+
 	var errors []string
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -613,6 +668,22 @@ func (a *Admin) EditCouponHandler(w http.ResponseWriter, r *http.Request) {
 	if req.DiscountAmount >= req.TriggerPrice {
 		errors = append(errors, "not allowed: discount price more than or equal to trigger price")
 	}
+	if req.DiscountType != utils.CouponDiscountTypeFlat && req.DiscountType != utils.CouponDiscountTypePercentage {
+		errors = append(errors, "invalid discount type")
+	}
+
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		errors = append(errors, "invalid start date")
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		errors = append(errors, "invalid end date")
+	}
+	if startDate.After(endDate) {
+		errors = append(errors, "start date largert than end date")
+	}
+	// check request start_date and end_date now
 	if len(errors) > 0 {
 		http.Error(w, strings.Join(errors, "\n"), http.StatusBadRequest)
 		return
@@ -634,6 +705,10 @@ func (a *Admin) EditCouponHandler(w http.ResponseWriter, r *http.Request) {
 	editCouponArg.NewName = req.NewName
 	editCouponArg.TriggerPrice = req.TriggerPrice
 	editCouponArg.DiscountAmount = req.DiscountAmount
+	editCouponArg.DiscountType = req.DiscountType
+	editCouponArg.StartDate = startDate
+	editCouponArg.EndDate = endDate
+
 	editedCoupon, err := a.DB.EditCouponByName(context.TODO(), editCouponArg)
 	if err == sql.ErrNoRows {
 		http.Error(w, "coupon does not exist to edit", http.StatusBadRequest)
@@ -650,6 +725,9 @@ func (a *Admin) EditCouponHandler(w http.ResponseWriter, r *http.Request) {
 		OldName        string    `json:"old_name"`
 		TriggerPrice   float64   `json:"trigger_price"`
 		DiscountAmount float64   `json:"discount_amount"`
+		DiscountType   string    `json:"discount_type"`
+		StartDate      time.Time `json:"start_date"`
+		EndDate        time.Time `json:"end_date"`
 		Message        string    `json:"message"`
 	}
 	data.CouponID = editedCoupon.ID
@@ -657,6 +735,9 @@ func (a *Admin) EditCouponHandler(w http.ResponseWriter, r *http.Request) {
 	data.OldName = editCouponArg.OldName
 	data.TriggerPrice = editedCoupon.TriggerPrice
 	data.DiscountAmount = editedCoupon.DiscountAmount
+	data.DiscountType = editedCoupon.DiscountType
+	data.StartDate = editedCoupon.StartDate
+	data.EndDate = editedCoupon.EndDate
 	data.Message = "successfully updated coupon"
 
 	w.Header().Add("Content-Type", "application/json")
@@ -671,14 +752,23 @@ func (a *Admin) DeleteCouponHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	couponName := r.URL.Query().Get("coupon_name")
-	coupon, err := a.DB.DeleteCouponByName(context.TODO(), couponName)
-	if err != nil {
-		log.Error("error soft deleting coupon:", err.Error())
-		http.Error(w, "internal error soft deleting coupon", http.StatusInternalServerError)
+	coupon, err := a.DB.GetCouponByName(context.TODO(), couponName)
+	if err == sql.ErrNoRows {
+		http.Error(w, "coupon does not exist to delete", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Error("error fetchin coupon to check whether coupon is deleted in DeleteCouponHandler for Admin")
+		http.Error(w, "internal error fetchin coupon to check whether coupon is deleted", http.StatusInternalServerError)
 		return
 	} else if coupon.IsDeleted {
 		msg := fmt.Sprintf("coupon %s already deleted.", coupon.Name)
 		http.Error(w, msg, http.StatusForbidden)
+		return
+	}
+	coupon, err = a.DB.DeleteCouponByName(context.TODO(), couponName)
+	if err != nil {
+		log.Error("error soft deleting coupon:", err.Error())
+		http.Error(w, "internal error soft deleting coupon", http.StatusInternalServerError)
 		return
 	}
 

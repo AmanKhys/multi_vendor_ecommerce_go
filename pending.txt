@@ -67,11 +67,17 @@ Pendings
 1. Wishlist is not there...done
 2. Use variable in postman for tokens...done
 3. Use proper naming 
-4. Add provision for percentage value in coupon
-5. Start date and end date in coupon creation
+4. Add provision for percentage value in coupon..done
+5. Start date and end date in coupon creation..done
 6. If phone  number is required to make an order. Try to get it from the time of registration ...done
 7. Shipping address should be have some validation...done
 8. Remove unwanted msgs on response.. check all handlers
 9. Prepare for review...done
 10. Prepare sales report page with all possible filters...done
 11. Add sample env in readme... done
+
+taks:
+1. invoice download
+2. ban 1000> order for cod
+3. chart with filter..done
+4. best selling products, seller

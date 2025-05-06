@@ -217,11 +217,16 @@ CREATE TABLE IF NOT EXISTS vendor_payments (
 CREATE TABLE IF NOT EXISTS coupons (
     id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(), 
     name TEXT UNIQUE NOT NULL CHECK (name ~ '^[A-Z0-9]{3,}$'),
+    discount_type TEXT NOT NULL CHECK (discount_type in ('flat', 'percentage')),
     trigger_price NUMERIC(10, 2) NOT NULL CHECK (trigger_price > 0),
-    discount_amount NUMERIC(10, 2) NOT NULL CHECK (discount_amount <= trigger_price),
+    discount_amount NUMERIC(10, 2) NOT NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (updated_at >= created_at)
+    start_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    end_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP CHECK (start_date<= end_date),
+    CHECK (
+        (discount_type = 'flat' AND discount_amount <= trigger_price) OR
+        (discount_type = 'percentage' AND discount_amount >= 1 AND discount_amount <= 99)
+    )
 );
 
 CREATE TABLE IF NOT EXISTS return_refunds (

@@ -32,4 +32,7 @@ const StatusPaymentMethodCod = "cod"
 const StatusPaymentMethodWallet = "wallet"
 const StatusPaymentMethodRpay = "razorpay"
 
+const CouponDiscountTypePercentage = "percentage"
+const CouponDiscountTypeFlat = "flat"
+
 const EcomName = "Toy Stores Ecom"

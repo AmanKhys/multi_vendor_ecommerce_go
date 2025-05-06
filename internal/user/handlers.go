@@ -1060,6 +1060,32 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// for future calculations
+	var discountAmount float64
+	var ifCouponValid bool
+
+	totalAmount, err := u.DB.GetSumOfCartItemsByUserID(context.TODO(), user.ID)
+	if err != nil {
+		log.Error("error fetching totalAmount for user in AddCartToOrderHandler:", err.Error())
+		http.Error(w, "internal error fetching necessary data", http.StatusInternalServerError)
+		return
+	}
+	fmt.Println(discountAmount, ifCouponExists, ifCouponValid, coupon)
+
+	// set value for discountAmount
+	// also set ifCouponValid true if coupon exists
+	if ifCouponExists && coupon.TriggerPrice <= totalAmount &&
+		time.Now().After(coupon.StartDate) && time.Now().Before(coupon.EndDate) && !coupon.IsDeleted {
+		fmt.Println("entered here")
+		ifCouponValid = true
+		if coupon.DiscountType == utils.CouponDiscountTypeFlat {
+			discountAmount = coupon.DiscountAmount
+		} else if coupon.DiscountType == utils.CouponDiscountTypePercentage {
+			discountAmount = coupon.DiscountAmount * totalAmount / 100
+		}
+	}
+
+	fmt.Println(discountAmount, ifCouponExists, ifCouponValid, coupon)
 	// take the payment method from url query
 	paymentMethod := r.URL.Query().Get("payment_method")
 	if paymentMethod == utils.StatusPaymentMethodWallet {
@@ -1074,16 +1100,9 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var totalAmount float64
-		totalAmount, err = u.DB.GetSumOfCartItemsByUserID(context.TODO(), user.ID)
-		if err != nil {
-			log.Error("error fetching totalAmount for user in AddCartToOrderHandler:", err.Error())
-			http.Error(w, "internal error fetching necessary data", http.StatusInternalServerError)
-			return
-		}
-		if ifCouponExists && coupon.TriggerPrice <= totalAmount {
-			totalAmount = totalAmount - coupon.DiscountAmount
-		}
+		// make sure coupon is in active time and it is valid for the user
+		// change the values of discountAmount, ifCouponValid, totalAmount
+		// accordingly
 		if wallet.Savings < totalAmount {
 			msg := fmt.Sprintf("not enough money in wallet to buy product \n"+
 				"Needed: %0.2f; Your wallet has %0.2f", totalAmount, wallet.Savings)
@@ -1132,8 +1151,6 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// sum total for payment amount
-	var sumTotal float64
 	// add cartItems to orderItems
 	for _, v := range cartItems {
 		var addArg db.AddOrderITemParams
@@ -1141,7 +1158,6 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		addArg.ProductID = v.ProductID
 		addArg.Price = v.Price
 		addArg.Quantity = v.Quantity
-		sumTotal += v.TotalAmount
 		orderItem, err := u.DB.AddOrderITem(context.TODO(), addArg)
 		if err != nil {
 			log.Warn("error adding cartItem to order_item:", err.Error())
@@ -1186,19 +1202,10 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// check if the coupon is valid if coupon exists
-	var discountAmount float64
-	var ifCouponValid bool
-	if ifCouponExists && coupon.TriggerPrice <= sumTotal {
-		ifCouponValid = true
-		discountAmount = coupon.DiscountAmount
-	} else if ifCouponExists {
-		Err = append(Err, "order placed without adding the coupon")
-	}
 	// update order total and discount amount
 	var editOrderAmountArg db.EditOrderAmountByIDParams
 	editOrderAmountArg.ID = order.ID
-	editOrderAmountArg.TotalAmount = sumTotal
+	editOrderAmountArg.TotalAmount = totalAmount
 	editOrderAmountArg.DiscountAmount = discountAmount
 	if ifCouponValid {
 		editOrderAmountArg.CouponID.Valid = true

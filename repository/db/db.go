@@ -378,6 +378,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUserWithPasswordByEmailStmt, err = db.PrepareContext(ctx, getUserWithPasswordByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserWithPasswordByEmail: %w", err)
 	}
+	if q.getValidCouponByNameStmt, err = db.PrepareContext(ctx, getValidCouponByName); err != nil {
+		return nil, fmt.Errorf("error preparing query GetValidCouponByName: %w", err)
+	}
 	if q.getValidForgotOTPByUserIDStmt, err = db.PrepareContext(ctx, getValidForgotOTPByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetValidForgotOTPByUserID: %w", err)
 	}
@@ -1018,6 +1021,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getUserWithPasswordByEmailStmt: %w", cerr)
 		}
 	}
+	if q.getValidCouponByNameStmt != nil {
+		if cerr := q.getValidCouponByNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getValidCouponByNameStmt: %w", cerr)
+		}
+	}
 	if q.getValidForgotOTPByUserIDStmt != nil {
 		if cerr := q.getValidForgotOTPByUserIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getValidForgotOTPByUserIDStmt: %w", cerr)
@@ -1250,6 +1258,7 @@ type Queries struct {
 	getUserBySessionIDStmt                         *sql.Stmt
 	getUserIDFromOrderItemIDStmt                   *sql.Stmt
 	getUserWithPasswordByEmailStmt                 *sql.Stmt
+	getValidCouponByNameStmt                       *sql.Stmt
 	getValidForgotOTPByUserIDStmt                  *sql.Stmt
 	getValidOTPByUserIDStmt                        *sql.Stmt
 	getVendorPaymentByOrderItemIDStmt              *sql.Stmt
@@ -1389,6 +1398,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getUserBySessionIDStmt:                         q.getUserBySessionIDStmt,
 		getUserIDFromOrderItemIDStmt:                   q.getUserIDFromOrderItemIDStmt,
 		getUserWithPasswordByEmailStmt:                 q.getUserWithPasswordByEmailStmt,
+		getValidCouponByNameStmt:                       q.getValidCouponByNameStmt,
 		getValidForgotOTPByUserIDStmt:                  q.getValidForgotOTPByUserIDStmt,
 		getValidOTPByUserIDStmt:                        q.getValidOTPByUserIDStmt,
 		getVendorPaymentByOrderItemIDStmt:              q.getVendorPaymentByOrderItemIDStmt,

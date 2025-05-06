@@ -53,11 +53,12 @@ type CategoryItem struct {
 type Coupon struct {
 	ID             uuid.UUID `json:"id"`
 	Name           string    `json:"name"`
+	DiscountType   string    `json:"discount_type"`
 	TriggerPrice   float64   `json:"trigger_price"`
 	DiscountAmount float64   `json:"discount_amount"`
 	IsDeleted      bool      `json:"is_deleted"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	StartDate      time.Time `json:"start_date"`
+	EndDate        time.Time `json:"end_date"`
 }
 
 type ForgotOtp struct {
