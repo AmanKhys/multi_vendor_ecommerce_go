@@ -2124,6 +2124,24 @@ func (u *User) InvoiceHandler(w http.ResponseWriter, r *http.Request) {
 			TotalAmount: oi.TotalAmount,
 		})
 	}
+	// check whether coupon is applied and add coupon and discount details to the pdf if there are any
+	type Discount struct {
+		CouponName    string  `json:"coupon_name"`
+		DiscountType  string  `json:"discount_type"`
+		TotalDiscount float64 `json:"discount"`
+	}
+	var orderDiscount Discount
+	if order.CouponID.Valid {
+		coupon, err := u.DB.GetCouponByID(context.TODO(), order.CouponID.UUID)
+		if err == sql.ErrNoRows {
+			log.Error("no coupon found for the order with couponID present in Invoice Handler")
+		}
+		orderDiscount = Discount{
+			CouponName:    coupon.Name,
+			DiscountType:  coupon.DiscountType,
+			TotalDiscount: order.DiscountAmount,
+		}
+	}
 
 	// Begin PDF generation
 	pdf := gofpdf.New("P", "mm", "A4", "")
@@ -2192,6 +2210,23 @@ func (u *User) InvoiceHandler(w http.ResponseWriter, r *http.Request) {
 		pdf.Cell(0, 6, fmt.Sprintf("Transaction ID: %s", payment.TransactionID.String))
 	} else {
 		pdf.Cell(0, 6, "Transaction ID: N/A")
+	}
+	pdf.Ln(12)
+
+	// Discount / Coupon Info
+	pdf.Ln(6)
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(0, 8, "Discount Details:")
+	pdf.Ln(6)
+	pdf.SetFont("Arial", "", 11)
+	if order.CouponID.Valid && orderDiscount.CouponName != "" {
+		pdf.Cell(0, 6, fmt.Sprintf("Coupon Code: %s", orderDiscount.CouponName))
+		pdf.Ln(5)
+		pdf.Cell(0, 6, fmt.Sprintf("Discount Type: %s", orderDiscount.DiscountType))
+		pdf.Ln(5)
+		pdf.Cell(0, 6, fmt.Sprintf("Total Discount: ₹%.2f", orderDiscount.TotalDiscount))
+	} else {
+		pdf.Cell(0, 6, "No coupon was applied for this order.")
 	}
 	pdf.Ln(12)
 
