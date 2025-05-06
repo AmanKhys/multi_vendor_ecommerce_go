@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -844,6 +845,43 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var sellerOrderAmountMap = make(map[uuid.UUID]float64)
+	for _, vp := range vendorPayments {
+		sellerOrderAmountMap[vp.SellerID] += vp.TotalAmount
+	}
+
+	//Convert to slice
+	type sellerStat struct {
+		SellerID    uuid.UUID
+		SellerName  string
+		TotalAmount float64
+	}
+
+	var sortedSellers []sellerStat
+	for sid, total := range sellerOrderAmountMap {
+		seller, err := a.DB.GetUserById(context.TODO(), sid)
+		if err != nil {
+			log.Println("error fetching seller by sellerID in SalesReportHandler")
+			continue
+		}
+		sortedSellers = append(sortedSellers, sellerStat{
+			SellerID:    sid,
+			SellerName:  seller.Name,
+			TotalAmount: total,
+		})
+	}
+
+	// Sort descending
+	sort.Slice(sortedSellers, func(i, j int) bool {
+		return sortedSellers[i].TotalAmount > sortedSellers[j].TotalAmount
+	})
+
+	// Take top 3
+	topSellers := sortedSellers
+	if len(sortedSellers) > 3 {
+		topSellers = sortedSellers[:3]
+	}
+
 	var (
 		totalProfit, totalLossAmount float64
 		totalSales, totalOrders      int
@@ -904,6 +942,27 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 	pdf.SetLineWidth(0.3)
 	pdf.Line(15, pdf.GetY(), 195, pdf.GetY())
 	pdf.Ln(5)
+
+	// ========== TOP 3 SELLERS BY TOTAL ORDER AMOUNT ========== //
+	pdf.SetFont("Arial", "B", 13)
+	pdf.Cell(0, 8, "Top 3 Sellers by Total Order Amount")
+	pdf.Ln(10)
+
+	pdf.SetFont("Arial", "B", 12)
+	pdf.SetFillColor(230, 230, 230)
+	pdf.CellFormat(10, 8, "No.", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(40, 8, "Seller Name", "1", 0, "", true, 0, "")
+	pdf.CellFormat(90, 8, "Seller ID", "1", 0, "", true, 0, "")
+	pdf.CellFormat(30, 8, "Total Amount", "1", 1, "R", true, 0, "")
+
+	pdf.SetFont("Arial", "", 11)
+	for i, s := range topSellers {
+		pdf.CellFormat(10, 8, fmt.Sprintf("%d", i+1), "1", 0, "C", false, 0, "")
+		pdf.CellFormat(40, 8, s.SellerName, "1", 0, "", false, 0, "")
+		pdf.CellFormat(90, 8, s.SellerID.String(), "1", 0, "", false, 0, "")
+		pdf.CellFormat(30, 8, fmt.Sprintf("$%.2f", s.TotalAmount), "1", 1, "R", false, 0, "")
+	}
+	pdf.Ln(12)
 
 	// Summary Section
 	pdf.SetFont("Arial", "B", 14)
