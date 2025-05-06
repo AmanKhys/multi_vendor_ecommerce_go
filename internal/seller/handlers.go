@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -773,6 +774,38 @@ func (s *Seller) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var productOrders = make(map[uuid.UUID]int)
+	for _, v := range orderItems {
+		productOrders[v.ProductID] += int(v.Quantity)
+	}
+
+	// Convert map to slice for sorting
+	type productStat struct {
+		ProductID   uuid.UUID `json:"product_id"`
+		ProductName string    `json:"product_name"`
+		Quantity    int       `json:"quantity"`
+	}
+	var sortedProducts []productStat
+	for pid, qty := range productOrders {
+		product, err := s.DB.GetProductByID(context.TODO(), pid)
+		if err != nil {
+			log.Error("error fetching product by productID in SalesReportHandler for seller")
+			continue
+		}
+		sortedProducts = append(sortedProducts, productStat{ProductID: pid, ProductName: product.Name, Quantity: qty})
+	}
+
+	// Sort by quantity in descending order
+	sort.Slice(sortedProducts, func(i, j int) bool {
+		return sortedProducts[i].Quantity > sortedProducts[j].Quantity
+	})
+
+	// Select top 3
+	topThree := sortedProducts
+	if len(sortedProducts) > 3 {
+		topThree = sortedProducts[:3]
+	}
+
 	// get a table of the details of each orderItem
 	orderStatusCounts := map[string]int{
 		"Pending":    0,
@@ -865,6 +898,27 @@ func (s *Seller) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 	pdf.SetFont("Arial", "", 12)
 	pdf.Cell(95, 8, fmt.Sprintf("Start Date: %s", startDate.Format("02 Jan 2006")))
 	pdf.Cell(95, 8, fmt.Sprintf("End Date: %s", endDate.Format("02 Jan 2006")))
+	pdf.Ln(12)
+
+	// ========== TOP 3 SELLING PRODUCTS ========== //
+	pdf.SetFont("Arial", "B", 13)
+	pdf.Cell(0, 8, "Top 3 Selling Products")
+	pdf.Ln(10)
+
+	pdf.SetFont("Arial", "B", 12)
+	pdf.SetFillColor(230, 230, 230)
+	pdf.CellFormat(10, 8, "No.", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(100, 8, "Product Name", "1", 0, "", true, 0, "")
+	pdf.CellFormat(80, 8, "Product ID", "1", 0, "", true, 0, "")
+	pdf.CellFormat(30, 8, "Quantity Sold", "1", 1, "C", true, 0, "")
+
+	pdf.SetFont("Arial", "", 11)
+	for i, p := range topThree {
+		pdf.CellFormat(10, 8, fmt.Sprintf("%d", i+1), "1", 0, "C", false, 0, "")
+		pdf.CellFormat(100, 8, p.ProductName, "1", 0, "", false, 0, "")
+		pdf.CellFormat(80, 8, p.ProductID.String(), "1", 0, "", false, 0, "")
+		pdf.CellFormat(30, 8, fmt.Sprintf("%d", p.Quantity), "1", 1, "C", false, 0, "")
+	}
 	pdf.Ln(12)
 
 	// ========== ORDER ITEMS SECTION ========== //
