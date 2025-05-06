@@ -1060,6 +1060,17 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// get the cart items
+	cartItems, err := u.DB.GetCartItemsByUserID(context.TODO(), user.ID)
+	if err != nil {
+		log.Warn("error fetching cartItems to add to order_items:", err.Error())
+		http.Error(w, "internal error fetching cartItems to add to order", http.StatusInternalServerError)
+		return
+	} else if len(cartItems) == 0 {
+		http.Error(w, "no cart items. Cannot place an order", http.StatusBadRequest)
+		return
+	}
+
 	// for future calculations
 	var discountAmount float64
 	var ifCouponValid bool
@@ -1070,25 +1081,19 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error fetching necessary data", http.StatusInternalServerError)
 		return
 	}
-	fmt.Println(discountAmount, ifCouponExists, ifCouponValid, coupon)
 
-	// set value for discountAmount
-	// also set ifCouponValid true if coupon exists
-	if ifCouponExists && coupon.TriggerPrice <= totalAmount &&
-		time.Now().After(coupon.StartDate) && time.Now().Before(coupon.EndDate) && !coupon.IsDeleted {
-		fmt.Println("entered here")
-		ifCouponValid = true
-		if coupon.DiscountType == utils.CouponDiscountTypeFlat {
-			discountAmount = coupon.DiscountAmount
-		} else if coupon.DiscountType == utils.CouponDiscountTypePercentage {
-			discountAmount = coupon.DiscountAmount * totalAmount / 100
-		}
-	}
-
-	fmt.Println(discountAmount, ifCouponExists, ifCouponValid, coupon)
+	// check whether payment is cod and total_amount > 1000
 	// take the payment method from url query
 	paymentMethod := r.URL.Query().Get("payment_method")
-	if paymentMethod == utils.StatusPaymentMethodWallet {
+	if !(paymentMethod == utils.StatusPaymentMethodCod || paymentMethod == utils.StatusPaymentMethodRpay ||
+		paymentMethod == utils.StatusPaymentMethodWallet) {
+		http.Error(w, "invalid payment method", http.StatusBadRequest)
+		return
+	}
+	if paymentMethod == utils.StatusPaymentMethodCod && totalAmount >= 1000 {
+		http.Error(w, "cannot create order costing more than 1000rs on Cash On Delivery", http.StatusBadRequest)
+		return
+	} else if paymentMethod == utils.StatusPaymentMethodWallet {
 		wallet, err := u.DB.GetWalletByUserID(context.TODO(), user.ID)
 		if err == sql.ErrNoRows {
 			log.Error("error no wallet exists for user in AddCartToOrderHandler for user:", err.Error())
@@ -1109,18 +1114,18 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
-
 	}
 
-	// get the cart items
-	cartItems, err := u.DB.GetCartItemsByUserID(context.TODO(), user.ID)
-	if err != nil {
-		log.Warn("error fetching cartItems to add to order_items:", err.Error())
-		http.Error(w, "internal error fetching cartItems to add to order", http.StatusInternalServerError)
-		return
-	} else if len(cartItems) == 0 {
-		http.Error(w, "no cart items. Cannot place an order", http.StatusBadRequest)
-		return
+	// set value for discountAmount
+	// also set ifCouponValid true if coupon exists
+	if ifCouponExists && coupon.TriggerPrice <= totalAmount &&
+		time.Now().After(coupon.StartDate) && time.Now().Before(coupon.EndDate) && !coupon.IsDeleted {
+		ifCouponValid = true
+		if coupon.DiscountType == utils.CouponDiscountTypeFlat {
+			discountAmount = coupon.DiscountAmount
+		} else if coupon.DiscountType == utils.CouponDiscountTypePercentage {
+			discountAmount = coupon.DiscountAmount * totalAmount / 100
+		}
 	}
 
 	// add an order
