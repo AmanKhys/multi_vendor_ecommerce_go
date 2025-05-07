@@ -45,6 +45,8 @@ func main() {
 	}
 	// remove void orders and payments according to it;
 	go OrdersCron()
+	// clear out vendor_payments accordingly
+	go paymentRoutine()
 	log.Printf("Server running on port %d in %s", cfg.port, cfg.env)
 	err = srv.ListenAndServe()
 	if err != nil {
