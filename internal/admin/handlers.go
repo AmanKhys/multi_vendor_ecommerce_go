@@ -989,32 +989,6 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 	pdf.Cell(190, 8, fmt.Sprintf("Net Profit: $%.2f", totalProfit-totalLossAmount))
 	pdf.Ln(12)
 
-	// Charts
-	pieChart, err := chartGen.GenerateOrderStatusPieChartForAdmin(
-		statusCount[utils.StatusOrderPending],
-		statusCount[utils.StatusOrderProcessing],
-		statusCount[utils.StatusOrderShipped],
-		statusCount[utils.StatusOrderDelivered],
-		statusCount[utils.StatusOrderCancelled],
-		statusCount[utils.StatusOrderReturned],
-	)
-	if err == nil {
-		pdf.SetFont("Arial", "B", 12)
-		pdf.Cell(0, 8, "Order Status Distribution")
-		pdf.Ln(8)
-		chartGen.AddChartToPDFForAdmin(pdf, pieChart, "order_status_chart", 15, pdf.GetY(), 90)
-		pdf.Ln(75)
-	}
-
-	barChart, err := chartGen.GenerateProfitLossBarChartForAdmin(totalProfit, totalLossAmount)
-	if err == nil {
-		pdf.SetFont("Arial", "B", 12)
-		pdf.Cell(0, 8, "Profit vs Loss Chart")
-		pdf.Ln(8)
-		chartGen.AddChartToPDFForAdmin(pdf, barChart, "profit_loss_chart", 15, pdf.GetY(), 180)
-		pdf.Ln(80)
-	}
-
 	// Sales Table
 	pdf.AddPage()
 	pdf.SetFont("Arial", "B", 14)
@@ -1064,6 +1038,33 @@ func (a *Admin) SalesReportHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		pdf.CellFormat(40, 8, couponName, "1", 1, "C", fill, 0, "")
 		fill = !fill
+	}
+	pdf.Ln(10)
+	pdf.Ln(10)
+	// Charts
+	pieChart, err := chartGen.GenerateOrderStatusPieChartForAdmin(
+		statusCount[utils.StatusOrderPending],
+		statusCount[utils.StatusOrderProcessing],
+		statusCount[utils.StatusOrderShipped],
+		statusCount[utils.StatusOrderDelivered],
+		statusCount[utils.StatusOrderCancelled],
+		statusCount[utils.StatusOrderReturned],
+	)
+	if err == nil {
+		pdf.SetFont("Arial", "B", 12)
+		pdf.Cell(0, 8, "Order Status Distribution")
+		pdf.Ln(8)
+		chartGen.AddChartToPDFForAdmin(pdf, pieChart, "order_status_chart", 15, pdf.GetY(), 90)
+		pdf.Ln(75)
+	}
+
+	barChart, err := chartGen.GenerateProfitLossBarChartForAdmin(totalProfit, totalLossAmount)
+	if err == nil {
+		pdf.SetFont("Arial", "B", 12)
+		pdf.Cell(0, 8, "Profit vs Loss Chart")
+		pdf.Ln(8)
+		chartGen.AddChartToPDFForAdmin(pdf, barChart, "profit_loss_chart", 15, pdf.GetY(), 180)
+		pdf.Ln(80)
 	}
 
 	var buf bytes.Buffer
