@@ -5,9 +5,9 @@ import (
 	"crypto/cipher"
 	"encoding/hex"
 	"errors"
+	"os"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
-	env "github.com/joho/godotenv"
 )
 
 func encode(b []byte) string {
@@ -23,16 +23,12 @@ func decode(s string) ([]byte, error) {
 }
 
 func Encrypt(text string) (string, error) {
-	var envM, err = env.Read(".env")
-	if err != nil {
-		return "", err
-	}
 
 	// Read secret key from environment variable
-	var secretKeyString = envM[envname.CryptSecretKey]
+	var secretKeyString = os.Getenv(envname.CryptSecretKey)
 
 	// Read IV (Initialization Vector) from environment variable (must be 16 bytes)
-	var bytesString = envM[envname.AesIV]
+	var bytesString = os.Getenv(envname.AesIV)
 
 	// Convert to byte slices
 	var secretKey = []byte(secretKeyString)
@@ -53,16 +49,11 @@ func Encrypt(text string) (string, error) {
 }
 
 func Decrypt(text string) (string, error) {
-	var envM, err = env.Read(".env")
-	if err != nil {
-		return "", err
-	}
-
 	// Read secret key from environment variable
-	var secretKeyString = envM[string(envname.CryptSecretKey)]
+	var secretKeyString = os.Getenv(string(envname.CryptSecretKey))
 
 	// Read IV (Initialization Vector) from environment variable (must be 16 bytes)
-	var bytesString = envM[string(envname.AesIV)]
+	var bytesString = os.Getenv(string(envname.AesIV))
 
 	// Convert to byte slices
 	var secretKey = []byte(secretKeyString)

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -19,7 +20,6 @@ import (
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
-	env "github.com/joho/godotenv"
 	"github.com/jung-kurt/gofpdf"
 	log "github.com/sirupsen/logrus"
 )
@@ -1640,10 +1640,6 @@ func (u *User) MakeOnlinePaymentHandler(w http.ResponseWriter, r *http.Request) 
 
 	// fetch razorpay to give unique orderID that is to be used with its api
 	// in the rpay template when clicking the pay with razorpay button
-	envM, err := env.Read(".env")
-	if err != nil {
-		log.Fatal("error loading .env file in MakeOnlinePaymentHandler")
-	}
 	rpOrderIDStr, err := helpers.ExecuteRazorpay(payment.TotalAmount)
 	if err != nil {
 		log.Warn("error executing razorpay")
@@ -1651,9 +1647,10 @@ func (u *User) MakeOnlinePaymentHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	RPayKey := os.Getenv(envname.RPID)
 	// data for the razorpaytemplate
 	data := RazorpayData{
-		Key:           envM[envname.RPID],
+		Key:           RPayKey,
 		Amount:        int(payment.TotalAmount) * 100, // Amount in paise (₹500)
 		Currency:      "INR",
 		EcomName:      utils.EcomName,
