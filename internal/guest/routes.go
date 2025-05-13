@@ -2,11 +2,11 @@ package guest
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
-	env "github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -16,9 +16,8 @@ var dbConn = repository.NewDBConfig()
 var DB = db.New(dbConn)
 
 // load the env for clientID and clientSecret for googelAuthConfig
-var envM, _ = env.Read(".env")
-var clientId = envM[envname.GoogleClientID]
-var clientSecret = envM[envname.GoogleSecretKey]
+var clientId = os.Getenv(envname.GoogleClientID)
+var clientSecret = os.Getenv(envname.GoogleSecretKey)
 
 // set the config for google auth and give it the guest struct object
 var conf = &oauth2.Config{

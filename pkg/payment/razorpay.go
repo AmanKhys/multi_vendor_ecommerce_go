@@ -5,20 +5,15 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"log"
+	"os"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
-	"github.com/joho/godotenv"
 	rp "github.com/razorpay/razorpay-go"
 )
 
 func ExecuteRazorpay(orderPrice float64) (string, error) {
-	envM, err := godotenv.Read(".env")
-	if err != nil {
-		log.Fatal("error loading .env file in ExecuteRazorpay helpers")
-	}
-	rpID := envM[envname.RPID]
-	rpSecretKey := envM[envname.RPSecretKey]
+	rpID := os.Getenv(envname.RPID)
+	rpSecretKey := os.Getenv(envname.RPSecretKey)
 
 	client := rp.NewClient(rpID, rpSecretKey)
 	data := map[string]any{
@@ -37,11 +32,7 @@ func ExecuteRazorpay(orderPrice float64) (string, error) {
 
 // verify razorpay payment
 func VerifyRazorpaySignature(orderID, paymentID, signature string) bool {
-	envM, err := godotenv.Read(".env")
-	if err != nil {
-		log.Fatal("error loading .env file in VerifyRazorPaySignature:", err.Error())
-	}
-	secret := envM[envname.RPSecretKey]
+	secret := os.Getenv(envname.RPSecretKey)
 
 	// Create a signature from order_id and payment_id using HMAC SHA256
 	message := orderID + "|" + paymentID

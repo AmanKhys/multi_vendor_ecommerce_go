@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/router"
 
-	env "github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,11 +24,8 @@ type config struct {
 
 func main() {
 	var cfg config
-	envM, err := env.Read(".env")
-	if err != nil {
-		log.Fatal("couldn't load the env", err)
-	}
-	port, err := strconv.Atoi(envM["port"])
+	portStr := os.Getenv(envname.Port)
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		log.Fatal("invalid port number")
 	}

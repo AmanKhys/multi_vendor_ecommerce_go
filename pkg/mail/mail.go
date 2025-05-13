@@ -3,32 +3,24 @@ package mail
 import (
 	"fmt"
 	"net/smtp"
+	"os"
 	"time"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
-	env "github.com/joho/godotenv"
 )
 
 func returnAuth() (smtp.Auth, error) {
-	envM, err := env.Read(".env")
-	if err != nil {
-		return nil, err
-	}
-	identity := envM[string(envname.SmtpIdentity)]
-	smtpHost := envM[string(envname.SmtpHost)]
-	smtpMail := envM[string(envname.SmtpEmail)]
-	smtpPassword := envM[string(envname.SmtpPassword)]
+	identity := os.Getenv(envname.SmtpIdentity)
+	smtpHost := os.Getenv(envname.SmtpHost)
+	smtpMail := os.Getenv(envname.SmtpEmail)
+	smtpPassword := os.Getenv(envname.SmtpPassword)
 	auth := smtp.PlainAuth(identity, smtpMail, smtpPassword, smtpHost)
 	return auth, nil
 }
 
 func SendOTPMail(otp int, expires_at time.Time, recepientMail string) error {
-	envM, err := env.Read(".env")
-	if err != nil {
-		return err
-	}
-	smtpServer := envM[envname.SmtpServer]
-	smtpMail := envM[envname.SmtpEmail]
+	smtpServer := os.Getenv(envname.SmtpServer)
+	smtpMail := os.Getenv(envname.SmtpEmail)
 
 	auth, err := returnAuth()
 	if err != nil {
@@ -58,12 +50,8 @@ func SendOTPMail(otp int, expires_at time.Time, recepientMail string) error {
 }
 
 func SendForgotOTPMail(otp int, expires_at time.Time, recepientMail string) error {
-	envM, err := env.Read(".env")
-	if err != nil {
-		return err
-	}
-	smtpServer := envM[envname.SmtpServer]
-	smtpMail := envM[envname.SmtpEmail]
+	smtpServer := os.Getenv(envname.SmtpServer)
+	smtpMail := os.Getenv(envname.SmtpEmail)
 
 	auth, err := returnAuth()
 	if err != nil {
