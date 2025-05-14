@@ -201,13 +201,35 @@ func (s *Seller) OwnProductsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unable to fetch seller products", http.StatusInternalServerError)
 		return
 	}
+	type respProduct struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int32     `json:"stock"`
+		SellerID    uuid.UUID `json:"seller_id"`
+	}
+
+	var respProductsData []respProduct
+
+	for _, p := range products {
+		var temp respProduct
+		temp.ID = p.ID
+		temp.Name = p.Name
+		temp.Description = p.Description
+		temp.Price = p.Price
+		temp.Stock = p.Stock
+		temp.SellerID = p.SellerID
+
+		respProductsData = append(respProductsData, temp)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	var resp struct {
-		Data []db.Product `json:"data"`
-		Err  []string     `json:"errors"`
+		Data []respProduct `json:"data"`
+		Err  []string      `json:"errors"`
 	}
-	resp.Data = products
+	resp.Data = respProductsData
 	resp.Err = Err
 	json.NewEncoder(w).Encode(resp)
 }
@@ -235,13 +257,30 @@ func (s *Seller) ProductDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	} else if err != nil {
 		Err = append(Err, "error fetching categories for product")
 	}
-	var resp struct {
-		Data       db.Product `json:"data"`
-		Message    string     `json:"message"`
-		Categories []string   `json:"categories"`
-		Err        []string   `json:"errors"`
+	type respProduct struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int32     `json:"stock"`
+		SellerID    uuid.UUID `json:"seller_id"`
 	}
-	resp.Data = product
+
+	var respProductData = respProduct{
+		ID:          product.ID,
+		Name:        product.Name,
+		Description: product.Description,
+		Price:       product.Price,
+		Stock:       product.Stock,
+		SellerID:    product.SellerID,
+	}
+	var resp struct {
+		Data       respProduct `json:"data"`
+		Message    string      `json:"message"`
+		Categories []string    `json:"categories"`
+		Err        []string    `json:"errors"`
+	}
+	resp.Data = respProductData
 	resp.Categories = categories
 	resp.Err = Err
 	resp.Message = "successfully fetched product"
@@ -313,13 +352,31 @@ func (s *Seller) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 			CategoriesAdded = append(CategoriesAdded, v)
 		}
 	}
-	var resp struct {
-		Data            db.Product `json:"data"`
-		Message         string     `json:"message"`
-		CategoriesAdded []string   `json:"categories_added"`
-		Err             []string   `json:"error"`
+
+	type respProduct struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int32     `json:"stock"`
+		SellerID    uuid.UUID `json:"seller_id"`
 	}
-	resp.Data = product
+
+	var respProductData = respProduct{
+		ID:          product.ID,
+		Name:        product.Name,
+		Description: product.Description,
+		Price:       product.Price,
+		Stock:       product.Stock,
+		SellerID:    product.SellerID,
+	}
+	var resp struct {
+		Data            respProduct `json:"data"`
+		Message         string      `json:"message"`
+		CategoriesAdded []string    `json:"categories_added"`
+		Err             []string    `json:"error"`
+	}
+	resp.Data = respProductData
 	resp.Message = "product added successfully"
 	resp.CategoriesAdded = CategoriesAdded
 	resp.Err = Err
@@ -402,15 +459,32 @@ func (s *Seller) EditProductHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	type respProduct struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int32     `json:"stock"`
+		SellerID    uuid.UUID `json:"seller_id"`
+	}
+
+	var respProductData = respProduct{
+		ID:          product.ID,
+		Name:        product.Name,
+		Description: product.Description,
+		Price:       product.Price,
+		Stock:       product.Stock,
+		SellerID:    product.SellerID,
+	}
 	var resp struct {
-		Data            db.Product `json:"data"`
-		Message         string     `json:"message"`
-		Err             []string   `json:"error"`
-		CategoriesAdded []string   `json:"categories_added"`
+		Data            respProduct `json:"data"`
+		Message         string      `json:"message"`
+		Err             []string    `json:"error"`
+		CategoriesAdded []string    `json:"categories_added"`
 	}
 	resp.Err = Err
 	resp.CategoriesAdded = CategoriesAdded
-	resp.Data = product
+	resp.Data = respProductData
 	resp.Message = "updated product details"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -456,11 +530,28 @@ func (s *Seller) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error deleting product", http.StatusInternalServerError)
 		return
 	}
-	var resp struct {
-		Product db.Product `json:"product"`
-		Message string     `json:"message"`
+	type respProduct struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int32     `json:"stock"`
+		SellerID    uuid.UUID `json:"seller_id"`
 	}
-	resp.Product = product
+
+	var respProductData = respProduct{
+		ID:          product.ID,
+		Name:        product.Name,
+		Description: product.Description,
+		Price:       product.Price,
+		Stock:       product.Stock,
+		SellerID:    product.SellerID,
+	}
+	var resp struct {
+		Product respProduct `json:"product"`
+		Message string      `json:"message"`
+	}
+	resp.Product = respProductData
 	resp.Message = "successfully deleted product"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -473,11 +564,24 @@ func (s *Seller) GetAllCategoriesHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "internal error fetching cateogries", http.StatusInternalServerError)
 		return
 	}
-	var resp struct {
-		Data    []db.Category `json:"data"`
-		Message string        `json:"message"`
+	type respCategory struct {
+		ID   uuid.UUID `json:"id"`
+		Name string    `json:"name"`
 	}
-	resp.Data = categories
+
+	var respCategories []respCategory
+
+	for _, c := range categories {
+		var temp respCategory
+		temp.ID = c.ID
+		temp.Name = c.Name
+		respCategories = append(respCategories, temp)
+	}
+	var resp struct {
+		Data    []respCategory `json:"data"`
+		Message string         `json:"message"`
+	}
+	resp.Data = respCategories
 	resp.Message = "successfully fetched all categories"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -530,12 +634,29 @@ func (s *Seller) AddProductToCategoryHandler(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "internal error adding product to category items"+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var resp struct {
-		Product      db.Product `json:"product"`
-		CategoryName string     `json:"category_name"`
-		Message      string     `json:"message"`
+	type respProduct struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int32     `json:"stock"`
+		SellerID    uuid.UUID `json:"seller_id"`
 	}
-	resp.Product = product
+
+	var respProductData = respProduct{
+		ID:          product.ID,
+		Name:        product.Name,
+		Description: product.Description,
+		Price:       product.Price,
+		Stock:       product.Stock,
+		SellerID:    product.SellerID,
+	}
+	var resp struct {
+		Product      respProduct `json:"product"`
+		CategoryName string      `json:"category_name"`
+		Message      string      `json:"message"`
+	}
+	resp.Product = respProductData
 	resp.CategoryName = category.Name
 	resp.Message = "successfully added product to category items"
 	w.Header().Set("Content-Type", "application/json")
@@ -585,6 +706,7 @@ func (s *Seller) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	type respOrderItem struct {
 		OrderItemID uuid.UUID `json:"order_item_id"`
 		Status      string    `json:"status"`
+		OrderDate   time.Time `json:"order_date"`
 		ProductID   uuid.UUID `json:"product_id"`
 		Price       float64   `json:"price"`
 		Quantity    int       `json:"quantity"`
@@ -598,6 +720,7 @@ func (s *Seller) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 		var temp respOrderItem
 		temp.OrderItemID = v.ID
 		temp.Status = v.Status
+		temp.OrderDate = v.CreatedAt
 		temp.ProductID = v.ProductID
 		temp.Price = v.Price
 		temp.Quantity = int(v.Quantity)
