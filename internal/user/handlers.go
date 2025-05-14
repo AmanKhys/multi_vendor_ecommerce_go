@@ -573,7 +573,7 @@ func (u *User) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 
 	var resp struct {
 		Data      []respCartItems `json:"data"`
-		CartTotal float64         `josn:"cart_total"`
+		CartTotal float64         `json:"cart_total"`
 		Message   string          `json:"message"`
 	}
 	resp.Data = respCartItemsData
