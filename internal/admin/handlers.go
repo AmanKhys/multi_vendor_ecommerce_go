@@ -23,6 +23,7 @@ import (
 type Admin struct{ DB *db.Queries }
 
 func (a *Admin) AdminAllUsersHandler(w http.ResponseWriter, r *http.Request) {
+	// no need to have specific type for respData since the data given is already response ready and clean
 	var resp struct {
 		Data    []db.GetAllUsersRow `json:"data"`
 		Message string              `json:"message"`
@@ -45,6 +46,7 @@ func (a *Admin) AdminAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Admin) AdminUsersHandler(w http.ResponseWriter, r *http.Request) {
+	// no need to have specific type for respData since the data given is already response ready and clean
 	var resp struct {
 		Data    []db.GetAllUsersByRoleUserRow `json:"data"`
 		Message string                        `json:"message"`
@@ -67,6 +69,7 @@ func (a *Admin) AdminUsersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Admin) AdminSellersHandler(w http.ResponseWriter, r *http.Request) {
+	// no need to have specific type for respData since the data given is already response ready and clean
 	var resp struct {
 		Data    []db.GetAllUsersByRoleSellerRow `json:"data"`
 		Message string                          `json:"message"`
@@ -130,13 +133,13 @@ func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
 	var Err []string
 	var Messages []string
 	// add wallet for the seller
-	wallet, err := a.DB.AddWalletByUserID(context.TODO(), seller.ID)
+	_, err = a.DB.AddWalletByUserID(context.TODO(), seller.ID)
 	if err != nil {
 		log.Warn("error adding wallet for seller after verifying account:", err.Error())
 		Err = append(Err, "error adding wallet for seller after verifying account")
 	} else {
-		Messages = append(Messages, "successfully added wallet for seller")
-		Messages = append(Messages, "walletID:", wallet.ID.String(), fmt.Sprintf("savings: %v", wallet.Savings))
+		msg := fmt.Sprintf("successfully added wallet for seller: %s", seller.ID.String())
+		Messages = append(Messages, msg)
 	}
 	var resp struct {
 		Data     db.VerifySellerByIDRow `json:"data"`
@@ -151,18 +154,42 @@ func (a *Admin) VerifySellerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Admin) AdminProductsHandler(w http.ResponseWriter, r *http.Request) {
-	var resp struct {
-		Data    []db.Product `json:"data"`
-		Message string       `json:"message"`
+	type respProduct struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int32     `json:"stock"`
+		SellerID    uuid.UUID `json:"seller_id"`
+		IsDeleted   bool      `json:"is_deleted"`
 	}
-	data, err := a.DB.GetAllProductsForAdmin(context.TODO())
+
+	var respProducts []respProduct
+	var resp struct {
+		Data    []respProduct `json:"data"`
+		Message string        `json:"message"`
+	}
+	products, err := a.DB.GetAllProductsForAdmin(context.TODO())
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed : %w", err).Error(), http.StatusBadRequest)
 		return
 	}
 
-	resp.Data = data
+	for _, p := range products {
+		var temp respProduct
+		temp.ID = p.ID
+		temp.Name = p.Name
+		temp.Description = p.Description
+		temp.Price = p.Price
+		temp.Stock = p.Stock
+		temp.SellerID = p.SellerID
+		temp.IsDeleted = p.IsDeleted
+
+		respProducts = append(respProducts, temp)
+	}
+
+	resp.Data = respProducts
 	resp.Message = "successfully fetched all products"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -170,18 +197,31 @@ func (a *Admin) AdminProductsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Admin) AdminCategoriesHandler(w http.ResponseWriter, r *http.Request) {
-	var resp struct {
-		Data    []db.Category `json:"data"`
-		Message string        `json:"message"`
+	type respCategory struct {
+		ID   uuid.UUID `json:"id"`
+		Name string    `json:"name"`
 	}
-	data, err := a.DB.GetAllCategoriesForAdmin(context.TODO())
+
+	var respCateogies []respCategory
+	var resp struct {
+		Data    []respCategory `json:"data"`
+		Message string         `json:"message"`
+	}
+	categories, err := a.DB.GetAllCategoriesForAdmin(context.TODO())
 	if err != nil {
 		log.Warn(err)
 		http.Error(w, fmt.Errorf("failed : %w", err).Error(), http.StatusBadRequest)
 		return
 	}
 
-	resp.Data = data
+	for _, c := range categories {
+		var temp respCategory
+		temp.ID = c.ID
+		temp.Name = c.Name
+		respCateogies = append(respCateogies, temp)
+	}
+
+	resp.Data = respCateogies
 	resp.Message = "successfully fetched all categories"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -452,6 +492,7 @@ func (a *Admin) DeliverOrderItemHandler(w http.ResponseWriter, r *http.Request) 
 	// a.DB.EditVendorPaymentStatusByOrderItemID(context.TODO(), editVendorPayArg)
 	type respOrderItem struct {
 		OrderItemID uuid.UUID `json:"order_item_id"`
+		OrderDate   time.Time `json:"order_date"`
 		Status      string    `json:"status"`
 		ProductID   uuid.UUID `json:"product_id"`
 		Price       float64   `json:"price"`
@@ -460,6 +501,7 @@ func (a *Admin) DeliverOrderItemHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	var respUpdatedOrderItem respOrderItem
 	respUpdatedOrderItem.OrderItemID = updatedOrderItem.ID
+	respUpdatedOrderItem.OrderDate = updatedOrderItem.CreatedAt
 	respUpdatedOrderItem.ProductID = updatedOrderItem.ProductID
 	respUpdatedOrderItem.Price = updatedOrderItem.Price
 	respUpdatedOrderItem.Qauntity = int(updatedOrderItem.Quantity)
