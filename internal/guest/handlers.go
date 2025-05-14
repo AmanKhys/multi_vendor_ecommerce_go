@@ -357,14 +357,12 @@ func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
 	var Messages []string
 	var Err []string
 	// add a wallet for the user
-	wallet, err := g.DB.AddWalletByUserID(context.TODO(), verifiedUser.ID)
+	_, err = g.DB.AddWalletByUserID(context.TODO(), verifiedUser.ID)
 	if err != nil {
 		log.Warn("error adding wallet for newly created user:", err.Error())
 		Err = append(Err, "unable to add wallet for the user after verifying. internal error")
 	} else {
 		Messages = append(Messages, "successfully added wallet for user:")
-		Messages = append(Messages, "walletID:", wallet.ID.String(), fmt.Sprintf("savings: %v", wallet.Savings))
-
 	}
 	_, err = g.DB.DeleteOTPByEmail(context.TODO(), verifiedUser.Email)
 	if err == sql.ErrNoRows {
