@@ -94,12 +94,27 @@ func (g *Guest) UserSignUpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	type respUser struct {
+		ID    uuid.UUID     `json:"id"`
+		Name  string        `json:"name"`
+		Email string        `json:"email"`
+		Phone sql.NullInt64 `json:"phone"`
+		Role  string        `json:"role"`
+	}
+	var respUserData respUser = respUser{
+		ID:    addUser.ID,
+		Name:  addUser.Name,
+		Email: addUser.Email,
+		Phone: addUser.Phone,
+		Role:  addUser.Role,
+	}
+
 	// give response
 	var resp struct {
-		Data    db.AddUserRow `json:"data"`
-		Message string        `json:"message"`
+		Data    respUser `json:"data"`
+		Message string   `json:"message"`
 	}
-	resp.Data = addUser
+	resp.Data = respUserData
 	resp.Message = "Successfully added user. Now you need to verify it. Check email for otp."
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -200,13 +215,33 @@ func (g *Guest) SellerSignUpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	type respSeller struct {
+		ID    uuid.UUID `json:"id"`
+		Name  string    `json:"name"`
+		Email string    `json:"email"`
+		Phone int       `json:"phone"`
+		Role  string    `json:"role"`
+		GstNo string    `json:"gst_no"`
+		About string    `json:"about"`
+	}
+
+	var respSellerData = respSeller{
+		ID:    addSeller.ID,
+		Name:  addSeller.Name,
+		Email: addSeller.Email,
+		Phone: int(addSeller.Phone.Int64),
+		Role:  addSeller.Role,
+		GstNo: addSeller.GstNo.String,
+		About: addSeller.About.String,
+	}
+
 	// send response
 	var resp struct {
-		Data    db.AddSellerRow `json:"data"`
-		Message string          `json:"message"`
-		Err     []string        `json:"errors"`
+		Data    respSeller `json:"data"`
+		Message string     `json:"message"`
+		Err     []string   `json:"errors"`
 	}
-	resp.Data = addSeller
+	resp.Data = respSellerData
 	resp.Message = "successfully added user. Now you need to verify it. Check email for otp."
 
 	// send data
@@ -338,13 +373,28 @@ func (g *Guest) UserSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
 		log.Warn("error deleting otp after executing DeleteOTPByEmail query:", err)
 	}
 
+	type respUser struct {
+		ID    uuid.UUID     `json:"id"`
+		Name  string        `json:"name"`
+		Email string        `json:"email"`
+		Phone sql.NullInt64 `json:"phone"`
+		Role  string        `json:"role"`
+	}
+
+	var respUserData = respUser{
+		ID:    verifiedUser.ID,
+		Name:  verifiedUser.Name,
+		Email: verifiedUser.Email,
+		Phone: verifiedUser.Phone,
+		Role:  verifiedUser.Role,
+	}
 	// send response
 	var resp struct {
-		Data     db.VerifyUserByIDRow `json:"data"`
-		Messages []string             `json:"messages"`
-		Err      []string             `json:"errors"`
+		Data     respUser `json:"data"`
+		Messages []string `json:"messages"`
+		Err      []string `json:"errors"`
 	}
-	resp.Data = verifiedUser
+	resp.Data = respUserData
 	resp.Messages = append(Messages, "user verified successfully")
 	resp.Err = Err
 
@@ -429,19 +479,34 @@ func (g *Guest) SellerSignUpOTPHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verify user
-	respSeller, err := g.DB.VerifySellerEmailByID(context.TODO(), user.ID)
+	verifiedSeller, err := g.DB.VerifySellerEmailByID(context.TODO(), user.ID)
 	if err != nil {
 		log.Warn("error verifying a valid user")
 		http.Error(w, "internal server error verifying user", http.StatusInternalServerError)
 		return
 	}
+	type respSeller struct {
+		ID    uuid.UUID `json:"id"`
+		Name  string    `json:"name"`
+		Email string    `json:"email"`
+		Phone int       `json:"phone"`
+		Role  string    `json:"role"`
+	}
+
+	var respSellerData = respSeller{
+		ID:    verifiedSeller.ID,
+		Name:  verifiedSeller.Name,
+		Email: verifiedSeller.Email,
+		Phone: int(verifiedSeller.Phone.Int64),
+		Role:  verifiedSeller.Role,
+	}
 
 	// send response
 	var resp struct {
-		Data    db.VerifySellerEmailByIDRow `json:"data"`
-		Message string                      `json:"message"`
+		Data    respSeller `json:"data"`
+		Message string     `json:"message"`
 	}
-	resp.Data = respSeller
+	resp.Data = respSellerData
 	resp.Message = "seller email verified successfully. Wait for admin to verify the seller."
 
 	w.Header().Set("Content-Type", "application/json")
@@ -710,13 +775,29 @@ func (g *Guest) OauthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sessions.SetSessionCookie(w, session.ID.String())
 
+	type respUser struct {
+		ID    uuid.UUID     `json:"id"`
+		Name  string        `json:"name"`
+		Email string        `json:"email"`
+		Phone sql.NullInt64 `json:"phone"`
+		Role  string        `json:"role"`
+	}
+
+	var respUserData = respUser{
+		ID:    user.ID,
+		Name:  user.Name,
+		Email: user.Email,
+		Phone: user.Phone,
+		Role:  user.Role,
+	}
+
 	// send response
 	w.Header().Set("Content-Type", "application/json")
 	var resp struct {
-		Data    db.GetUserByEmailRow `json:"data"`
-		Message string               `json:"message"`
+		Data    respUser `json:"data"`
+		Message string   `json:"message"`
 	}
-	resp.Data = user
+	resp.Data = respUserData
 	resp.Message = "user logged in successfully and added session cookie."
 	json.NewEncoder(w).Encode(resp)
 }
