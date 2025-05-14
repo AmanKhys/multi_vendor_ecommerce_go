@@ -460,12 +460,33 @@ func (u *User) CategoryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error fetching products by category name", http.StatusBadRequest)
 		return
 	}
+	type respProduct struct {
+		ID          uuid.UUID `json:"id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description"`
+		Price       float64   `json:"price"`
+		Stock       int32     `json:"stock"`
+		SellerID    uuid.UUID `json:"seller_id"`
+	}
+
+	var respProductsData []respProduct
+
+	for _, p := range products {
+		var temp respProduct
+		temp.ID = p.ID
+		temp.Name = p.Name
+		temp.Description = p.Description
+		temp.Price = p.Price
+		temp.Stock = p.Stock
+		temp.SellerID = p.SellerID
+		respProductsData = append(respProductsData, temp)
+	}
 
 	var resp struct {
-		Data    []db.GetProductsByCategoryNameRow `json:"data"`
-		Message string                            `json:"message"`
+		Data    []respProduct `json:"data"`
+		Message string        `json:"message"`
 	}
-	resp.Data = products
+	resp.Data = respProductsData
 	resp.Message = "successfully fetched products from category:" + categoryName
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -526,11 +547,32 @@ func (u *User) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var resp struct {
-		Data    []db.GetCartItemsByUserIDRow `json:"data"`
-		Message string                       `json:"message"`
+	type respCartItems struct {
+		CartID      uuid.UUID `json:"cart_id"`
+		ProductID   uuid.UUID `json:"product_id"`
+		ProductName string    `json:"product_name"`
+		Quantity    int32     `json:"quantity"`
+		Price       float64   `json:"price"`
+		TotalAmount float64   `json:"total_amount"`
 	}
-	resp.Data = cartItems
+
+	var respCartItemsData []respCartItems
+	for _, ci := range cartItems {
+		var temp respCartItems
+		temp.CartID = ci.CartID
+		temp.ProductID = ci.ProductID
+		temp.ProductName = ci.ProductName
+		temp.Quantity = ci.Quantity
+		temp.Price = ci.Price
+		temp.TotalAmount = ci.TotalAmount
+		respCartItemsData = append(respCartItemsData, temp)
+	}
+
+	var resp struct {
+		Data    []respCartItems `json:"data"`
+		Message string          `json:"message"`
+	}
+	resp.Data = respCartItemsData
 	resp.Message = "successfully fetched cart items"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -913,6 +955,7 @@ func (u *User) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	// respOrder struct
 	type respOrder struct {
 		OrderID       uuid.UUID       `json:"order_id"`
+		OrderDate     time.Time       `json:"order_date"`
 		PaymentMethod string          `json:"payment_method"`
 		PaymentStatus string          `json:"payment_status"`
 		OrderItems    []respOrderItem `json:"order_items"`
@@ -924,6 +967,8 @@ func (u *User) GetOrdersHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, o := range orders {
 		var temp respOrder
+		// add order_date
+		temp.OrderDate = o.CreatedAt
 		orderItems, err := u.DB.GetOrderItemsByOrderID(context.TODO(), o.ID)
 		if err != nil {
 			log.Warn("error fetching orderItem in GetOrderHandler:", err.Error())
@@ -976,6 +1021,7 @@ func (u *User) GetOrderItemsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	type respOrderItem struct {
+		OrderID     uuid.UUID `json:"order_id"`
 		OrderItemID uuid.UUID `json:"order_item_id"`
 		Status      string    `json:"status"`
 		ProductID   uuid.UUID `json:"product_id"`
@@ -987,6 +1033,7 @@ func (u *User) GetOrderItemsHandler(w http.ResponseWriter, r *http.Request) {
 	var respOrderItems []respOrderItem
 	for _, v := range orderItems {
 		var temp respOrderItem
+		temp.OrderID = v.OrderID
 		temp.OrderItemID = v.ID
 		temp.Status = v.Status
 		temp.ProductID = v.ProductID
@@ -1275,22 +1322,102 @@ func (u *User) AddCartToOrderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	type respOrder struct {
+		ID             uuid.UUID     `json:"id"`
+		UserID         uuid.UUID     `json:"user_id"`
+		TotalAmount    float64       `json:"total_amount"`
+		CouponID       uuid.NullUUID `json:"coupon_id"`
+		DiscountAmount float64       `json:"discount_amount"`
+		NetAmount      float64       `json:"net_amount"`
+		OrderDate      time.Time     `json:"created_at"`
+	}
+	var respOrderData = respOrder{
+		ID:             order.ID,
+		UserID:         order.UserID,
+		TotalAmount:    order.TotalAmount,
+		CouponID:       order.CouponID,
+		DiscountAmount: order.DiscountAmount,
+		NetAmount:      order.NetAmount,
+		OrderDate:      order.CreatedAt,
+	}
+
+	type respOrderItem struct {
+		ID          uuid.UUID `json:"id"`
+		ProductID   uuid.UUID `json:"product_id"`
+		Price       float64   `json:"price"`
+		Quantity    int32     `json:"quantity"`
+		TotalAmount float64   `json:"total_amount"`
+		Status      string    `json:"status"`
+		ProductName string    `json:"product_name"`
+	}
+
+	var respOrderItemsData []respOrderItem
+	for _, oi := range orderItems {
+		var temp respOrderItem
+		temp.ID = oi.ID
+		temp.ProductID = oi.ProductID
+		temp.ProductName = oi.ProductName
+		temp.Price = oi.Price
+		temp.Quantity = oi.Quantity
+		temp.TotalAmount = oi.TotalAmount
+		temp.Status = oi.Status
+
+		respOrderItemsData = append(respOrderItemsData, temp)
+	}
+
+	type respShippingAddress struct {
+		ID         uuid.UUID `json:"id"`
+		HouseName  string    `json:"house_name"`
+		StreetName string    `json:"street_name"`
+		Town       string    `json:"town"`
+		District   string    `json:"district"`
+		State      string    `json:"state"`
+		Pincode    int32     `json:"pincode"`
+	}
+
+	var respShipAddrData = respShippingAddress{
+		ID:         shipAddr.ID,
+		HouseName:  shipAddr.HouseName,
+		StreetName: shipAddr.StreetName,
+		Town:       shipAddr.Town,
+		District:   shipAddr.District,
+		State:      shipAddr.State,
+		Pincode:    shipAddr.Pincode,
+	}
+	type respPayment struct {
+		ID            uuid.UUID      `json:"id"`
+		Method        string         `json:"method"`
+		Status        string         `json:"status"`
+		TotalAmount   float64        `json:"total_amount"`
+		TransactionID sql.NullString `json:"transaction_id"`
+		CreatedAt     time.Time      `json:"created_at"`
+	}
+
+	var respPaymentData = respPayment{
+		ID:            payment.ID,
+		Method:        payment.Method,
+		Status:        payment.Status,
+		TotalAmount:   payment.TotalAmount,
+		TransactionID: payment.TransactionID,
+		CreatedAt:     payment.CreatedAt,
+	}
+
 	Messages = append(Messages, "successfully added the cart items to orders")
 	var resp struct {
-		Order           db.Order                       `json:"order"`
-		Phone           int                            `json:"phone"`
-		Payment         db.Payment                     `json:"payment"`
-		OrderItems      []db.GetOrderItemsByOrderIDRow `json:"order_items"`
-		ShippingAddress db.AddShippingAddressRow       `json:"shipping_address"`
-		Err             []string                       `json:"error"`
-		Messages        []string                       `json:"messages"`
+		Order           respOrder           `json:"order"`
+		Phone           int                 `json:"phone"`
+		Payment         respPayment         `json:"payment"`
+		OrderItems      []respOrderItem     `json:"order_items"`
+		ShippingAddress respShippingAddress `json:"shipping_address"`
+		Err             []string            `json:"error"`
+		Messages        []string            `json:"messages"`
 	}
 
 	resp.Phone = int(user.Phone.Int64)
-	resp.Order = updatedOrder
-	resp.Payment = payment
-	resp.OrderItems = orderItems
-	resp.ShippingAddress = shipAddr
+	resp.Order = respOrderData
+	resp.Payment = respPaymentData
+	resp.OrderItems = respOrderItemsData
+	resp.ShippingAddress = respShipAddrData
 	resp.Err = Err
 	resp.Messages = Messages
 	w.Header().Set("Content-Type", "application/json")
