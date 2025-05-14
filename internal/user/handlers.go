@@ -557,6 +557,7 @@ func (u *User) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var respCartItemsData []respCartItems
+	var cartTotal float64
 	for _, ci := range cartItems {
 		var temp respCartItems
 		temp.CartID = ci.CartID
@@ -565,14 +566,18 @@ func (u *User) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 		temp.Quantity = ci.Quantity
 		temp.Price = ci.Price
 		temp.TotalAmount = ci.TotalAmount
+
+		cartTotal += ci.TotalAmount
 		respCartItemsData = append(respCartItemsData, temp)
 	}
 
 	var resp struct {
-		Data    []respCartItems `json:"data"`
-		Message string          `json:"message"`
+		Data      []respCartItems `json:"data"`
+		CartTotal float64         `josn:"cart_total"`
+		Message   string          `json:"message"`
 	}
 	resp.Data = respCartItemsData
+	resp.CartTotal = cartTotal
 	resp.Message = "successfully fetched cart items"
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
