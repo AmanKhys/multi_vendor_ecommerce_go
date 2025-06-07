@@ -1,3 +1,9 @@
 .env
 .vscode/
 vendor/
+Dockerfile
+aws.txt
+docker-compose.yaml
+dump.sql
+ecom-pem-ed25519.pem
+main
