@@ -1,33 +1,33 @@
 package envname
 
-const Production = "production"
-const Development = "development"
-const Testing = "testint"
+const Production = "PRODUCTION"
+const Development = "DEVELOPMENT"
+const Testing = "TESTINT"
 
-const Port = "port"
-const Host = "host"
+const Port = "PORT"
+const Host = "HOST"
 
-const DbName = "db_name"
-const DbDriver = "db_driver"
-const DbUser = "db_user"
-const DbPassword = "db_password"
-const DbPort = "db_port"
-const DbHost = "db_host"
-const DbTimeZone = "db_time_zone"
+const DbName = "DB_NAME"
+const DbDriver = "DB_DRIVER"
+const DbUser = "DB_USER"
+const DbPassword = "DB_PASSWORD"
+const DbPort = "DB_PORT"
+const DbHost = "DB_HOST"
+const DbTimeZone = "DB_TIME_ZONE"
 
-const SmtpServer = "smtp_server"
-const SmtpEmail = "smtp_email"
-const SmtpPassword = "smtp_password"
-const SmtpHost = "smtp_host"
-const SmtpIdentity = "smtp_identity"
+const SmtpServer = "SMTP_SERVER"
+const SmtpEmail = "SMTP_EMAIL"
+const SmtpPassword = "SMTP_PASSWORD"
+const SmtpHost = "SMTP_HOST"
+const SmtpIdentity = "SMTP_IDENTITY"
 
-const CryptSecretKey = "crypt_secret_key"
-const AesIV = "aes_iv"
+const CryptSecretKey = "CRYPT_SECRET_KEY"
+const AesIV = "AES_IV"
 
 // google auth keys
-const GoogleClientID = "google_client_id"
-const GoogleSecretKey = "google_secret_key"
+const GoogleClientID = "GOOGLE_CLIENT_ID"
+const GoogleSecretKey = "GOOGLE_SECRET_KEY"
 
 // razorpay keys
-const RPID = "rpay_key_id"
-const RPSecretKey = "rpay_secret_key"
+const RPID = "RPAY_KEY_ID"
+const RPSecretKey = "RPAY_SECRET_KEY"
