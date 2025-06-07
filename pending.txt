@@ -81,3 +81,10 @@ taks:
 2. ban 1000> order for cod..done
 3. chart with filter..done
 4. best selling products, seller
+
+-- other tasks
+0. check all endpoints once again
+1. implement JWT and use its payload to get user email
+2. use job crons for order, payment cancellation instead of go routine
+3. create frontend for all
+4. convert to microservices
