@@ -1,4 +1,4 @@
-package main
+package crons
 
 import (
 	"context"
@@ -13,15 +13,15 @@ import (
 )
 
 func OrdersCron() {
+	var dbConn = repository.NewDBConfig("cancel orders")
+	var DB = db.New(dbConn)
 	for {
-		cancelVoidOrders()
+		cancelVoidOrders(DB)
 		time.Sleep(10 * time.Minute)
 	}
 }
 
-func cancelVoidOrders() {
-	var dbConn = repository.NewDBConfig()
-	var DB = db.New(dbConn)
+func cancelVoidOrders(DB *db.Queries) {
 	orders, err := DB.GetAllOrders(context.TODO())
 	if err != nil {
 		log.Error("error fetching orders inn CancelVoidOrders:", err.Error())

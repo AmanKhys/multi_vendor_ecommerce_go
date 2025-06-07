@@ -12,7 +12,7 @@ import (
 )
 
 // get db connection and get the *db.Queries()
-var dbConn = repository.NewDBConfig()
+var dbConn = repository.NewDBConfig("guest")
 var DB = db.New(dbConn)
 
 // load the env for clientID and clientSecret for googelAuthConfig

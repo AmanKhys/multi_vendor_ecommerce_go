@@ -8,6 +8,7 @@ import (
 
 	"net/http"
 
+	"github.com/amankhys/multi_vendor_ecommerce_go/cmd/crons"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/router"
 
@@ -18,9 +19,6 @@ type config struct {
 	port int
 	env  string
 }
-
-// var dbConn = repository.NewDBConfig()
-// var DB = db.New(dbConn)
 
 func main() {
 	var cfg config
@@ -44,9 +42,9 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 	// remove void orders and payments according to it;
-	go OrdersCron()
+	go crons.OrdersCron()
 	// clear out vendor_payments accordingly
-	go paymentRoutine()
+	go crons.PaymentRoutine()
 	log.Printf("Server running on port %d in %s", cfg.port, cfg.env)
 	err = srv.ListenAndServe()
 	if err != nil {

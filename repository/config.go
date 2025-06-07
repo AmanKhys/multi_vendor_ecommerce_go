@@ -6,12 +6,21 @@ import (
 	"os"
 
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 
 	log "github.com/sirupsen/logrus"
 )
 
-func NewDBConfig() *sql.DB {
+func NewDBConfig(str string) *sql.DB {
+	// we need to load the environment vairables on the session
+	// before we run the program
+	// not using .env file for safe
+	err := godotenv.Load()
+	if err != nil {
+		panic(err)
+	}
+
 	var dbName = os.Getenv(envname.DbName)
 	var dbPort = os.Getenv(envname.DbPort)
 	var dbDriver = os.Getenv(envname.DbDriver)
@@ -29,7 +38,7 @@ func NewDBConfig() *sql.DB {
 	if err != nil {
 		log.Fatal("error pinging db: ", err)
 	}
-	log.Info("successful connection to  database;")
+	log.Info("successful connection to  database for " + str)
 
 	return db
 }

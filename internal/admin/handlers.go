@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/chartGen.go"
+	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/chartGen"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"

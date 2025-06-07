@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var dbConn = repository.NewDBConfig()
+var dbConn = repository.NewDBConfig("authentication")
 var DB = db.New(dbConn)
 
 func AuthenticateUserMiddleware(next http.HandlerFunc, role string) http.HandlerFunc {

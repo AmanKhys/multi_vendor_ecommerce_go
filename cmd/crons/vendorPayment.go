@@ -1,4 +1,4 @@
-package main
+package crons
 
 import (
 	"context"
@@ -12,16 +12,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func paymentRoutine() {
+func PaymentRoutine() {
+	var dbConn = repository.NewDBConfig("vendor payments")
+	var DB = db.New(dbConn)
 	for {
-		updateVendorPaymentsAndSellerWallet()
+		updateVendorPaymentsAndSellerWallet(DB)
 		time.Sleep(3 * time.Hour)
 	}
 }
 
-func updateVendorPaymentsAndSellerWallet() {
-	var dbConn = repository.NewDBConfig()
-	var DB = db.New(dbConn)
+func updateVendorPaymentsAndSellerWallet(DB *db.Queries) {
 	orderItems, err := DB.GetAllOrderItemsForAdmin(context.TODO())
 	if err != nil {
 		log.Error("error fetching orderItems in payment go routine")

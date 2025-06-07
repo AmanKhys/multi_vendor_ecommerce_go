@@ -10,7 +10,7 @@ import (
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 )
 
-var dbConn = repository.NewDBConfig()
+var dbConn = repository.NewDBConfig("admin")
 var DB = db.New(dbConn)
 var a = Admin{DB: DB}
 var helper = helpers.Helper{
