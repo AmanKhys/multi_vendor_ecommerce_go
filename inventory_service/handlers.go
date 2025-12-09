@@ -12,12 +12,13 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	db "inventory_service/db/sqlc"
+
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/helpers"
 	middleware "github.com/amankhys/multi_vendor_ecommerce_go/pkg/middlewares"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
 	"github.com/amankhys/multi_vendor_ecommerce_go/repository"
-	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
 )
 
@@ -993,10 +994,8 @@ func (s *Seller) GetAllCategoriesHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Seller) AddProductToCategoryHandler(w http.ResponseWriter, r *http.Request) {
-	user, ok := r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
-	if !ok {
-		log.Warn("unable to fetch user from the request context after passing it from Auth Middleware")
-		http.Error(w, "internal error fetching user by sessionID", http.StatusInternalServerError)
+	user := helper.GetUserHelper(w, r)
+	if user.ID == uuid.Nil {
 		return
 	}
 	var req struct {

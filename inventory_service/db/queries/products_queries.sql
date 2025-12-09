@@ -95,13 +95,19 @@ select avg(rating) as average_rating, count(*) as total_rating
 from reviews 
 where product_id = $1;
 
+-- name: GetReviewByUserAndProductID :one
+select * from reviews
+where user_id = $1 and product_id = $2;
+
 -- name: EditProductReviewByUserAndProductID :one
 
 
 --------------------------------------------------
+-- take the sellerID from the product
+-- then fetch the seller via that sellerID via a grpc client
 -- name: GetSellerByProductID :one
-SELECT u.id, u.name, u.email, u.phone, u.role, u.is_blocked, u.email_verified, u.user_verified, u.gst_no, u.about
-FROM  products p
-INNER JOIN  users u
-on p.seller_id = u.id and u.role = 'seller' and p.is_deleted = false
-where p.id = $1;
+-- SELECT u.id, u.name, u.email, u.phone, u.role, u.is_blocked, u.email_verified, u.user_verified, u.gst_no, u.about
+-- FROM  products p
+-- INNER JOIN  users u
+-- on p.seller_id = u.id and u.role = 'seller' and p.is_deleted = false
+-- where p.id = $1;

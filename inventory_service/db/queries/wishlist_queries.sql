@@ -27,10 +27,10 @@ returning *;
 delete from wishlists
 where user_id = $1;
 
--- name: AddAllWishListItemsToCarts :many
-with cte AS
-(select w.* from wishlists w where w.user_id = @user_id)
-insert into carts
-(user_id, product_id, quantity)
-select user_id, product_id, 1 from cte
-returning *;
+-- -- name: AddAllWishListItemsToCarts :many
+-- with cte AS
+-- (select w.* from wishlists w where w.user_id = @user_id)
+-- insert into carts
+-- (user_id, product_id, quantity)
+-- select user_id, product_id, 1 from cte
+-- returning *;

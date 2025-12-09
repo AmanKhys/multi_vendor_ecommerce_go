@@ -88,3 +88,42 @@ taks:
 2. use job crons for order, payment cancellation instead of go routine
 3. create frontend for all
 4. convert to microservices
+
+
+-- micro_services tasks
+
+inventory_service:
+1. GetSellerByID grpc service 
+_, err = u.DB.GetOrderItemByUserAndProductID(context.TODO(), db.GetOrderItemByUserAndProductIDParams{
+cartItems, err := u.DB.AddAllWishListItemsToCarts(context.TODO(), user.ID)
+_, err := s.DB.GetAddressBySellerID(context.TODO(), user.ID)
+seller, err := s.DB.GetSellerByProductID(context.TODO(), productID)
+
+
+// here this is a pkg/helpers.Helper struct relying on a internal db state
+// make this helper to use a grpc client to fetch the data
+type Helper struct {
+	DB *db.Queries
+}
+
+func (u *Helper) GetAddressesHelper(w http.ResponseWriter, r *http.Request, user db.GetUserBySessionIDRow) {
+	addresses, err := u.DB.GetAddressesByUserID(r.Context(), user.ID)
+	if err == sql.ErrNoRows {
+		w.Header().Set("Content-Type", "text/plain")
+		message := "no addresses added yet for the user."
+		w.Write([]byte(message))
+	} else if err != nil {
+		log.Warn("internal server erro fetching address by userID:", err.Error())
+		http.Error(w, "internal server error fetching addresses by userID", http.StatusInternalServerError)
+		return
+	}
+
+	var resp struct {
+		Data    []db.GetAddressesByUserIDRow `json:"data"`
+		Message string                       `json:"message"`
+	}
+	resp.Data = addresses
+	resp.Message = "successfully fetched all address of the user"
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
