@@ -1,0 +1,50 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "./db/schema/"
+    queries: "./db/queries/"
+    gen:
+      go:
+        package: "sqlc"
+        out: "./db/sqlc"
+        emit_json_tags: true
+        emit_prepared_queries: true
+        emit_empty_slices: true
+        json_tags_case_style: "snake"
+        overrides:
+          - db_type: "numeric"
+            go_type: "float64"
+          # orders table
+          - column: "orders.total_amount"
+            go_type: "float64"
+          - column: "orders.discount_amount"
+            go_type: "float64"
+          - column: "orders.net_amount"
+            go_type: "float64"
+          # payments table
+          - column: "payments.total_amount"
+            go_type: "float64"
+          # order_items table
+          - column: "order_items.price"
+            go_type: "float64"
+          - column: "order_items.total_amount"
+            go_type: "float64"
+          # vendor_payments table
+          - column: "vendor_payments.total_amount"
+            go_type: "float64"
+          - column: "vendor_payments.platform_fee"
+            go_type: "float64"
+          - column: "vendor_payments.credit_amount"
+            go_type: "float64"
+          # coupons table
+          - column: "coupons.trigger_price"
+            go_type: "float64"
+          - column: "coupons.discount_amount"
+            go_type: "float64"
+          # return_refunds table
+          - column: "return_refunds.item_amount"
+            go_type: "float64"
+          - column: "return_refunds.discount_removal_amount"
+            go_type: "float64"
+          - column: "return_refunds.refund_amount"
+            go_type: "float64"

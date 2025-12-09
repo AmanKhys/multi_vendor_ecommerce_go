@@ -16,6 +16,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	db "payment_service/db/sqlc"
+
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/chartGen"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/envname"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/helpers"
@@ -23,13 +25,11 @@ import (
 	paymenthelper "github.com/amankhys/multi_vendor_ecommerce_go/pkg/payment"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/validators"
-	"github.com/amankhys/multi_vendor_ecommerce_go/repository"
-	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
 	"github.com/jung-kurt/gofpdf"
 )
 
-var dbConn = repository.NewDBConfig("user")
+var dbConn = db.NewDBConfig("user")
 var DB = db.New(dbConn)
 var u = User{DB: DB}
 var helper = helpers.Helper{
