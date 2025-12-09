@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razorpay Payment</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+        }
+        .details {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .details p {
+            margin: 5px 0;
+        }
+        .pay-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #3399cc;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .pay-btn:hover {
+            background: #2877a1;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Payment Details</h2>
+
+    <div class="details">
+        <h3>Seller Details</h3>
+        <p><strong>Business Name:</strong> {{.EcomName}}</p>
+        <p><strong>Description:</strong> {{.Description}}</p>
+    </div>
+
+    <div class="details">
+        <h3>Payment Details</h3>
+        <p><strong>Amount:</strong> ₹{{.DisplayAmount}} ({{.Currency}})</p>
+        <p><strong>Order ID:</strong> {{.OrderID}}</p>
+        <p><strong>DB Order ID: {{.DBOrderID}}</strong></p>
+    </div>
+
+    <div class="details">
+        <h3>User Details</h3>
+        <p><strong>Name:</strong> {{.Username}}</p>
+        <p><strong>Email:</strong> {{.Email}}</p>
+        <p><strong>Contact:</strong> {{.Contact}}</p>
+    </div>
+
+    <button id="rzp-button1" class="pay-btn">Pay with Razorpay</button>
+
+<script>
+    // Inject DBOrderID from template to JavaScript
+    var dbOrderID = "{{.DBOrderID}}";
+
+    var options = {
+        "key": "{{.Key}}", 
+        "amount": "{{.Amount}}", 
+        "currency": "{{.Currency}}",
+        "name": "{{.EcomName}}",
+        "description": "{{.Description}}",
+        "order_id": "{{.OrderID}}",
+        "handler": function (response) {
+            console.log("Handler function triggered with response:", response);
+            // Send payment success data to backend
+            fetch("/user/orders/makepayment/success", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    payment_id: response.razorpay_payment_id,
+                    order_id: response.razorpay_order_id,
+                    signature: response.razorpay_signature,
+                    db_order_id: dbOrderID
+                })
+            })
+        },
+        "prefill": {
+            "name": "{{.Username}}",
+            "email": "{{.Email}}",
+            "contact": "{{.Contact}}"
+        },
+        "theme": {
+            "color": "#3399cc"
+        }
+    };
+
+    var rzp1 = new Razorpay(options);
+    document.getElementById('rzp-button1').onclick = function(e){
+        rzp1.open();
+        e.preventDefault();
+    }
+</script>
+</body>
+</html>
+

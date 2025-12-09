@@ -1,0 +1,18 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "./db/schema/"
+    queries: "./db/queries/"
+    gen:
+      go:
+        package: "sqlc"
+        out: "./db/sqlc"
+        emit_json_tags: true
+        emit_prepared_queries: true
+        emit_empty_slices: true
+        json_tags_case_style: "snake"
+        overrides:
+          - db_type: "numeric"
+            go_type: "float64"
+          - column: "wallets.savings"
+            go_type: "float64"
