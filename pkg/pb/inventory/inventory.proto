@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package inventory;
+
+option go_package = "proto/inventorypb";
+
+import "google/protobuf/timestamp.proto";
+
+// --------------------
+// REQUESTS
+// --------------------
+message GetProductByIDRequest {
+  // UUID as string (convert to uuid.UUID in Go)
+  string id = 1;
+}
+
+// --------------------
+// RESPONSES
+// --------------------
+message GetProductByIDResponse {
+  string id = 1;                  // UUID
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  int64 stock = 5;
+  string seller_id = 6;           // UUID
+  bool is_deleted = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// --------------------
+// SERVICE
+// --------------------
+service InventoryService {
+  rpc GetProductByID (GetProductByIDRequest) returns (GetProductByIDResponse);
+}

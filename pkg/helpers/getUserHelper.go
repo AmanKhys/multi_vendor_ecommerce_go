@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (h *Helper) GetUserHelper(w http.ResponseWriter, r *http.Request) db.GetUserBySessionIDRow {
+func GetUserHelper(w http.ResponseWriter, r *http.Request) db.GetUserBySessionIDRow {
 	user, ok := r.Context().Value(utils.UserKey).(db.GetUserBySessionIDRow)
 	if !ok {
 		log.Warn("error fetching user from request context for user")
