@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package userpb;
+
+option go_package = "github.com/amankhys/brocamp/ecom/pkg/pb/user/userpb";
+
+message GetUserBySessionIDRequest {
+    string sessionID = 1;
+}
+
+message GetUserBySessionIDResponse {
+    string id = 1;
+    string name = 2;
+    string email = 3;
+    string role = 4;
+    string phone = 5;
+}
+
+message GetAddressBySellerIDRequest {
+    string sellerID = 1;
+}
+
+message GetAddressBySellerIDResponse {
+    bool exists = 1;
+}
+
+service UserService {
+    rpc GetUserBySessionID(GetUserBySessionIDRequest) returns (GetUserBySessionIDResponse);
+    rpc GetAddressBySellerID(GetAddressBySellerIDRequest) returns (GetAddressBySellerIDResponse);
+}

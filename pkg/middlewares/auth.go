@@ -6,15 +6,20 @@ import (
 	"errors"
 	"net/http"
 
+	userpb "github.com/amankhys/multi_vendor_ecommerce_go/pkg/pb/user"
 	"github.com/amankhys/multi_vendor_ecommerce_go/pkg/utils"
-	"github.com/amankhys/multi_vendor_ecommerce_go/repository"
-	"github.com/amankhys/multi_vendor_ecommerce_go/repository/db"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 )
 
-var dbConn = repository.NewDBConfig("authentication")
-var DB = db.New(dbConn)
+type User struct {
+	ID    uuid.UUID
+	Name  string
+	Email string
+	Role  string
+	Phone string
+}
 
 func AuthenticateUserMiddleware(next http.HandlerFunc, role string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +42,9 @@ func AuthenticateUserMiddleware(next http.HandlerFunc, role string) http.Handler
 			return
 		}
 
-		user, err := DB.GetUserBySessionID(context.TODO(), uid)
+		// replace with grpc client
+		userClient := userpb.NewUserServiceClient(&grpc.ClientConn{})
+		user, err := userClient.GetUserBySessionID(context.TODO(), &userpb.GetUserBySessionIDRequest{SessionID: uid.String()})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				http.Error(w, "invalid session", http.StatusUnauthorized)
@@ -54,8 +61,16 @@ func AuthenticateUserMiddleware(next http.HandlerFunc, role string) http.Handler
 			return
 		}
 
+		// set a gloabal user struct for the auth middleware
+		contextUser := &User{
+			ID:    user.ID,
+			Name:  user.Name,
+			Email: user.Email,
+			Role:  user.Role,
+			Phone: user.Phone,
+		}
 		// Store user in context and call next handler
-		ctx := context.WithValue(r.Context(), utils.UserKey, user)
+		ctx := context.WithValue(r.Context(), utils.UserKey, contextUser)
 		next(w, r.WithContext(ctx))
 	}
 }
